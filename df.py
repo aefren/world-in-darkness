@@ -4215,7 +4215,7 @@ def start():
     run = 1
     set_logging()
     say = 1
-    items = [new_t, load_t, exit_t]
+    items = [new_t, load_t, about_t, exit_t]
     x = 0
     while run:
       sleep(0.01)

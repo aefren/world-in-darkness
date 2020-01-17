@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 print('mamá')
 
+about_t = 'información'
 added_t = 'se agregó'
 afternoon_t = 'tarde'
 animal_t = 'animal'
