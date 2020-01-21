@@ -452,6 +452,10 @@ class City:
     if self.seen_threat > self.defense_total // 2 or self.defense < self.defense_pred: 
       self.military_limit *= 2
 
+  def set_name(self):
+    if self.nation.city_names: 
+      shuffle(self.nation.city_names)
+      self.nick = self.nation.city_names.pop()
   def set_seen_units(self, new=0, info=0):
     # logging.debug(f'set seen units {self}.')
     tiles = [t for t in self.pos.get_near_tiles(self.pos.scenary, 6)
@@ -690,12 +694,9 @@ class City:
     self.buildings = []
     self.units = []
     for t in self.tiles:
-      print(f'{t} {t.cords}.')
       for bu in t.buildings:
-        print(f'{bu} was {bu.pos.cords}.')
         bu.pos = t
         bu.poss = t
-        print(f'is {bu.pos.cords}.')
         self.buildings.append(bu)
       for uni in t.units: 
         if uni.nation == self.nation: self.units.append(uni)
@@ -870,9 +871,7 @@ class Nation:
     itm.pos = pos
     pos.buildings.append(itm)
     unit.pos.units.remove(unit)
-    if self.city_names: 
-      shuffle(self.city_names)
-      itm.nick = self.city_names.pop()
+    itm.set_name()
     if len(self.cities) == 0: itm.capital = 1
     if itm.capital: itm.set_capital_bonus()
     tiles = pos.get_near_tiles(scenary, 1)
@@ -1539,7 +1538,6 @@ class Unit:
   def set_default_align(self):
     if self.pos:
       for nt in self.pos.world.random_nations: 
-        print(f'{nt.name}.')
         if nt.name == self.align.name: self.nation = nt
   def set_hidden(self, pos):
     info = 0
@@ -4538,6 +4536,7 @@ class HolyEmpire(Nation):
 
     # edificios iniciales disponibles.
     self.av_buildings = [Fields, Dock, MeetingCamp, Pastures, TrainingCamp, SawMill, Quarry]
+    self.av_cities = [Hamlet]
     self.city_names = roman_citynames
     
     # terrenos de comida.
@@ -4600,6 +4599,7 @@ class SilvanElves(Nation):
 
     # edificios iniciales disponibles.
     self.av_buildings = [CraftmensTree, ForestLookout, GlisteningPastures, Grove, Santuary, stoneCarvers]
+    self.av_cities = [Hall]
     self.city_names = elven_citynames
     
     # terrenos de comida.
@@ -4658,9 +4658,10 @@ class Transylvania(Nation):
     self.allow_around_desert = 8
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 1
-    
+  
     # edificios iniciales disponibles.
     self.av_buildings = [Cemetery, DesecratedRuins, Dock, SmallWood, Gallows, Pit, Quarry, SawMill]
+    self.av_cities = [CursedHamlet]
     self.city_names = death_citynames
     # terrenos de comida.
     self.for_food.soil = [waste_t, grassland_t, plains_t, tundra_t]

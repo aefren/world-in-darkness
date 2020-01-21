@@ -589,7 +589,21 @@ class World:
         self.units.append(item)
         num -= item.ranking
         logging.info(f'{item}. ranking {item.ranking}.')
+  def clean_nations(self):
+    global PLAYING
+    [nt.update(nt.map) for nt in self.nations]
+    self.nations = [nt for nt in self.nations if nt.cities 
+                    or [u for u in self.nations if u.settler]]
+    ai = [nt for nt in self.nations if nt.ai]
+    hu = [nt for nt in self.nations if nt.ai == 0]
+    if ai and hu == []:
+      sp.speak(f'Defeat.')
+      PLAYING = False 
+    elif hu and ai == []:
+      sp.speak(f'Victory!')
+      PLAYING = False
   def update(self, scenary):
+    self.clean_nations()
     self.units = []
     for t in scenary:
       for uni in t.units:
@@ -777,7 +791,6 @@ def ai_attack1(nation):
 
 def ai_building_upgrade(nation):
   logging.debug(f'ai_building_upgrade. gold {nation.gold}')
-  print(f'ai_building_upgrade. gold {nation.gold}')
   init = time()
   food_limit_upgrades = nation.food_limit_upgrades
   upgradable = [bu for bu in nation.buildings if bu.is_complete and bu.upgrade]
@@ -815,7 +828,6 @@ def ai_building_upgrade(nation):
 
 def ai_construct(nation):
   logging.info(f'construir edificios {nation} turno {world.turn}.. gold {nation.gold}')
-  print(f'construir edificios {nation} turno {world.turn}.. gold {nation.gold}')
   nation.cities.sort(key=lambda x: x.capital,reverse=True)
   nation.gold_upgrade_limit = ai_building_upgrade(nation)
   logging.debug(f'{nation.gold_upgrade_limit} limite de gastos.')
@@ -922,7 +934,6 @@ def ai_divide_units(nation):
 def ai_expand_city(city):
   '''buscará expandir la ciudad.'''
   logging.info(f'ai_expand_city {city}. gold {city.nation.gold}')
-  print(f'ai_expand_city {city}. gold {city.nation.gold}')
   
   if city.buildings_military_complete == []: return 'falta military.'
   if city.defense_percent < 2: return 'falta ranking.'
@@ -2594,6 +2605,15 @@ def create_building(city, items, sound='in1'):
           return
 
 
+
+def destroy_city(city):
+  city.nation.cities.remove(city)
+  for t in city.tiles:
+    t.city = None
+    t.nation = None
+    t.buildings = []
+    
+
 def end_parameters(sound='unselected1'):
   global Belongs, Evt, filter_expand, Group, move, Name, rng, unit, x, xy
   loadsound(sound)
@@ -3807,7 +3827,6 @@ def random_move(itm, scenary, sq=None, value=1):
   if sq == None:
     sq = itm.pos.get_near_tiles(scenary, value)
     sq = [it for it in sq if itm.can_pass(it)]
-    print(f'{len(sq)} casillas iniciales.')
     logging.debug(f'{len(sq)} casillas iniciales.')
   if sq:
     done = 1
@@ -4129,6 +4148,7 @@ def game():
   global nation, num, unit, world, x, y, z
   global filter_expand
   global hell_nation, wild_nation
+  global PLAYING
   
   #change()
   if startpos: pos = scenary[startpos]
@@ -4141,6 +4161,7 @@ def game():
   move = []
   Name = None
   nation_name = ''
+  PLAYING = True
   rng = None
   starting = None
   terrain_name = None
@@ -4189,7 +4210,7 @@ def game():
     nation.map = world.map
   if pos not in world.map: inside = 1
   elif pos in world.map: inside = 0
-  while True:
+  while PLAYING:
     sleep(0.005)
     if mapeditor > 0:
       n1 = Empty()
@@ -4310,11 +4331,19 @@ def take_city(itm):
   itm.nation.log[-1].append(msg)
   itm.pos.nation.log[-1].append(msg)
   logging.info(msg)
+  city = itm.nation.av_cities[0](itm.nation, itm.pos)
+  city.set_name()
+  city.tiles = itm.pos.city.tiles
   itm.pos.city.nation.cities.remove(itm.pos.city)
-  for i in itm.pos.city.tiles:
-    i.nation = itm.nation
-  itm.pos.city.nation = itm.nation
-  itm.pos.nation = itm.nation
+  for t in itm.pos.city.tiles:
+    t.nation = itm.nation
+    t.city = city
+    t.pop -= randint(30, 80)*t.pop//100
+    t.unrest += randint(15, 30)
+    for b in t.buildings:
+      if b.name not in [bu.name for bu in itm.nation.av_cities]: b.resource_cost[0] = -1
+  itm.pos.city = city
+  itm.pos.buildings += [city]
   itm.nation.cities.append(itm.pos.city)
   itm.nation.update(scenary)
 
