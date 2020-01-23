@@ -784,7 +784,7 @@ class Nation:
   pos = None
   raid_income = 0
   raid_outcome = 0
-  show_info = 1
+  show_info = 0
   stalk = 0
   tile_cost = 600
   tile_power = 1

@@ -593,7 +593,7 @@ class World:
     global PLAYING
     [nt.update(nt.map) for nt in self.nations]
     self.nations = [nt for nt in self.nations if nt.cities 
-                    or [u for u in self.nations if u.settler]]
+                    or [u for u in nt.units if u.settler]]
     ai = [nt for nt in self.nations if nt.ai]
     hu = [nt for nt in self.nations if nt.ai == 0]
     if ai and hu == []:
@@ -3632,7 +3632,9 @@ def naming(sound='back3'):
 def nation_init():
   while True:
       done = 1
-      for nat in world.nations: nation_start_position(nat, world.map)
+      for nat in world.nations: 
+        if nat.ai == 0: nat.show_info = 1
+        nation_start_position(nat, world.map)
       for n in world.nations:
         if n.pos == None: done = 0
       if done:
@@ -4175,23 +4177,13 @@ def game():
   if mapeditor == 0 and new_game == 1:
     # dificultad.
     world.ambient = ambient
-    world.difficulty = 50
+    world.difficulty = DIFFICULTY
     world.difficulty_type = 'dynamic'
-    world.difficulty_change = 20
-    world.random_nations = [Hell(), Wild()]
+    world.random_nations = RANDOM_FACTIONS
     scenary = world.map
     Unit.ambient = world.ambient
     # choose_nation():
-    n1 = HolyEmpire()
-    n1.ai = 1
-    n1.show_info = 0
-    n2 = Transylvania()
-    n2.ai = 0
-    n2.show_info = 1
-    n3 = SilvanElves()
-    n3.ai = 1
-    n3.show_info = 0
-    world.nations = [n1, n2, n3]
+    world.nations = NATIONS
     shuffle(world.nations)
     for t in scenary: t.world = world
     nation_init()
@@ -4671,10 +4663,6 @@ mapeditor = 0
 new_game = 1
 
 startpos = None
-if mapeditor == 0: exec('from data.items import *') 
-  
-# start()
-start()
 
-# itm.defense, itm.defense_pred, itm.defense_total, len(nation.units_free)
-# [f'{i}' for i in nation.units_free]
+if mapeditor == 0: exec('from game_setup import *')  
+start()
