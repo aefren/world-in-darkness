@@ -1798,7 +1798,9 @@ def check_enemy(itm, pos, is_city=0):
 def check_position(itm):
   logging.debug(f'checking position.')
   if itm.pos.is_city and itm.nation != itm.pos.nation and itm.hidden == 0:
-    if check_enemy(itm, itm.pos, is_city=1) == None: take_city(itm)
+    if check_enemy(itm, itm.pos, is_city=1) == None: 
+      if itm.nation in world.nations: take_city(itm)
+      else: destroy_city(itm.pos.city)
 
 
 def combat_log(units):

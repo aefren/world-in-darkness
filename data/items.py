@@ -2056,12 +2056,12 @@ class AwakenTree(Elf):
 
   hp = 10
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 8
   global_skills = [ForestWalker]
 
   dfs = 5
-  res = 6
+  res = 7
   arm = 4
   armor = None
 
@@ -2208,7 +2208,7 @@ class Falcons(Elf):
 
   hp = 2
   mp = [4, 4]
-  moves = 12
+  moves = 10
   resolve = 6
   global_skills = [Fly, ForestWalker]
 
@@ -2467,7 +2467,7 @@ class HighSilvanArcher(Elf):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 8
   global_skills = [ForestWalker]
 
@@ -2506,7 +2506,7 @@ class WildHuntsmen(Elf):
 
   hp = 3
   mp = [3, 3]
-  moves = 7
+  moves = 6
   resolve = 7
   global_skills = [ForestWalker]
 
@@ -2843,7 +2843,7 @@ class Aquilifer(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 8
   global_skills = [Inspiration, Regroup]
 
@@ -2945,7 +2945,7 @@ class Flagellants(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 7
 
   dfs = 3
@@ -3012,7 +3012,7 @@ class Levy(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 4
 
   dfs = 3
@@ -3044,7 +3044,7 @@ class GreatSwordsMen(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 7
   global_skills = [BattleBrothers, Regroup, Reinforce]
 
@@ -3111,7 +3111,7 @@ class Halberdier(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 6
   global_skills = [BattleBrothers, Regroup, Reinforce, ]
 
@@ -3247,7 +3247,7 @@ class CrossBowMen(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 6
 
   dfs = 3
@@ -3279,7 +3279,7 @@ class Arquebusier(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 6
 
   dfs = 3
@@ -3311,7 +3311,7 @@ class Musket(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 6
 
   dfs = 3
@@ -3716,7 +3716,7 @@ class Banshee(Undead):
 
   hp = 6
   mp = [2, 2]
-  moves = 8
+  moves = 9
   resolve = 8
   global_skills = [Ethereal, FearAura, Fly, NightFerocity]
 
@@ -3752,7 +3752,7 @@ class Bats(Unit):
 
   hp = 1
   mp = [4, 4]
-  moves = 7
+  moves = 8
   resolve = 3
   global_skills = [Fly, NightFerocity, NightSurvival]
 
@@ -3788,7 +3788,7 @@ class BlackKnights(Undead):
 
   hp = 3
   mp = [3, 3]
-  moves = 10
+  moves = 8
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
@@ -3826,7 +3826,7 @@ class BloodKnights(Undead):
 
   hp = 3
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
@@ -3902,15 +3902,14 @@ class DireWolves(Undead):
   global_skills = [NightFerocity, NightSurvival]
 
   dfs = 3
-  res = 4
+  res = 5
   arm = 1
 
   att = 1
-  damage = 2
+  damage = 3
   off = 3
-  str = 4
+  str = 5
   pn = 0
-
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4182,7 +4181,7 @@ class VampireLord(Undead):
 
   hp = 16
   mp = [2, 2]
-  moves = 8
+  moves = 9
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival]
 
@@ -4218,7 +4217,7 @@ class Vargheist(Undead):
 
   hp = 12
   mp = [2, 2]
-  moves = 8
+  moves = 9
   resolve = 10
   global_skills = [ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival, TheBeast]
 
@@ -4253,7 +4252,7 @@ class VladDracul(Undead):
 
   hp = 18
   mp = [2, 2]
-  moves = 10
+  moves = 12
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, MastersEye, NightFerocity, NightSurvival]
 
@@ -4535,7 +4534,7 @@ class HolyEmpire(Nation):
     self.unallow_around_glacier = 0
 
     # edificios iniciales disponibles.
-    self.av_buildings = [Fields, Dock, MeetingCamp, Pastures, TrainingCamp, SawMill, Quarry]
+    self.av_buildings = [Fields, MeetingCamp, Pastures, TrainingCamp, SawMill, Quarry]
     self.av_cities = [Hamlet]
     self.city_names = roman_citynames
     
@@ -4660,7 +4659,7 @@ class Transylvania(Nation):
     self.unallow_around_ocean = 1
   
     # edificios iniciales disponibles.
-    self.av_buildings = [Cemetery, DesecratedRuins, Dock, SmallWood, Gallows, Pit, Quarry, SawMill]
+    self.av_buildings = [Cemetery, DesecratedRuins, SmallWood, Gallows, Pit, Quarry, SawMill]
     self.av_cities = [CursedHamlet]
     self.city_names = death_citynames
     # terrenos de comida.
@@ -4691,7 +4690,7 @@ class Archers(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 4
 
   dfs = 2
@@ -4813,7 +4812,7 @@ class Children_Of_The_Wind(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 7
   resolve = 6
   global_skills = [DesertSurvival, MountainSurvival]
 
@@ -4851,7 +4850,7 @@ class DesertNomads(Human):
 
   hp = 3
   mp = [3, 3]
-  moves = 9
+  moves = 8
   resolve = 5
 
   dfs = 3
@@ -4970,7 +4969,7 @@ class GiantWolves(Unit):
 
   hp = 3
   mp = [2, 2]
-  moves = 8
+  moves = 7
   resolve = 4
   global_skills = [Regroup]
 
@@ -5013,7 +5012,7 @@ class Goblins(Unit):
 
   hp = 2
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 4
 
   dfs = 3
@@ -5057,7 +5056,7 @@ class Harpy(Unit):
 
   hp = 3
   mp = [4, 4]
-  moves = 8
+  moves = 6
   resolve = 4
   global_skills = [Fly]
 
@@ -5099,19 +5098,19 @@ class HellHounds(Undead):
 
   hp = 4
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 10
   global_skills = [Regroup, NightFerocity, NightSurvival]
 
   dfs = 4
-  res = 4
+  res = 5
   arm = 2
   armor = None
 
   att = 1
   damage = 4
   off = 4
-  str = 4
+  str = 5
   pn = 0
   
   stealth = 10
@@ -5138,7 +5137,7 @@ class Hyaenas(Unit):
 
   hp = 2
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 4
   global_skills = [NightSurvival, Regroup]
 
@@ -5181,7 +5180,7 @@ class Hunters(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 4
 
   dfs = 3
@@ -5219,7 +5218,7 @@ class NomadsRiders(Human):
 
   hp = 3
   mp = [4, 4]
-  moves = 9
+  moves = 8
   resolve = 4
 
   dfs = 3
@@ -5260,7 +5259,7 @@ class Orc_Archers(Unit):
 
   hp = 3
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 4
 
   dfs = 3
@@ -5301,7 +5300,7 @@ class Orcs(Unit):
 
   hp = 3
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 5
 
   dfs = 3
@@ -5340,7 +5339,7 @@ class PeasantLevies(Human):
 
   hp = 2
   mp = [2, 2]
-  moves = 6
+  moves = 5
   resolve = 4
 
   dfs = 2
@@ -5497,7 +5496,7 @@ class Wargs(Unit):
 
   hp = 3
   mp = [2, 2]
-  moves = 8
+  moves = 7
   resolve = 5
   global_skills = [Regroup]
 
@@ -5575,7 +5574,7 @@ class Wolves(Unit):
 
   hp = 2
   mp = [2, 2]
-  moves = 8
+  moves = 7
   resolve = 4
   global_skills = [NightFerocity, Regroup]
 
