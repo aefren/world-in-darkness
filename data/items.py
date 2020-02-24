@@ -1612,6 +1612,7 @@ class Unit:
       t.unrest += unrest
 
   def update(self):
+    print(f'{self})')
     self.day_night = self.ambient.day_night
     self.month = self.ambient.month[0]
     self.season = self.ambient.season[0]
@@ -1645,32 +1646,33 @@ class Unit:
                    self.offensive_skills + self.other_skills + self.terrain_skills]
     self.get_skills()
     self.effects += [s.name for s in self.other_skills]
-    self.ranking = 0
-    self.ranking += self.damage + self.damage_mod
-    self.ranking += self.damage_sacred + self.damage_sacred_mod
-    self.ranking += self.damage_charge
-    self.ranking *= self.att + self.att_mod
-    self.ranking *= self.units
-    self.ranking = (self.moves+self.moves_mod)*3
-    self.ranking += self.range
-    self.ranking += (self.off + self.off_mod) * 5
-    self.ranking += self.str + self.str_mod * 5
-    self.ranking += (self.pn + self.pn_mod) * 3
   
-    self.ranking += self.mp[1] * 2
-    self.ranking += self.hp_total
-    self.ranking += (self.dfs + self.dfs_mod) * 2
-    self.ranking += (self.res + self.res_mod) * 2
-    self.ranking += (self.arm + self.arm_mod) * 2
-    if self.armor: self.ranking += self.armor.arm * 5
-    if self.shield: self.ranking += self.shield.dfs * 5
+    self.ranking_off = 0
+    self.ranking_off += self.damage + self.damage_mod
+    self.ranking_off += self.damage_sacred + self.damage_sacred_mod
+    self.ranking_off *= self.att + self.att_mod
+    self.ranking_off *= self.units
+    self.ranking_off += self.damage_charge*10
+    self.ranking_off += (self.moves+self.moves_mod)/3
+    self.ranking_off *= (self.off+self.off_mod)/2
+    self.ranking_off *= (self.str+self.str_mod)/3
+    self.ranking_off += (self.pn + self.pn_mod) * 5
+  
+    self.ranking_dfs = self.hp_total
+    self.ranking_dfs *= (self.dfs + self.dfs_mod)/3
+    self.ranking_dfs *= (self.res + self.res_mod)/2
+    self.ranking_dfs += (self.arm + self.arm_mod)*3
+    if self.armor: self.ranking_dfs += self.armor.arm * 5
+    if self.shield: self.ranking_dfs += self.shield.dfs * 5
+  
+    self.ranking = self.ranking_dfs+self.ranking_off
+    self.ranking += self.range*3
   
     if self.can_fly: self.ranking += 5 
-    self.ranking += self.ranking_skills
+    #self.ranking += self.ranking_skills
     self.ranking += sum(s.ranking for s in self.skills + self.spells)
-    self.ranking = round(self.ranking / 2)
+    self.ranking = round(self.ranking/3)
     if self.hidden: self.ranking += 10
-    if self.resolve+self.resolve_mod <= 5: self.ranking -= 30*self.ranking//100
     
     if self.leader and self.leader not in self.nation.units: 
       self.leader = None
@@ -3097,7 +3099,7 @@ class SpearMen(Human):
   off = 4
   str = 5
   pn = 1
-  offensive_skills = [HoldPositions, PikeSquare]
+  offensive_skills = [HoldPositions,PikeSquare]
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild

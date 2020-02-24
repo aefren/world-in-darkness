@@ -258,17 +258,18 @@ class HillTerrain(Skill):
 
 
 class HoldPositions(Skill):
-  effect = 'all'
+  effect = 'self'
   desc = '+2 dfs if unit mp is full.'
   name = 'hold positions'
   type = 0
   def run(self, itm):
     if itm.mp[0] == itm.mp[1]: 
       itm.effects.append(self.name)
+      print(f'se agregó.')
       itm.dfs_mod += 2
 
 class ImpalingRoots(Skill):
-  effect = 'selv'
+  effect = 'self'
   desc = ''
   name = 'ra�ces empaladoras'
   type = -1
