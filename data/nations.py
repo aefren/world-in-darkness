@@ -2,7 +2,7 @@ print(f'carga nations.')
 import copy
 from math import ceil, floor
 from random import randint, shuffle, choice, uniform
-from time import sleep, clock
+from time import sleep, process_time
 
 from numpy import mean
 

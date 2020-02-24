@@ -3,7 +3,7 @@ from math import ceil, floor
 from numpy import mean
 from pdb import Pdb
 from random import randint, shuffle, choice, uniform
-from time import sleep, clock
+from time import sleep, process_time
 
 
 from data.lang.es import *
@@ -31,7 +31,7 @@ class Skill:
 
 class Ambushment(Skill):
   effect = 'self'
-  desc = '+1 att if unit is hidden, if unit is into forest or hill, if unit mp is full.'
+  desc = '+1 att if unit is hidden.'
   name = 'Emboscada'
   type = 0
   def run(self, itm):
@@ -105,20 +105,20 @@ class DesertSurvival(Skill):
   def run(self, itm):
     itm.desert_survival = 1
     if itm.pos and itm.pos.soil.name == waste_t: 
-      itm.stealth_mod += 3
+      itm.effects.append(self.name)
+      itm.stealth_mod += 2
 
 
 class ElusiveShadow(Skill):
   effect = 'self'
-  desc = 'invisible en la noche.'
+  desc = '+3 stealth on day, +6 stealth on night.'
   name = 'sombra elusiva'
   ranking = 5
   type = 0
   def run(self, itm):
-    if itm.day_night[0]:
-      itm.effects.append(self.name) 
-      itm.can_hide = 1
-      itm.ranking_skills += 10
+    itm.effects.append(self.name) 
+    if itm.day_night[0]: itm.stealth_mod += 6
+    elif itm.day_night[0] == 0: itm.stealth_mod += 3
 
 
 class Ethereal(Skill):
@@ -192,23 +192,25 @@ class DarkPresence(Skill):
 
 class ForestSurvival(Skill):
   effect = 'self'
-  desc = '+5 stealth if unit is on forest.'
+  desc = '+2 stealth if unit is on forest.'
   name = 'sobreviviente del bosque'
   type = 0
   def run(self, itm):
     itm.forest_survival = 1 
     if itm.pos and itm.pos.surf.name == forest_t: 
+      itm.effects.append(self.name)
       itm.can_hide = 1
-      itm.stealth_mod += 5
+      itm.stealth_mod += 2
       itm.ranking_skills += 5
 
 
 class ForestTerrain(Skill):
   effect = 'all'
-  desc = '-2 moves for grount unit, -4 move for mounted unit, unit can not charge, ignores forest survival.'
+  desc = '-2 moves for grount unit, -4 move for mounted unit, unit can not charge, ignores forest survival and flying units. +2 stealth.'
   name = 'forest terrain'
   type = 0
   def run(self, itm):
+    itm.stealth_mod += 2
     if itm.forest_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
       itm.can_charge = 0
@@ -224,9 +226,9 @@ class ForestWalker(Skill):
   def run(self, itm):
     if itm.pos and itm.pos.surf.name == forest_t:
       itm.effects.append(self.name)
-      itm.resolve_mod += 1 
       itm.dfs_mod += 1
       itm.off_mod += 1
+      itm.resolve_mod += 1 
       itm.ranking_skills += 5  
 
 
@@ -242,19 +244,28 @@ class HeavyCharge(Skill):
 
 class HillTerrain(Skill):
   effect = 'all'
-  desc = '-2 moves for grount units, -4 move for mounted unit, ignores forest survival.'
+  desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
   name = 'hill terrain'
   type = 0
   def run(self, itm):
+    if itm.range+itm.range_mod >= 6: itm.range_mod += 5
+    itm.stealth_mod += 2
     if itm.mountain_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
       itm.can_charge = 0
       itm.moves_mod -= 2
       if mounted_t in itm.traits: itm.moves_mod -= 2
-      if itm.range > 5: itm.range_mod += 4
-       
-        
 
+
+class HoldPositions(Skill):
+  effect = 'all'
+  desc = '+2 dfs if unit mp is full.'
+  name = 'hold positions'
+  type = 0
+  def run(self, itm):
+    if itm.mp[0] == itm.mp[1]: 
+      itm.effects.append(self.name)
+      itm.dfs_mod += 2
 
 class ImpalingRoots(Skill):
   effect = 'selv'
@@ -369,6 +380,22 @@ class MastersEye(Skill):
       itm.moves_mod += 1
 
 
+
+class Night(Skill):
+  effect = 'all'
+  desc = '-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth.'
+  name = night_t
+  type = 0
+  def run(self, itm):
+    if itm.day_night[0]:
+      itm.effects.append(self.name)
+      itm.stealth_mod += 2
+      if itm.range+itm.range_mod > 5:
+        itm.dfs_mod -= 1
+        itm.off_mod -= 1
+        itm.range_mod -= 5
+
+
 class NightFerocity(Skill):
   effect = 'self'
   desc = 'if night: +1 att, +1 moves.'
@@ -383,7 +410,7 @@ class NightFerocity(Skill):
 
 class NightSurvival(Skill):
   effect = 'self'
-  desc = '+1 power_restoration, +1 hp restoration, +2 stealth.'
+  desc = '+1 power_restoration, +1 hp restoration.'
   name = 'sobreviviente nocturno'
   type = 0
   def run(self, itm):
@@ -392,7 +419,6 @@ class NightSurvival(Skill):
       itm.effects.append(self.name)
       if itm.power: itm.power_res_mod += 1
       itm.hp_res_mod += 1
-      itm.stealth_mod += 2
       itm.ranking_skills += 5
 
 
@@ -416,14 +442,15 @@ class MassSpears(Skill):
 
 class MountainSurvival(Skill):
   effect = 'self'
-  desc = 'invisible en las montañas.'
+  desc = 'invisible en las montañas., +2 stealth.'
   name = 'sobreviviente de las montañas'
   type = 0
   def run(self, itm):
     itm.mountain_survival = 1
     if itm.pos and itm.pos.hill:
+      itm.effects.append(self.name)
       itm.can_hide = 1
-      itm.stealth_mod += 3
+      itm.stealth_mod += 2
       itm.ranking_skills += 5
 
 
@@ -555,6 +582,20 @@ class SermonOfCourage(Skill):
       itm.resolve_mod += 1
 
 
+class ShadowHunter(Skill):
+  effect = 'self'
+  name = 'cazador de sombras'
+  desc = '+2 damage, +2 str if enemy is undead.'
+  type = 0
+  def run(self, itm):
+    if itm.target and undead_t in itm.target.traits:
+      itm.effects.append(self.name)
+      itm.damage_sacred_mod += 2
+      itm.moves_mod += 1
+      itm.str_mod += 2
+
+
+
 class SkeletonLegion(Skill):
   effect = 'self'
   desc = 'agrega 1 al ataque por cada 10 unidades desde 20. limite 2.'
@@ -612,7 +653,7 @@ class Surrounded(Skill):
 
 class SwampTerrain(Skill):
   effect = 'all'
-  desc = '-2 moves for grount unit, -4 move for mounted unit, unit can not charge.'
+  desc = '-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit, unit can not charge. ignores swamp survival and flying units.'
   name = 'swamp terrain'
   type = 0
   def run(self, itm):
@@ -623,19 +664,6 @@ class SwampTerrain(Skill):
       itm.moves_mod -= 2
       itm.off_mod -= 1
       if mounted_t in itm.traits: itm.moves_mod -= 2
-        
-
-
-class Sacred(Skill):
-  name = 'cazador de sombras'
-  effect = 'self'
-  desc = '+2 damage, +2 str if enemy is undead.'
-  type = 0
-  def run(self, itm):
-    if itm.target and undead_t in itm.target.traits:
-      itm.effects.append(self.name)
-      itm.damage_sacred_mod += 2 
-      itm.str_mod += 1
 
 
 class Scream(Skill):
@@ -733,3 +761,17 @@ class VigourMourtis(Skill):
     if itm != self.itm and undead_t in itm.traits:
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
+
+
+class WildFury(Skill):
+  effect = 'self'
+  name = 'furia salvaje'
+  desc = '+2 damage, +2 str, -2 dfs, +1 moves if enemy is undead.'
+  type = 0
+  def run(self, itm):
+    if itm.target and undead_t in itm.target.traits:
+      itm.effects.append(self.name)
+      itm.damage_sacred_mod += 2
+      itm.dfs_mod -= 2
+      itm.moves_mod += 1
+      itm.str_mod += 2

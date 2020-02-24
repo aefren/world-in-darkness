@@ -319,6 +319,14 @@ class Terrain:
                              if e.name != SwampTerrain.name]
       if HillTerrain.name not in [e.name for e in self.terrain_events]:
         self.terrain_events += [HillTerrain(self)]
+    #day.
+    if world.ambient.day_night[0] == 0:
+      self.terrain_events = [e for e in self.terrain_events
+                             if e.name != night_t]
+    #night.
+    if world.ambient.day_night[0]:
+      if Night.name not in [e.name for e in self.terrain_events]:
+        self.terrain_events += [Night(self)]
   def set_threat(self, nation):
     self.threat = 0
     if self.sight:
@@ -604,6 +612,7 @@ class World:
       PLAYING = False
   def update(self, scenary):
     self.clean_nations()
+    [it.autokill() for it in self.units]
     self.units = []
     for t in scenary:
       for uni in t.units:
@@ -703,7 +712,7 @@ def ai_add_explorer(nation):
         return
 
 
-def ai_attack1(nation):
+def ai_attack(nation):
   logging.info(f'ai_attack')
   if nation.expanding: return
   sp.speak(f' atacando.',1)
@@ -764,7 +773,8 @@ def ai_attack1(nation):
       logging.debug(f'can_capture {can_capture}.')
       if can_capture < 1: break
       units = nation.get_free_units()
-      units = [i for i in units if i.pos.get_distance(i.pos.city.pos, t) <= 4]
+      units = [i for i in units if i.pos.city 
+               and i.pos.get_distance(i.pos.city.pos, t) <= 4]
       comms = [i for i in nation.units if i.comm and i.goto == [] 
                and i.pos.get_distance(i.pos.city.pos, t) <= 3]
       logging.debug(f'unidades {len(nation.units_free)} comandantes {len(comms)}.')
@@ -855,7 +865,7 @@ def ai_construct(nation):
         gold_limit = 0
         logging.debug(f'food_limit_build lowered to 0.')
       if food_t in bu.tags:
-        if ct.food_probable > nation.food_limit_builds and nation.gold < bu.gold*5:
+        if ct.food_probable > nation.food_limit_builds and nation.gold < bu.gold*7:
           logging.debug(f'no necesita comida.')
           continue
       logging.debug(f'{bu}, gold {bu.gold}.')
@@ -897,10 +907,10 @@ def ai_construct(nation):
         continue
       for t in ct.tiles:
         if t.size < 1 or bu.size > t.size: continue
-        if t.threat > 0: continue
+        if any(i > 0 for i in [t.threat, t.around_threat]): continue
         t.update(nation)
         ct.update()
-        if unrest_t in bu.tags and any(i > 0 for i in [t.public_order, ct.public_order]):
+        if unrest_t in bu.tags and (t.public_order > 50 or t.pop == 0):
           logging.debug(f'no necesita orden.')
           continue
 
@@ -1393,7 +1403,6 @@ def ai_play(nation):
   
   # ciudades.
   #print(f'inicio {init}.')
-  sp.speak(f'ciudades.')
   for ct in nation.cities:
     ct.population_change()
     ct.set_downgrade()
@@ -1414,10 +1423,6 @@ def ai_play(nation):
   for uni in nation.units:
     unit_new_turn(uni)
   
-  # acciones.
-  # colonos.
-  logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.')
-  [set_settler(it, scenary) for it in nation.units if it.settler and it.goto == []]
   # actualizar vista.
   if nation.map == []:
     map_update(nation, scenary)
@@ -1427,6 +1432,9 @@ def ai_play(nation):
   nation.set_seen_nations()
   # parametros de casillas cercanas.
   set_near_tiles(nation, scenary)
+  # colonos.
+  logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.')
+  [set_settler(it, scenary) for it in nation.units if it.settler and it.goto == []]
   # liberar unidades de edificios que no son amenazados.
   ai_set_free_units(nation)
   # asignar unidades a proteger aldeas.
@@ -1455,7 +1463,7 @@ def ai_play(nation):
   # explorar
   ai_explore(nation, scenary)
   # atacar.
-  ai_attack1(nation)
+  ai_attack(nation)
   # grupos.
   ai_free_groups(nation, scenary)
   #unidades libres.
@@ -1680,7 +1688,7 @@ def ai_train(nation):
     units += [it(nation) for it in ct.all_av_units if it.pop == 0 and it.upkeep == 0]
     logging.debug(f'entrenables {[i.name for i in units]}.')
     for uni in units:
-      if req_unit(uni, nation):
+      if req_unit(uni, nation, ct):
         logging.debug(f'suma upkeep {nation.upkeep+uni.upkeep }.')
         to_avoid = uni.to_avoid
         if to_avoid: logging.debug(f'to avoid {to_avoid}.')
@@ -1710,7 +1718,7 @@ def ai_train_comm(nation):
       units = [it(nation) for it in ct.all_av_units if it.comm]
       logging.debug(f'available commanders {len(nation.units_comm)}.')
       for uni in units:
-        if req_unit(uni, nation):
+        if req_unit(uni, nation, ct):
           logging.debug(f'{uni} suma upkeep {nation.upkeep+uni.upkeep }.')
           ct.train(uni)
           break
@@ -2028,12 +2036,6 @@ def combat_fight(dist, itm, _round, info=1):
         off_need = itm.off+ itm.off_mod
         off_need -= target.dfs+target.dfs_mod
         off_need = get_hit_mod(off_need)
-        if itm.day_night[0] and itm.range >= 6:
-          off_need -= 1
-          if info: logging.debug(f'penalización al ataque a distancia por noche.')
-        if target.can_fly: 
-          off_need -= 1
-          if info: logging.debug(f'penalización por enemigo volador.')
         if info: logging.debug(f'hit {hit_roll} necesita {off_need}.')
         if hit_roll >= off_need:
           hits = 1
@@ -2868,7 +2870,8 @@ def info_unit(itm, nation, sound='in1'):
       if itm.terrain_skills: terrain_skills = [s.name for s in itm.terrain_skills]
       else: terrain_skills = 'No'
       lista = [
-        f'{itm}. total hp {itm.hp_total}. {ranking_t} {itm.ranking}',
+        f'{itm}. total hp {itm.hp_total}. {ranking_t} {itm.ranking}.',
+        f'{stealth_t} {itm.stealth+itm.stealth_mod} ({itm.stealth_mod}).',
         f'{type_t} {itm.type}.',
         f'{itm.traits}.',
         f'{gold_t} {itm.gold}, {upkeep_t} {itm.upkeep} ({itm.upkeep_total}).',
@@ -3335,6 +3338,7 @@ def menu_unit(items, sound='in1'):
   loadsound(sound)
   items.sort(key=lambda x: x.ranking, reverse=True)
   items.sort(key=lambda x: x.going, reverse=True)
+  items.sort(key=lambda x: x.pos.around_threat, reverse=True)
   say = 1
   x = 0
   while True:
@@ -3879,9 +3883,9 @@ def random_move(itm, scenary, sq=None, value=1):
   return done
 
 
-def req_unit(itm, nation):
+def req_unit(itm, nation, city):
   logging.debug(f'requicitos de {itm}.')
-  if nation.pop < itm.pop:
+  if city.pop < itm.pop:
     error(info=nation.show_info, msg='sin población')
     return 0
   if itm.gold > 0 and nation.gold < itm.gold:
@@ -4045,7 +4049,7 @@ def set_near_tiles(nation, scenary):
     ct.tiles_near = [it for it in nation.map]
     ct.tiles_near = [it for it in ct.tiles_near if it.city == None and it.nation == None]
     ct.tiles_far = [it for it in nation.map]
-    ct.tiles_far = [it for it in ct.tiles_far if it.get_distance(it, ct.pos) >= 3 and it.get_distance(it, ct.pos) <= 4]
+    ct.tiles_far = [it for it in ct.tiles_far if it.get_distance(it, ct.pos) in [3,4]]
     ct.tiles_far = [it for it in ct.tiles_far
                     if it.city == None and it.nation == None
                     and it.soil.name in nation.soil
@@ -4109,6 +4113,7 @@ def set_settler(itm, scenary):
     elif len(itm.nation.cities) > 0 and nation.tiles_far:
       [i.update(nation) for i in nation.tiles_far]
       nation.tiles_far.sort(key=lambda x: x.food_value, reverse=True)
+      if len(nation.cities) < 2: nation.tiles_far.sort(key=lambda x: itm.pos.get_distance(x, itm.pos))
       for i in nation.units_scout: i.scout = 0
       if itm.pos.is_city:
         shuffle(itm.pos.units)
@@ -4444,7 +4449,7 @@ def train_unit(city, items, msg, sound='in1'):
           x = selector(items, x, go='down')
           say = 1
         if event.key == pygame.K_RETURN:
-          if req_unit(item, nation) :
+          if req_unit(item, nation, city):
             return item
           else: error()
         if event.key == pygame.K_F12:

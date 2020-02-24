@@ -7,7 +7,6 @@ DIFFICULTY_TYPE = 'dynamic'
 
 #factions.
 HOLY = HolyEmpire()
-HOLY.ai = 0
 TRANS = Transylvania()
 TRANS.ai = 1
 SILVAN = SilvanElves()
