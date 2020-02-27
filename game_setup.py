@@ -11,7 +11,7 @@ TRANS = Transylvania()
 TRANS.ai = 1
 SILVAN = SilvanElves()
 SILVAN.ai = 1
-NATIONS = [HOLY]
+NATIONS = [HOLY, TRANS, SILVAN]
 
 #Random factions.
 RANDOM_FACTIONS = [Hell(), Wild()]

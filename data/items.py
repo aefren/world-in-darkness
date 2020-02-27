@@ -441,7 +441,7 @@ class City:
     
     if self.seen_threat: self.defense_pred = self.seen_threat // 2
     if self.seen_threat > self.defense_pred: self.defense_pred = self.seen_threat
-    if self.defense_pred < self.defense_base//1.5: self.defense_pred = self.defense_base//1.5
+    if self.defense_pred < self.defense_base/2: self.defense_pred = self.defense_base/2
 
   def set_downgrade(self):
     pass
@@ -604,7 +604,7 @@ class City:
       _archers.sort(key=lambda x: x.range >= 6, reverse=True)
       if _archers: return _archers
     logging.debug(f'_mounted {len(_mounted)} limit {self.units_mounted_rnk*100/self.defense_total}.')
-    if (_mounted and roll_dice(1) >= 5
+    if (_mounted and roll_dice(1) >= 4
         and self.units_mounted_rnk * 100 / self.defense_total < self.nation.units_mounted_limit):
       logging.debug(f'mounted.')
       _units = [i for i in units if mounted_t in i.traits]
@@ -1590,6 +1590,31 @@ class Unit:
     
     if self.level > level: self.level_up()
 
+  def set_ranking(self):
+    self.ranking_off = 0
+    self.ranking_off += self.damage + self.damage_mod
+    self.ranking_off += self.damage_sacred + self.damage_sacred_mod
+    self.ranking_off *= self.att + self.att_mod
+    self.ranking_off *= self.units
+    self.ranking_off += self.damage_charge*10
+    self.ranking_off += (self.moves+self.moves_mod)*2
+    self.ranking_off *= (self.off+self.off_mod)/2
+    self.ranking_off *= (self.str+self.str_mod)/3
+    self.ranking_off += (self.pn + self.pn_mod) * 5
+  
+    self.ranking_dfs = self.hp_total
+    self.ranking_dfs *= (self.dfs + self.dfs_mod)/3
+    self.ranking_dfs *= (self.res + self.res_mod)/2
+    self.ranking_dfs += (self.arm + self.arm_mod)*3
+    if self.armor: self.ranking_dfs += self.armor.arm * 5
+    if self.shield: self.ranking_dfs += self.shield.dfs * 5
+  
+    self.ranking = self.ranking_dfs+self.ranking_off
+    self.ranking += (self.range+self.range_mod)*5
+  
+    if self.can_fly: self.ranking += 5 
+    self.ranking += sum(s.ranking for s in self.skills + self.spells)
+    self.ranking = round(self.ranking/3)
   def set_tile_attr(self):
     info = 1
     tiles = self.pos.get_near_tiles(self.pos.scenary, 1)
@@ -1646,34 +1671,7 @@ class Unit:
                    self.offensive_skills + self.other_skills + self.terrain_skills]
     self.get_skills()
     self.effects += [s.name for s in self.other_skills]
-  
-    self.ranking_off = 0
-    self.ranking_off += self.damage + self.damage_mod
-    self.ranking_off += self.damage_sacred + self.damage_sacred_mod
-    self.ranking_off *= self.att + self.att_mod
-    self.ranking_off *= self.units
-    self.ranking_off += self.damage_charge*10
-    self.ranking_off += (self.moves+self.moves_mod)/3
-    self.ranking_off *= (self.off+self.off_mod)/2
-    self.ranking_off *= (self.str+self.str_mod)/3
-    self.ranking_off += (self.pn + self.pn_mod) * 5
-  
-    self.ranking_dfs = self.hp_total
-    self.ranking_dfs *= (self.dfs + self.dfs_mod)/3
-    self.ranking_dfs *= (self.res + self.res_mod)/2
-    self.ranking_dfs += (self.arm + self.arm_mod)*3
-    if self.armor: self.ranking_dfs += self.armor.arm * 5
-    if self.shield: self.ranking_dfs += self.shield.dfs * 5
-  
-    self.ranking = self.ranking_dfs+self.ranking_off
-    self.ranking += self.range*3
-  
-    if self.can_fly: self.ranking += 5 
-    #self.ranking += self.ranking_skills
-    self.ranking += sum(s.ranking for s in self.skills + self.spells)
-    self.ranking = round(self.ranking/3)
-    if self.hidden: self.ranking += 10
-    
+    self.set_ranking()
     if self.leader and self.leader not in self.nation.units: 
       self.leader = None
       logging.warning(f'{self} sin lider.')
@@ -1751,7 +1749,7 @@ class Hall(City):
   military_base = 40
   military_change = 100
   military_max = 70
-  popdef_base = 40
+  popdef_base = 70
   popdef_change = 60
   popdef_min = 5
 
@@ -2579,7 +2577,7 @@ class Hamlet(City):
     self.food += 100*self.food//100
     self.grouth += 100*self.grouth//100
     self.income += 100*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.public_order += 70*self.public_order//100
     self.upkeep = 0
 
   def set_downgrade(self):
@@ -2946,7 +2944,7 @@ class Flagellants(Human):
   units = 10
   type = 'infantry'
   gold = 95
-  upkeep = 3
+  upkeep = 5
   resource_cost = 11
   food = 2
   pop = 12
@@ -3044,7 +3042,7 @@ class GreatSwordsMen(Human):
   units = 5
   type = 'infantry'
   gold = 180
-  upkeep = 18
+  upkeep = 20
   resource_cost = 16
   food = 4
   pop = 15
@@ -3077,7 +3075,7 @@ class SpearMen(Human):
   units = 10
   type = 'infantry'
   gold = 250
-  upkeep = 15
+  upkeep = 25
   resource_cost = 14
   food = 3
   pop = 30
@@ -3095,7 +3093,7 @@ class SpearMen(Human):
   armor = HeavyArmor()
 
   att = 1
-  damage = 3
+  damage = 2
   off = 4
   str = 5
   pn = 1
@@ -4387,11 +4385,11 @@ class Fields(Building):
     self.soil = [grassland_t, plains_t]
     self.surf = [none_t]
     self.hill = [0]
-    self.upgrade = [Farm]
+    self.upgrade = [SmallFarm]
 
 
-class Farm(Fields, Building):
-  name = farm_t
+class SmallFarm(Fields, Building):
+  name = small_farm_t
   base = Fields
   gold = 2000
   food = 150
@@ -4402,12 +4400,13 @@ class Farm(Fields, Building):
     super().__init__(nation, pos)
     self.resource_cost = [0, 80]
     self.size = 0
-    self.upgrade = []
+    self.upgrade = [Farm]
 
 
-class ExtendedFarm(Farm, Building):
-  name = extendedfarm_t
-  base = Farm
+class Farm(SmallFarm, Building):
+  name = farm_t
+  base = SmallFarm
+
   gold = 3500
   food = 300
   grouth = 90
@@ -4457,7 +4456,8 @@ class Market(Building):
 
 class Quarry(Building):
   name = 'cantera'
-  gold = 2500
+  gold = 3000
+  food = 50
   income = 20
   resource = 100
   own_terrain = 1
@@ -4474,8 +4474,9 @@ class Quarry(Building):
 
 class SawMill(Building):
   name = 'aserradero'
-  gold = 3000
+  gold = 2500
   income = 10
+  food = 50
   resource = 50
   own_terrain = 1
   size = 6
@@ -4582,9 +4583,9 @@ class SilvanElves(Nation):
   units_human_limit = 100
   units_melee_limit = 100
   units_mounted_limit = 20
-  units_piercing_limit = 100
-  units_ranged_limit = 70
-  units_sacred_limit = 100
+  units_piercing_limit = 50
+  units_ranged_limit = 60
+  units_sacred_limit = 50
   units_undead_limit = 20
 
   def __init__(self):

@@ -2342,6 +2342,7 @@ def control_game(event):
         if ti.sight:
           for uni in ti.units:
             if uni.nation != nation and uni.hidden == 0: units.append(uni)
+      units.sort(key=lambda x: x.pos.get_distance(x.pos,nation.cities[0].pos))
       menu_unit(units)
     if event.key == pygame.K_F8:
       menu_nation(nation)
@@ -3337,7 +3338,7 @@ def menu_unit(items, sound='in1'):
   global pos, sayland
   loadsound(sound)
   items.sort(key=lambda x: x.ranking, reverse=True)
-  items.sort(key=lambda x: x.going, reverse=True)
+  items.sort(key=lambda x: x.pos.get_distance(x.pos, nation.cities[0].pos))
   items.sort(key=lambda x: x.pos.around_threat, reverse=True)
   say = 1
   x = 0
