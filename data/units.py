@@ -45,7 +45,7 @@ class Unit:
 
   att = 0
   damage = 0
-  range = 0
+  rng = 0
   off = 0
   str = 0
   pn = 0
@@ -66,7 +66,7 @@ class Unit:
   damage_sacred = 0
   id = 0
   hit_rolls = 1
-  range = 1
+  rng = 1
   stealth = 4
   hp_res = 1
   hp_res_mod = 0
@@ -237,9 +237,9 @@ class Unit:
     if same_mp: units = [i for i in units if i.mp[1] >= self.mp[1]] 
     shuffle(units)
     units.sort(key=lambda x: x.pos == self.pos,reverse=True)
-    if self.range <= 6:
-      units.sort(key=lambda x: x.range >= 6, reverse=True)
-    elif self.range >= 6:
+    if self.rng <= 6:
+      units.sort(key=lambda x: x.rng >= 6, reverse=True)
+    elif self.rng >= 6:
       units.sort(key=lambda x: x.off, reverse=True)
     if self.settler:
       units.sort(key=lambda x: x.mp[1] == self.mp[1],reverse=True)
@@ -493,7 +493,7 @@ class Unit:
     self.ranking += self.damage_charge
     self.ranking *= self.att+self.att_mod
     self.ranking *= self.units
-    self.ranking += self.range//2
+    self.ranking += self.rng//2
     self.ranking += (self.off+self.off_mod)*5
     self.ranking += self.str+self.str_mod*5
     self.ranking += (self.pn+self.pn_mod)*3
@@ -1525,7 +1525,7 @@ class Sagittarii(Human):
 
   att = 1
   damage = 2
-  range = 18
+  rng = 18
   off = 4
   str = 3
   pn = 0
@@ -1556,7 +1556,7 @@ class CrossBowMen(Human):
 
   att = 1
   damage = 2
-  range = 12
+  rng = 12
   off = 5
   str = 4
   pn = 1
@@ -1586,7 +1586,7 @@ class Arquebusier(Human):
 
   att = 1
   damage = 3
-  range = 12
+  rng = 12
   off = 5
   str = 4
   pn = 1
@@ -1616,7 +1616,7 @@ class Musket(Human):
 
   att = 2
   damage = 3
-  range = 24
+  rng = 24
   off = 5
   str = 4
   pn = 1
@@ -1711,7 +1711,7 @@ class Archers(Human):
 
   att = 1
   damage = 2
-  range = 18
+  rng = 18
   off = 3
   str = 3
   pn = 0
@@ -2017,7 +2017,7 @@ class Goblins(Unit):
 
   att = 2
   damage = 1
-  range = 18
+  rng = 18
   off = 2
   str = 2
   pn = 0
@@ -2176,7 +2176,7 @@ class Hunters(Human):
 
   att = 1
   damage = 2
-  range = 18
+  rng = 18
   off = 4
   str = 4
   pn = 0
@@ -2188,7 +2188,7 @@ class Hunters(Human):
   damage = 1
   att = 6
   moves = 6
-  range = 10
+  rng = 10
   resolve = 5
   ranged = 4
   str = 4
@@ -2276,7 +2276,7 @@ class Orc_Archers(Unit):
 
   att = 3
   damage = 1
-  range = 18
+  rng = 18
   off = 3
   str = 3
   pn = 0

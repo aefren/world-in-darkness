@@ -12,7 +12,7 @@ def ai_join_units(itm):
   logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   dice = roll_dice(1)
-  needs = ceil(itm.ranking / 15)
+  needs = ceil(itm.ranking / 20)
   if itm.pos.around_threat: needs -= 2
   logging.debug(f'dice {dice} needs {needs}.')
   if dice >= needs:
@@ -25,7 +25,7 @@ def ai_join_units(itm):
       itm.update()
       i.update()
       dice = roll_dice(1)
-      needs = ceil(i.ranking / 15)
+      needs = ceil(i.ranking / 20)
       if itm.pos.around_threat: needs -= 2
       if i.scout: needs += 1
       logging.debug(f'dice {dice} needs {needs}.')
@@ -87,8 +87,6 @@ def join_units(units, info=0):
     unit.pop += i.pop
     unit.initial_units += i.initial_units
     i.hp_total = 0
-
-  sp.speak(f'se unieron {len(units)} unidades.')
   unit.update()
   unit.pos.update()
 

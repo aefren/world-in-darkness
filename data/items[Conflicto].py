@@ -485,7 +485,7 @@ class City:
         if uni.can_fly: self.seen_fly.append(uni)
         if human_t in uni.traits: self.seen_human.append(uni)
         if mounted_t in uni.traits: self.seen_mounted.append(uni)
-        if uni.range >= 6: self.seen_ranged.append(uni)
+        if uni.rng >= 6: self.seen_ranged.append(uni)
         if sacred_t in uni.traits: self.seen_sacred.append(uni) 
         if undead_t in uni.traits: self.seen_undead.append(uni)
     
@@ -522,7 +522,7 @@ class City:
       if human_t in i.traits: self.units_human.append(i)
       if mounted_t in i.traits: self.units_mounted.append(i)
       if i.pn: self.units_piercing.append(i) 
-      if i.range >= 6: self.units_ranged.append(i)
+      if i.rng >= 6: self.units_ranged.append(i)
       if i.damage_sacred + i.damage_sacred_mod: self.units_sacred.append(i)
       if undead_t in i.traits: self.units_undead.append(i)  
     
@@ -543,14 +543,14 @@ class City:
     logging.debug(f'recividos {len(units)}.')
     _animal = [i for i in units if animal_t in i.traits]
     _anticav = [i for i in units if i.anticav]
-    _archers = [i for i in units if i.range >= 6]
+    _archers = [i for i in units if i.rng >= 6]
     _fly = [i for i in units if i.can_fly]
     _mounted = [i for i in units if mounted_t in i.traits]
     _sacred = [i for i in units if i.damage_sacred + i.damage_sacred_mod]
     _undead = [i for i in units if undead_t in i.traits]
     if self.defense_total_percent < 200 and self.nation.score < self.nation.attack_factor * 2:
       logging.debug(f'defensivo.')
-      if roll_dice(1) >= 4: units.sort(key=lambda x: x.range, reverse=True)
+      if roll_dice(1) >= 4: units.sort(key=lambda x: x.rng, reverse=True)
       units.sort(key=lambda x: x.resource_cost <= self.resource_total, reverse=True)
       return units
     
@@ -592,14 +592,14 @@ class City:
     if self.pos.around_forest + self.pos.around_hill >= 3 and roll_dice(1) >= 5:
       _units = [i for i in units if i.can_fly or i.forest_survival or i.mountain_survival]
       logging.debug(f'forest and hills.')
-      _units.sort(key=lambda x: x.range >= 6, reverse=True)
+      _units.sort(key=lambda x: x.rng >= 6, reverse=True)
       if _units: return _units
     logging.debug(f'_archers {len(_archers)} limit {self.units_ranged_rnk*100//self.defense_total}.')
     if (_archers and roll_dice(1) >= 3 
         and self.units_ranged_rnk * 100 // self.defense_total < self.nation.units_ranged_limit):
       logging.debug(f'ranged.')
       if roll_dice(1) >= 3: _archers.sort(key=lambda x: x.ranking, reverse=True)
-      _archers.sort(key=lambda x: x.range >= 6, reverse=True)
+      _archers.sort(key=lambda x: x.rng >= 6, reverse=True)
       if _archers: return _archers
     logging.debug(f'_mounted {len(_mounted)} limit {self.units_mounted_rnk*100/self.defense_total}.')
     if (_mounted and roll_dice(1) >= 5
@@ -1078,10 +1078,10 @@ class Nation:
           if animal_t in uni.traits: self.units_animal.append(uni)
           if uni.can_fly: self.units_fly.append(uni)
           if human_t in uni.traits: self.units_human.append(uni)
-          if uni.range < 6: self.units_melee.append(uni)
+          if uni.rng < 6: self.units_melee.append(uni)
           if mounted_t in uni.traits: self.units_mounted.append(uni)
           if uni.pn: self.units_piercing.append(uni) 
-          if uni.range >= 6: self.units_ranged.append(uni)
+          if uni.rng >= 6: self.units_ranged.append(uni)
           if sacred_t in uni.traits: self.units_sacred.append(uni)
           if undead_t in uni.traits: self.units_undead.append(uni)
     
@@ -1149,7 +1149,7 @@ class Unit:
 
   att = 0
   damage = 0
-  range = 1
+  rng = 1
   off = 0
   str = 0
   pn = 0
@@ -1168,7 +1168,7 @@ class Unit:
   damage_sacred = 0
   id = 0
   hit_rolls = 1
-  range = 1
+  rng = 1
   stealth = 4
   hp_res = 1
   hp_res_mod = 0
@@ -1353,9 +1353,9 @@ class Unit:
     if same_mp: units = [i for i in units if i.mp[1] >= self.mp[1]] 
     shuffle(units)
     units.sort(key=lambda x: x.pos == self.pos, reverse=True)
-    if self.range <= 6:
-      units.sort(key=lambda x: x.range >= 6, reverse=True)
-    elif self.range >= 6:
+    if self.rng <= 6:
+      units.sort(key=lambda x: x.rng >= 6, reverse=True)
+    elif self.rng >= 6:
       units.sort(key=lambda x: x.off, reverse=True)
     if self.settler:
       units.sort(key=lambda x: x.mp[1] == self.mp[1], reverse=True)
@@ -1646,7 +1646,7 @@ class Unit:
     self.ranking *= self.att + self.att_mod
     self.ranking *= self.units
     self.ranking = (self.moves+self.moves_mod)*3
-    self.ranking += self.range
+    self.ranking += self.rng
     self.ranking += (self.off + self.off_mod) * 5
     self.ranking += self.str + self.str_mod * 5
     self.ranking += (self.pn + self.pn_mod) * 3
@@ -2068,7 +2068,7 @@ class AwakenTree(Elf):
 
   att = 4
   damage = 2
-  range = 1
+  rng = 1
   off = 4
   str = 6
   pn = 3
@@ -2107,7 +2107,7 @@ class BladeDancers(Elf):
 
   att = 3
   damage = 2
-  range = 1
+  rng = 1
   off = 5
   str = 3
   pn = 0
@@ -2145,7 +2145,7 @@ class Driad(Elf):
 
   att = 2
   damage = 2
-  range = 1
+  rng = 1
   off = 4
   str = 4
   pn = 1
@@ -2181,7 +2181,7 @@ class EternalGuard(Elf):
 
   att = 1
   damage = 2
-  range = 1
+  rng = 1
   off = 4
   str = 4
   pn = 1
@@ -2220,7 +2220,7 @@ class Falcons(Elf):
 
   att = 2
   damage = 2
-  range = 1
+  rng = 1
   off = 5
   str = 4
   pn = 0
@@ -2254,7 +2254,7 @@ class ForestBears(Elf):
 
   att = 2
   damage = 3
-  range = 1
+  rng = 1
   off = 4
   str = 5
   pn = 0
@@ -2292,7 +2292,7 @@ class ForestEagle(Elf):
 
   att = 2
   damage = 2
-  range = 1
+  rng = 1
   off = 3
   str = 3
   pn = 1
@@ -2326,7 +2326,7 @@ class ForestGuard(Elf):
 
   att = 1
   damage = 2
-  range = 1
+  rng = 1
   off = 3
   str = 3
   pn = 0
@@ -2364,7 +2364,7 @@ class ForestRider(Elf):
 
   att = 1
   damage = 2
-  range = 1
+  rng = 1
   off = 5
   str = 3
   pn = 0
@@ -2404,7 +2404,7 @@ class SilvanSettler(Human):
 
   att = 1
   damage = 1
-  range = 1
+  rng = 1
   off = 2
   str = 2
   pn = 0
@@ -2440,7 +2440,7 @@ class SilvanArcher(Elf):
 
   att = 1
   damage = 1
-  range = 15
+  rng = 15
   off = 4
   str = 3
   pn = 0
@@ -2479,7 +2479,7 @@ class HighSilvanArcher(Elf):
 
   att = 1
   damage = 1
-  range = 15
+  rng = 15
   off = 4
   str = 4
   pn = 0
@@ -2518,7 +2518,7 @@ class WildHuntsmen(Elf):
 
   att = 2
   damage = 2
-  range = 1
+  rng = 1
   off = 3
   str = 4
   pn = 0
@@ -3225,7 +3225,7 @@ class Sagittarii(Human):
 
   att = 1
   damage = 1
-  range = 15
+  rng = 15
   off = 4
   str = 3
   pn = 0
@@ -3258,7 +3258,7 @@ class CrossBowMen(Human):
 
   att = 1
   damage = 2
-  range = 10
+  rng = 10
   off = 4
   str = 4
   pn = 1
@@ -3290,7 +3290,7 @@ class Arquebusier(Human):
 
   att = 1
   damage = 3
-  range = 10
+  rng = 10
   off = 5
   str = 4
   pn = 1
@@ -3322,7 +3322,7 @@ class Musket(Human):
 
   att = 2
   damage = 2
-  range = 20
+  rng = 20
   off = 5
   str = 4
   pn = 1
@@ -4701,7 +4701,7 @@ class Archers(Human):
 
   att = 1
   damage = 1
-  range = 12
+  rng = 12
   off = 3
   str = 3
   pn = 0
@@ -5023,7 +5023,7 @@ class Goblins(Unit):
 
   att = 2
   damage = 1
-  range = 10
+  rng = 10
   off = 2
   str = 2
   pn = 0
@@ -5191,7 +5191,7 @@ class Hunters(Human):
 
   att = 1
   damage = 2
-  range = 10
+  rng = 10
   off = 3
   str = 3
   pn = 0
@@ -5270,7 +5270,7 @@ class Orc_Archers(Unit):
 
   att = 1
   damage = 1
-  range = 12
+  rng = 12
   off = 3
   str = 4
   pn = 0

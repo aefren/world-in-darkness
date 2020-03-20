@@ -78,7 +78,7 @@ class Burn(Skill):
 
 class Carrion(Skill):
   effect = 'self'
-  desc = '+1 res, +1 str'
+  desc = '+1 res, +1 str if corpses on field.'
   name = 'carroña'
   type = 0
   def run(self, itm):
@@ -134,15 +134,15 @@ class Ethereal(Skill):
 
 class FearAura(Skill):
   effect = 'enemy'
-  desc = 'reduce 1 resolve al enemigo'
+  desc = '-2 resolve, -2 moves, -1 off, -1 dfs.'
   name = fearaura_t
   ranking = 5
   type = 0  
   def run(self, itm):
     if animal_t not in itm.traits and itm != self.itm:
       itm.effects.append(fear_t)
-      itm.resolve_mod -= 1
-      itm.moves_mod -= 1
+      itm.resolve_mod -= 2
+      itm.moves_mod -= 2
       itm.off_mod -= 1
       itm.dfs_mod -= 1
 
@@ -206,15 +206,17 @@ class ForestSurvival(Skill):
 
 class ForestTerrain(Skill):
   effect = 'all'
-  desc = '-2 moves for grount unit, -4 move for mounted unit, unit can not charge, ignores forest survival and flying units. +2 stealth.'
+  desc = '-2 moves for grount unit, -4 move for mounted unit, -1 off, -1 dfs.unit can not charge, ignores forest survival and flying units. +2 stealth.'
   name = 'forest terrain'
   type = 0
   def run(self, itm):
     itm.stealth_mod += 2
     if itm.forest_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.can_charge = 0
+      itm.charge = 0
       itm.moves_mod -= 2
+      itm.dfs_mod -= 1
+      itm.off_mod -= 1
       if mounted_t in itm.traits: itm.moves_mod -= 2
 
 
@@ -244,16 +246,18 @@ class HeavyCharge(Skill):
 
 class HillTerrain(Skill):
   effect = 'all'
-  desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
+  desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge, -1 dfs, -1 off. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
   name = 'hill terrain'
   type = 0
   def run(self, itm):
-    if itm.range+itm.range_mod >= 6: itm.range_mod += 5
+    if itm.rng+itm.rng_mod >= 6: itm.rng_mod += 5
     itm.stealth_mod += 2
     if itm.mountain_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.can_charge = 0
+      itm.charge = 0
       itm.moves_mod -= 2
+      itm.dfs_mod -= 1
+      itm.off_mod -= 1
       if mounted_t in itm.traits: itm.moves_mod -= 2
 
 
@@ -265,7 +269,6 @@ class HoldPositions(Skill):
   def run(self, itm):
     if itm.mp[0] == itm.mp[1]: 
       itm.effects.append(self.name)
-      print(f'se agregó.')
       itm.dfs_mod += 2
 
 class ImpalingRoots(Skill):
@@ -291,7 +294,6 @@ class ImpalingRoots(Skill):
           if roll_dice(1) >= wound:
             damage = 1
             if roll_dice(1) == 6:
-              print(f'cr�tico.') 
               damage += 1
             itm.damage_done[-1] += damage
             target.hp_total -= damage
@@ -331,15 +333,16 @@ class LongBow(Skill):
   name = 'Arco largo'
   type = 0
   def run(self, itm):
+    itm.effects.append(self.name)
     itm.pn_mod += 1
-    itm.range_mod += 5
+    itm.rng_mod += 5
     itm.str_mod += 1
 
 
 class LordOfBones(Skill):
   name = 'señor de los huesos'
   effect = 'friend'
-  desc = '+1 att, +1 dfs, +1 moves, +1 off.'
+  desc = '+1 att, +1 dfs, +1 off.'
   type = 0
   def run(self, itm):
     if (itm.nation == self.nation and itm != self.itm 
@@ -347,7 +350,6 @@ class LordOfBones(Skill):
       itm.effects.append(self.name)
       itm.att_mod += 1
       itm.dfs_mod += 1
-      itm.moves_mod += 1
       itm.off_mod += 1
 
 
@@ -391,10 +393,8 @@ class Night(Skill):
     if itm.day_night[0]:
       itm.effects.append(self.name)
       itm.stealth_mod += 2
-      if itm.range+itm.range_mod > 5:
-        itm.dfs_mod -= 1
-        itm.off_mod -= 1
-        itm.range_mod -= 5
+      if itm.rng+itm.rng_mod > 5: itm.rng_mod -= 5
+        
 
 
 class NightFerocity(Skill):
@@ -572,6 +572,7 @@ class Reinforce(Skill):
       itm.effects.append(self.name)
       itm.can_regroup = 1
 
+
 class SermonOfCourage(Skill):
   effect = 'friend'
   desc = '+1 resolve a las unidades humanas.'
@@ -609,6 +610,19 @@ class SkeletonLegion(Skill):
     elif itm.units >= 20:
       itm.effects.append(self.name+str( 1)) 
       itm.att_mod += 1
+
+
+class Skirmisher(Skill):
+  effect = 'self'
+  desc = 'units gain distanse in combat.'
+  name = 'retirada'
+  type = 1
+  def run(self, itm):
+    if itm.target and itm.dist < itm.rng+itm.rng_mod: 
+      dist = randint(1, itm.moves+itm.moves_mod)
+      itm.dist += dist
+      itm.target.dist += dist
+      itm.battlelog += [f'{itm} go back {dist}.']
 
 
 class Spread(Skill):
@@ -660,7 +674,7 @@ class SwampTerrain(Skill):
   def run(self, itm):
     if itm.swamp_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.can_charge = 0
+      itm.charge = 0
       itm.dfs_mod -= 1
       itm.moves_mod -= 2
       itm.off_mod -= 1
@@ -724,12 +738,12 @@ class TheBeast(Skill):
   def run(self, itm):
     if itm.pos and roll_dice(2) >= 6 and itm.day_night[0]:
       if itm.pos.pop:
-        pop = randint(2, 6)
+        pop = randint(2, 5)*itm.units
         if pop > itm.pos.pop: pop = itm.pos.pop
         itm.pos.pop -= pop
         itm.pos.unrest += pop
         if itm.pos.nation.show_info : sleep(loadsound('spell33')*0.5)
-        msg = f'{pop} {population_t} {deads_t} {itm}.'
+        msg = f'{itm} {pop} deads {in_t} {itm.pos} {itm.pos.cords}.'
         itm.nation.log[-1].append(msg)
       elif itm.pos.pop == 0 and roll_dice(2) >= 10:
         if itm.nation.show_info: sleep(loadsound('spell33')*0.5)
