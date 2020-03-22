@@ -17,7 +17,8 @@ ch1 = pygame.mixer.Channel(1) # unit move.
 ch2 = pygame.mixer.Channel(2) # construction effects.
 ch3 = pygame.mixer.Channel(3) #warn1.
 ch4 = pygame.mixer.Channel(4) #warn2.
-channels1 = [ch0, ch1, ch2, ch3, ch4]
+ch5 = pygame.mixer.Channel(5) #magic.
+channels1 = [ch0, ch1, ch2, ch3, ch4, ch5]
 
 
 def loadsound(soundfile, channel=ch0, path=sounds,  extention=wav, vol=1):

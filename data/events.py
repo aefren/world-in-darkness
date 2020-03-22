@@ -22,7 +22,7 @@ class Unrest(Event):
   turns = 0
   type = 0
   def run(self):
-    print(f'revisando eventos de {self.itm}.')
+    #print(f'revisando eventos de {self.itm}.')
     for t in self.itm.tiles:
       if t.pop == 0 or t.is_city: continue
       order = get_unrest_mod(t.public_order)

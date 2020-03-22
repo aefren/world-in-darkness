@@ -9,10 +9,10 @@ DIFFICULTY_TYPE = 'dynamic'
 HOLY = HolyEmpire()
 HOLY.ai = 1
 TRANS = Transylvania()
-TRANS.ai = 1
+TRANS.ai = 0
 SILVAN = SilvanElves()
 SILVAN.ai = 1
-NATIONS = [HOLY, TRANS, SILVAN]
+NATIONS = [TRANS]
 
 #Random factions.
 RANDOM_FACTIONS = [Hell(), Wild()]

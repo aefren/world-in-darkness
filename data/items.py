@@ -1136,6 +1136,7 @@ class Unit:
   nick = str()
   units = 0
   type = str()
+  traits = []
   comm = 0
   unique = 0
   gold = 0
@@ -1249,6 +1250,7 @@ class Unit:
     self.offensive_skills = [i(self) for i in self.offensive_skills]
     self.other_skills = [i for i in self.other_skills]
     self.spells = [i(self) for i in self.spells]
+    self.traits = [i for i in self.traits]
     self.terrain_skills = [i(self) for i in self.terrain_skills]
     self.mp = [i for i in self.mp]
     
@@ -1263,7 +1265,6 @@ class Unit:
     self.goto = []
     self.group = []
     self.skills = []
-    
     self.log = []
     self.soil = [coast_t, glacier_t, grassland_t, plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t, none_t, river_t, swamp_t]
@@ -1449,9 +1450,8 @@ class Unit:
     [self.skill_names.append(i.name) for i in self.skills]
     tile_skills = []
     if self.pos:
-      tile_skills += [sk for sk in self.pos.skills]
-      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events]
-      elif self.target: tile_skills += [sk for sk in self.target.pos.terrain_events]
+      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events+self.pos.events]
+      elif self.attacking: tile_skills += [sk for sk in self.target.pos.terrain_events+self.pos.events]
     # print(f'{len(tile_skills)} de casillas.')
     for i in tile_skills:
       if i.type == 0:
@@ -1675,6 +1675,7 @@ class Unit:
     # atributos.
     self.units = ceil(self.hp_total / self.hp)
     if self.units < 0: self.units = 0
+    if self.power < 0: self.power = 0
     self.upkeep_total = self.upkeep * self.units
     if undead_t in self.traits: self.can_recall = 0
     if self.can_hide: self.hidden = 1
@@ -1695,7 +1696,6 @@ class Unit:
 
 
 class Amphibian:
-
   def __init__(self):
     self.soil = [coast_t, glacier_t, grassland_t, plains_t, ocean_t, tundra_t]
     self.surf = [forest_t, none_t, river_t, swamp_t]
@@ -1709,12 +1709,10 @@ class Elf(Unit):
     self.favsurf = [forest_t, none_t]
     self.soil = [grassland_t, plains_t, tundra_t, waste_t]
     self.surf = [forest_t, none_t, river_t, swamp_t]
-    self.stealth = 5
-    self.traits = [elf_t]
+    self.stealth = 4
 
 
 class Ground:
-
   def __init__(self):
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [forest_t, none_t, river_t, swamp_t]
@@ -1726,8 +1724,7 @@ class Human(Unit):
   def __init__(self, nation):
     super().__init__(nation)
     Ground.__init__(self)
-    self.stealth = 3
-    self.traits = [human_t]
+    self.stealth = 2
 
 
 class Ship(Unit):
@@ -1742,8 +1739,7 @@ class Undead(Unit):
   def __init__(self, nation):
     super().__init__(nation)
     Ground.__init__(self)
-    self.stealth = 4
-    self.traits += [undead_t]
+    self.stealth = 2
 
 
 # Elfos.
@@ -3728,6 +3724,7 @@ class Banshee(Undead):
   name = 'banshee'
   units = 1
   type = 'infantry'
+  traits = [death_t, malignant_t]
   gold = 320
   upkeep = 55
   resource_cost = 30
@@ -3976,6 +3973,7 @@ class Ghouls(Human):
   name = ghouls_t
   units = 10
   type = 'infantry'
+  traits = [human_t, malignant_t]
   gold = 80
   upkeep = 6
   resource_cost = 13
@@ -4124,6 +4122,7 @@ class Skeletons(Undead):
   name = skeletons_t
   units = 5
   type = 'infantry'
+  traits = [death_t, malignant_t]
   gold = 50
   upkeep = 1
   resource_cost = 12
@@ -4193,6 +4192,7 @@ class VampireLord(Undead):
   name = vampirelord_t
   units = 1
   type = 'beast'
+  traits = [death_t, hero_t, malignant_t]
   gold = 700
   upkeep = 200
   resource_cost = 40
@@ -4275,6 +4275,10 @@ class VladDracul(Undead):
   moves = 12
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, MastersEye, NightFerocity, NightSurvival]
+  spells = [CastBloodRain, RaiseDead]#, BloodStorm, DarkMantle, SummonBloodKnight]
+  power = 0
+  power_max = 60
+  power_res = 4
 
   dfs = 5
   res = 4
@@ -4287,11 +4291,6 @@ class VladDracul(Undead):
   str = 5
   pn = 2
 
-  spells = [RaiseDead]
-
-  power = 0
-  power_max = 6
-  power_res = 1
   stealth = 8
 
   pref_corpses = 1
@@ -4338,6 +4337,7 @@ class Zombies(Undead, Ground):
   name = zombies_t
   units = 10
   type = 'infantry'
+  traits = [death_t, malignant_t]
   gold = 100
   upkeep = 2
   resource_cost = 10
@@ -4698,7 +4698,7 @@ class Transylvania(Nation):
     # rebeldes.
     self.units_rebels = [Archers, Raiders, Riders, Ghouls, VarGhul]
     # Unidades iniciales.
-    self.start_units = [Settler2, Zombies, Zombies, VampireLord]
+    self.start_units = [Settler2, Zombies, Zombies, VampireLord, VladDracul]
 
 
 # unidades random.

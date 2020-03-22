@@ -101,6 +101,7 @@ class Terrain:
     self.buildings = []
     self.corpses = []
     self.effects = []
+    self.events = []
     self.items = []
     self.skills = []
     self.skill_names = []
@@ -344,6 +345,9 @@ class Terrain:
           self.threat += uni.ranking
 
   def start_turn(self):
+    for ev in self.events:
+      if ev.turns > 0: selfev.turns -= 1
+    self.events = [ev for ev in self.events if ev.turns > 0]
     self.corpses = [i for i in self.corpses if i.hp_total <= 0]
     self.burned = 0
     self.raided = 0
@@ -357,7 +361,7 @@ class Terrain:
   def update(self, nation=None):
     self.has_city = 1 if self.city else 0
     self.is_city = 1 if [i for i in self.buildings if i.type == city_t] else 0
-    self.set_skills()
+    if mapeditor == 0: self.set_skills()
     if nation: self.set_around(nation, nation.map)
     else: self.set_around(nation, scenary)
     
@@ -1727,9 +1731,10 @@ def ai_train(nation):
 
 
 def ai_train_comm(nation):
-  logging.debug(f'ai_train_comm {nation} turn {world.turn}.')
+  logging.info(f'ai_train_comm {nation} turn {world.turn}.')
   nation.update(nation.map)
   logging.debug(f'initial commanders {len(nation.units_comm)}.')
+  hero_ranking = sum([i.ranking for i in nation.units_comm])
   if len(nation.units)-len(nation.units_comm)/nation.commander_rate < len(nation.units_comm):
     for ct in nation.cities:
       ct.set_av_units()
@@ -1752,8 +1757,7 @@ def ai_unit_cast(nation):
     while uni.power > 0 and tries > 0:
       tries -= 1
       for sp in spells:
-        if raise_dead_t in sp.tags:
-          sp.run(uni)
+          sp.ai_run(uni)
 
 
 def ai_unit_disband(nation):
@@ -2185,7 +2189,7 @@ def control_game(event):
     if event.key == pygame.K_9:
       pos.add_unit(GraveGuards(Hell()))
     if event.key == pygame.K_0:
-      pos.add_unit(Orc_Archers(world.random_nations[0]))
+      pos.add_unit(VladDracul(world.random_nations[0]))
     if event.key == pygame.K_a:
       if x > -1:
         target = local_units[x].set_attack(local_units)
@@ -2548,8 +2552,10 @@ def control_global(event):
         sp.speak(f'{food_t} {pos.food_need} {of_t} {pos.food}.', 1)
         sp.speak(f'{resources_t} {pos.resource}.')
       if event.key == pygame.K_2:
-        sp.speak(f'{defense_terrain_t} {pos.defense_terrain}.')
-        sp.speak(f'{defense_magic_t} {pos.defense_magic}.')
+        events = [ev.name for ev in pos.events]
+        terrain = [ev.name for ev in pos.terrain_events]
+        sp.speak(f'events {events}.')
+        sp.speak(f'terrain {terrain}.')
       if event.key == pygame.K_3:
         sp.speak(f'{population_t} {pos.pop}, {public_order_t} {pos.public_order}.',1)
         sp.speak(f'unrest {pos.unrest}.')
@@ -2898,6 +2904,8 @@ def info_unit(itm, nation, sound='in1'):
       else: mp = 'X'
       if itm.offensive_skills: offensive_skills = [s.name for s in itm.offensive_skills]
       else: offensive_skills = 'No'
+      if itm.power_max: power = f'{itm.power} {of_t} {itm.power_max}'
+      else: power = f'x'
       if itm.shield: shield = itm.shield.name
       else: shield = 'no'
       if itm.spells: spells = [s.name for s in itm.spells]
@@ -2908,7 +2916,7 @@ def info_unit(itm, nation, sound='in1'):
         f'{itm}. total hp {itm.hp_total}. {ranking_t} {itm.ranking}.',
         f'{stealth_t} {itm.stealth+itm.stealth_mod} ({itm.stealth_mod}).',
         f'{type_t} {itm.type}.',
-        f'{itm.traits}.',
+        f'{traits_t} {itm.traits}.',
         f'{gold_t} {itm.gold}, {upkeep_t} {itm.upkeep} ({itm.upkeep_total}).',
         f'{resources_t} {itm.resource_cost}.',
         f'{food_t} {itm.food}, {population_t} {itm.pop}.',
@@ -2916,6 +2924,7 @@ def info_unit(itm, nation, sound='in1'):
         f'terrain skills {terrain_skills}.',
         f'{health_t} {itm.hp}. '
         f'{restores_t} {itm.hp_res+itm.hp_res_mod} (+{itm.hp_res_mod}).',
+        f'{magic_t} {power}.',
         f'mp {mp}.',
         f'{moves_t} {itm.moves+itm.moves_mod} ({itm.moves_mod}).',
         f'{resolve_t} {itm.resolve+itm.resolve_mod} ({itm.resolve_mod}).',
@@ -4690,8 +4699,7 @@ def warning_enemy(nation, scenary):
 
 def change():
   for i in scenary:
-    for u in i.units:
-      if u.rng == 0: u.rng = 1
+    i.events = []
 
 #0 = juego, 1 = editor de mapa, 3 = crear y editar.
 mapeditor = 0

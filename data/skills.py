@@ -55,6 +55,60 @@ class BattleBrothers(Skill):
       itm.resolve_mod += 1
 
 
+
+class CastBloodRain(Skill):
+  cost = 20
+  cast = 8
+  name = 'blood rain'
+  ranking = 10
+  tags = []
+  def run(self, itm):
+    if itm.power < 1:
+      if itm.show_info:
+        sp.speak(f'{not_magic_t}.') 
+        sleep(loadsound('errn1'))
+      return
+    if roll_dice(2) >= self.cast:
+      sleep(loadsound('spell27', channel=ch5, vol=0.7)/2)
+      itm.power -= self.cost
+      dist = randint(3,6)
+      pos = itm.pos
+      sq = pos.get_near_tiles(itm.pos.scenary, dist)
+      for s in sq:
+        if self.name not in [ev.name for ev in s.events]:
+          s.events += [BloodRaining(s)]
+    else:
+      if itm.show_info:
+        sleep(loadsound('spell33', channel=ch5,)/2)
+
+
+class BloodRaining(Skill):
+  name = 'blood raining'
+  desc = ''
+  effects = 'all'
+  turns = randint(3, 7)
+  type = 0
+  def run(self, itm):
+    itm.effects += [self.name]
+    if dark_t in itm.tags:
+      itm.resolve_mod += 1
+      itm.moves_mod += 1
+      itm.off_mod += 1
+      itm.res_mod += 2
+    else:
+      itm.resolve_mod -= 1
+      itm.dfs_mod -= 1
+      itm.moves_mod -= 1
+      itm.off_mod -= 1
+      if mounted_t in itm.traits: 
+        itm.moves_mod -= 1
+        itm.resolve_mod -= 1
+      if itm.rng+itm.rng_mod > 5:
+        itm.off_mod -= 1
+        itm.str_mod -= 1 
+        itm.range_mod -= 5
+
+
 class BloodyFeast(Skill):
   effect = 'self'
   desc = 'agrega mas 2 a la regeneración durante la noche.'
@@ -491,11 +545,13 @@ class Raid(Skill):
 
 
 class RaiseDead(Skill):
-  cost = 1
+  cost = 20
   cast = 6
   name = raise_dead_t
   ranking = 10
   tags = [raise_dead_t]
+  def ai_run(self, itm):
+    self.run(itm)
   def run(self, itm):
     if itm.pos.corpses == [] or itm.power < 1:
       if itm.show_info: sleep(loadsound('errn1'))
@@ -590,7 +646,7 @@ class ShadowHunter(Skill):
   desc = '+2 damage, +2 str if enemy is undead.'
   type = 0
   def run(self, itm):
-    if itm.target and undead_t in itm.target.traits:
+    if itm.target and dark_t in itm.target.traits:
       itm.effects.append(self.name)
       itm.damage_sacred_mod += 2
       itm.moves_mod += 1
