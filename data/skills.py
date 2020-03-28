@@ -6,9 +6,9 @@ from random import randint, shuffle, choice, uniform
 from time import sleep, process_time
 
 
-from data.lang.es import *
 from log_module import *
 from basics import *
+from data.lang.es import *
 
 
 class Skill:
@@ -25,6 +25,8 @@ class Skill:
   def __init__(self, itm):
     self.itm = itm
     self.nation = self.itm.nation    
+  def ai_run(self):
+    pass
   def run(self):
     pass
 
@@ -90,7 +92,7 @@ class BloodRaining(Skill):
   type = 0
   def run(self, itm):
     itm.effects += [self.name]
-    if dark_t in itm.tags:
+    if malignant_t in itm.tags:
       itm.resolve_mod += 1
       itm.moves_mod += 1
       itm.off_mod += 1
@@ -186,6 +188,21 @@ class Ethereal(Skill):
     itm.ranking_skills += 10
 
 
+
+class Fanatism(Skill):
+  effect = 'self'
+  name = fanatism_t
+  desc = '+2 damage, +2 str, -2 dfs, +1 moves if enemy is undead.'
+  type = 0
+  def run(self, itm):
+    if itm.target and undead_t in itm.target.traits:
+      itm.effects.append(self.name)
+      itm.damage_sacred_mod += 2
+      itm.dfs_mod -= 2
+      itm.moves_mod += 1
+      itm.str_mod += 2
+
+
 class FearAura(Skill):
   effect = 'enemy'
   desc = '-2 resolve, -2 moves, -1 off, -1 dfs.'
@@ -193,7 +210,7 @@ class FearAura(Skill):
   ranking = 5
   type = 0  
   def run(self, itm):
-    if animal_t not in itm.traits and itm != self.itm:
+    if death_t not in itm.traits and itm != self.itm:
       itm.effects.append(fear_t)
       itm.resolve_mod -= 2
       itm.moves_mod -= 2
@@ -228,10 +245,9 @@ class DarkPresence(Skill):
   effect = 'friend'
   type = 0
   def run(self, itm):
-    if (itm.nation == self.nation and itm != self.itm
-        and undead_t in itm.traits 
-        and self.name not in itm.effects
-        and self.name not in [s.name for s in itm.global_skills]):
+    if (itm.nation == self.nation
+        and death_t in itm.traits and vampire_t not in itm.traits 
+        and self.name not in itm.effects):
       if itm.day_night[0] == 0:
         itm.effects.append(self.name+str(f' ({day_t})'))
         itm.res_mod += 1
@@ -430,7 +446,6 @@ class MastersEye(Skill):
   def run(self, itm):
     if itm != self.itm and itm.nation == self.nation:
       itm.effects.append(self.name)
-      itm.att_mod += 1
       itm.hit_rolls_mod += 1
       itm.res_mod += 1
       itm.str_mod += 1
@@ -515,7 +530,9 @@ class Organization(Skill):
   name = 'organización'
   type = 0
   def run(self, itm):
-    if itm.nation == self.nation and itm != self.itm:
+    if (itm.nation == self.nation
+        and human_t in itm.traits
+        and all(i not in itm.traits for i in [commander_t, leader_t])):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
@@ -670,12 +687,13 @@ class SkeletonLegion(Skill):
 
 class Skirmisher(Skill):
   effect = 'self'
-  desc = 'units gain distanse in combat.'
+  desc = 'units gain half moves in distanse on combat.'
   name = 'retirada'
   type = 1
   def run(self, itm):
     if itm.target and itm.dist < itm.rng+itm.rng_mod: 
       dist = randint(1, itm.moves+itm.moves_mod)
+      dist = ceil(dist/2)
       itm.dist += dist
       itm.target.dist += dist
       itm.battlelog += [f'{itm} go back {dist}.']
@@ -747,7 +765,7 @@ class Scream(Skill):
     if itm.target:
       target = itm.target
       logging.debug(f'grito ardiente.')
-      if undead_t not in target.traits:
+      if death_t not in target.traits:
         roll = roll_dice(1)
         if roll >= 5: 
           damage = randint(4, 10)
@@ -834,15 +852,4 @@ class VigourMourtis(Skill):
       itm.hit_rolls_mod += 1
 
 
-class WildFury(Skill):
-  effect = 'self'
-  name = 'furia salvaje'
-  desc = '+2 damage, +2 str, -2 dfs, +1 moves if enemy is undead.'
-  type = 0
-  def run(self, itm):
-    if itm.target and undead_t in itm.target.traits:
-      itm.effects.append(self.name)
-      itm.damage_sacred_mod += 2
-      itm.dfs_mod -= 2
-      itm.moves_mod += 1
-      itm.str_mod += 2
+

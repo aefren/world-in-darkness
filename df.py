@@ -575,19 +575,16 @@ class World:
     tries = 100
     while tries > 0 and num > 0:
       tries -= 1
-      tiles = [i for i in self.map]
+      tiles = [i for i in self.map
+               if i.city == None]
       shuffle(tiles)
       nat = choice(self.random_nations)
       item = choice(nat.av_units)(nat)
       tiles= [i for i in tiles if item.get_favland(i)]
       logging.info(f'agregará {item}.')
+      if item.pref_corpses: tiles.sort(key=lambda x: len(x.corpses),reverse=True) 
       tile = tiles[0]
-      sq = tile.get_near_tiles(self.map, 1)
       go = 1
-      for i in sq:
-        if i.city:
-          go = 0
-          break
       for uni in tile.units:
         if uni.nation in self.nations or uni.nation != item.nation: go = 0
       
@@ -596,9 +593,6 @@ class World:
       if go:
         item.pos = tile
         item.nation.update(item.nation.map)
-        if roll_dice(2) >= 8:
-          item.hp_total *= 2
-          item.pop *= 2
         if roll_dice(2) >= 11:
           item.hp_total *= 3
           item.pop *= 3
@@ -649,11 +643,17 @@ def ai_action_random(itm):
     # si no descansa y no se mueve.
     elif itm.goto == []:
       itm.pos.update(itm.nation)
+      #cast spells.
+      if itm.spells: ai_unit_cast(itm.nation)
       # unir unidades similares.
       if len(itm.pos.units) > 1: ai_join_units(itm)
       # ataque hidden.
       itm.pos.update(itm.nation)
-      rnd = randint(0, round(itm.ranking*1.5))
+      rnd = randint(round(itm.ranking*0.75), round(itm.ranking*1.25))
+      if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd*0.2
+      if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd*0.2
+      if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd*0.2
+      if commander_t in itm.traits: rnd -= rnd*0.2
       if rnd > itm.pos.threat:
         auto_attack(itm)
         if any(i <= 0 for i in [itm.mp[0], itm.hp_total]): return
@@ -1686,8 +1686,8 @@ def ai_train(nation):
     logging.debug(f'upkeep_limit ={upkeep_limit}.')
     ct.set_av_units()
     units = [it(nation) for it in ct.all_av_units if it.settler == 0]
-    for i in units: 
-      i.update()
+    [it.update() for it in units]
+    units = [it for it in units if it.settler == 0 and it.comm == 0]
     if ct.seen_threat*2 > ct.defense_total: 
       ct.defense_pred = ct.seen_threat*2
       logging.debug(f'amenaza mayor.')
@@ -1707,8 +1707,10 @@ def ai_train(nation):
       upkeep_limit *= 1.2
       if upkeep_limit > nation.income: upkeep_limit = nation.income*0.8
       logging.debug(f'upkeep increased to {upkeep_limit}.')
-    units += [it(nation) for it in ct.all_av_units if it.pop == 0 and it.upkeep == 0]
     logging.debug(f'entrenables {[i.name for i in units]}.')
+    if roll_dice(1) >= 4:
+      logging.debug(f'sort by nation traits.')
+      units.sort(key=lambda x: any(i in x.traits for i in nation.traits),reverse=True)
     for uni in units:
       if req_unit(uni, nation, ct):
         logging.debug(f'suma upkeep {nation.upkeep+uni.upkeep }.')
@@ -1893,17 +1895,18 @@ def combat_menu(itm, pos, target=None, dist=0):
   if info: sleep(loadsound('warn4') / 2)
   for i in units:
     if i.damage_charge: i.can_charge = 1
+    i.attacks = []
     i.battle_log = []
     i.damage_done = []
     i.deads = []
     i.enemy_fled = []
     i.fled = []
-    i.hits = []
     i.hits_blocked = []
     i.hits_failed = []
     i.strikes = []
     i.raised = []
     i.temp_log = None
+    i.wounds = []
   gold_itm = round(itm.ranking)+itm.gold
   roll = roll_dice(1)
   if roll >= 3: gold_itm *= 2
@@ -1923,16 +1926,17 @@ def combat_menu(itm, pos, target=None, dist=0):
       units.sort(key=lambda x: x.moves+x.moves_mod,reverse=True)
       for i in units:
         i.attack = 1
+        i.attacks.append(0)
         i.battlelog = []
         i.damage_done.append(0)
         i.deads.append(0)
         i.fled.append(0)
-        i.hits.append(0)
         i.hits_blocked.append(0)
         i.hits_failed.append(0)
         i.raised.append(0)
         i.strikes += {0} 
         i.target.c_units = i.target.units
+        i.wounds.append(0)
       
       
       
@@ -2051,8 +2055,8 @@ def combat_fight(dist, itm, _round, info=1):
     attacks = itm.att + itm.att_mod
     for i in range(attacks):
       if target.hp_total< 1: break
+      itm.attacks[-1] += 1
       if info: logging.debug(f'ataque {i+1} de {attacks}.')
-      itm.strikes[-1] += 1
       target.c_units = target.units
       damage = itm.damage+itm.damage_mod
       
@@ -2083,6 +2087,7 @@ def combat_fight(dist, itm, _round, info=1):
         if info: logging.debug(f'wound_roll {wound_roll} necesita {wound_need}.')
         if wound_roll < wound_need: continue
         wounds = 1
+        itm.strikes[-1] += 1
 
         # armor
         roll = roll_dice(1)
@@ -2107,7 +2112,7 @@ def combat_fight(dist, itm, _round, info=1):
 
         # wounds.
         if wounds and target.hp_total > 0:
-          itm.hits[-1] += 1
+          itm.wounds[-1] += 1
           if undead_t in target.traits:
             damage+= itm.damage_sacred
             if info: logging.debug(f'damage holy {itm.damage_sacred}.')
@@ -2121,12 +2126,13 @@ def combat_fight(dist, itm, _round, info=1):
           itm.damage_done[-1] += damage
           target.deads[-1] += target.c_units-target.units
   
-  itm.hits_failed[-1] = itm.strikes [-1]- (itm.hits[-1]+itm.hits_blocked[-1])
+  itm.hits_failed[-1] = itm.attacks[-1]- (itm.strikes[-1]+itm.hits_blocked[-1])
   itm.charge = 0
   
   log += [
-    f'{strikes_t} {itm.strikes[-1]}. {hits_failed_t} {itm.hits_failed[-1]}. {hits_blocked_t} {itm.hits_blocked[-1]}. '
-    f'{hits_t} {itm.hits[-1]}.',
+    f'{attacks_t} {itm.attacks[-1]}, {hits_failed_t} {itm.hits_failed[-1]}.',
+    f'{strikes_t} {itm.strikes[-1]}, {hits_blocked_t} {itm.hits_blocked[-1]}, '
+    f'{wounds_t} {itm.wounds[-1]}.,',  
     f'{damage_t} {itm.damage_done[-1]}. {deads_t} {itm.target.deads[-1]}.',
     ]
 
@@ -3889,15 +3895,20 @@ def random_move(itm, scenary, sq=None, value=1):
       [s.set_threat(itm.nation) for s in sq]
       if itm.populated_land:
         logging.debug(f'casillas pobladas.')
-        sq.sort(key=lambda x: x.bu, reverse=True)
-        sq.sort(key=lambda x: x.has_city, reverse=True)
+        sq.sort(key=lambda x: x.pop, reverse=True)
       set_favland(itm, sq)
     
+    rnd = randint(round(itm.ranking*0.75), round(itm.ranking*1.25))
+    if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd*0.2
+    if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd*0.2
+    if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd*0.2
+    if commander_t in itm.traits: rnd -= rnd*0.2    
     if roll_dice(1) <= itm.fear:
       logging.debug(f'ordena por miedo')
       fear = 1
-      sq.sort(key=lambda x: x.around_threat)
-      sq.sort(key=lambda x: x.threat)
+      sq.sort(key=lambda x: x.around_threat < rnd,reverse=True)
+      sq.sort(key=lambda x: x.threat < rnd,reverse=True)
+      sq.sort(key=lambda x: x.defense,reverse=True)
     if itm.scout:
       #logging.debug(f'ordena para exploración')
       fear = 1
@@ -4533,11 +4544,11 @@ def unit_attrition(itm):
   if world.turn < 2: return 
   itm.pos.update(itm.nation)
   food = itm.pos.food_need - itm.pos.food
-  if food > 0 and itm.food and roll_dice(1) >= itm.resolve+itm.resolve_mod:
-    if itm.desert_survival and roll_dice(1) >= 3:
+  if food > 0 and itm.food and roll_dice(1)+1 >= itm.resolve+itm.resolve_mod:
+    if itm.desert_survival and itm.pos.name == waste_t and roll_dice(1) >= 3:
       logging.debug(f'sobreviviente del desierto.')
       return
-    itm.hp_total-= itm.hp*randint(1,3)
+    itm.hp_total-= itm.hp*randint(1,5)
     if itm.hp_total< 1:
       msg = f'{itm} se ha disuelto por atrición.'
       itm.nation.log[-1].append(msg)
