@@ -25,10 +25,16 @@ class LightArmor:
     self.name = 'light armor'
 
 
-class HeavyArmor:
 
+class MediumArmor(Skill):
   def __init__(self):
-    self.arm = 2
+    self.arm = 3
+    self.name = 'medium armor'
+
+
+class HeavyArmor:
+  def __init__(self):
+    self.arm = 5
     self.name = 'heavy armor'
 
 
@@ -1209,7 +1215,7 @@ class Unit:
   desert_survival = 0
   dist = 0
   fled = 0
-  fear = 4
+  fear = 8
   food = 0
   forest_survival = 0
   garrison = 0
@@ -1284,9 +1290,11 @@ class Unit:
 
   def autokill(self):
     if (self.pos and (self.pos.soil.name not in self.favsoil 
-        or self.pos.surf.name not in self.favsurf) 
-                      and self in self.pos.world.units and roll_dice(2) == 12):
+                      or self.pos.surf.name not in self.favsurf
+                      or self.pos.hill not in self.favhill)
+                      and self in self.pos.world.units and roll_dice(2) > round(self.ranking/10)):
       self.hp_total = 0
+      loadsound('set9')
   def break_group(self):
     logging.debug(f'{self} rompe grupo.')
     self.group_base = 0
@@ -1492,8 +1500,8 @@ class Unit:
       if self.pos.raided <= self.pos.income:
         logging.info(f'{self} saquea a {self.pos.city} {self.pos.nation} en {self.pos} {self.pos.cords}')
         logging.debug(f'población {self.pos.pop}.')
-        raided = randint(1, self.units)
-        raided *= self.hp
+        raided = randint(self.hp, self.units)
+        raided *= self.att+self.att_mod
         if mounted_t in self.traits: raided *= 3
         if raided > self.pos.income: raided = self.pos.income
         self.pos.raided = raided
@@ -1622,7 +1630,7 @@ class Unit:
     self.ranking_dfs = self.hp_total
     self.ranking_dfs *= (self.dfs + self.dfs_mod)/3
     self.ranking_dfs *= (self.res + self.res_mod)/2
-    self.ranking_dfs += (self.arm + self.arm_mod)*3
+    self.ranking_dfs += (self.arm + self.arm_mod)*15
     if self.armor: self.ranking_dfs += self.armor.arm * 5
     if self.shield: self.ranking_dfs += self.shield.dfs * 5
   
@@ -2510,11 +2518,11 @@ class HighSilvanArcher(Elf):
   armor = None
 
   att = 1
-  damage = 1
+  damage = 2
   rng = 15
-  off = 4
+  off = 5
   str = 4
-  pn = 0
+  pn = 1
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -2573,7 +2581,7 @@ class Hamlet(City):
   events = [Unrest]
   food = 150
   grouth = 10
-  income = 80
+  income = 40
   public_order = 20
   resource = 0
   upkeep = 1000
@@ -2602,7 +2610,7 @@ class Hamlet(City):
 
   def set_capital_bonus(self):
     self.food += 100*self.food//100
-    self.grouth += 500*self.grouth//100
+    self.grouth += 200*self.grouth//100
     self.income += 100*self.income//100
     self.public_order += 50*self.public_order//100
     self.upkeep = 0
@@ -2670,7 +2678,7 @@ class Hamlet(City):
 # edificios.
 class TrainingCamp(Building):
   name = 'campo de entrenamiento'
-  gold = 3000
+  gold = 4000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -2688,7 +2696,7 @@ class TrainingCamp(Building):
 
 class ImprovedTrainingCamp(TrainingCamp, Building):
   base = TrainingCamp
-  gold = 5000
+  gold = 6000
   name = 'campo de entrenamiento mejorado'
   public_order = 10
   size = 4
@@ -2704,7 +2712,7 @@ class ImprovedTrainingCamp(TrainingCamp, Building):
 
 class Barracks(ImprovedTrainingCamp, Building):
   base = TrainingCamp
-  gold = 8000
+  gold = 9000
   name = 'cuartel'
   public_order = 10
   tags = [military_t, unrest_t]
@@ -2737,7 +2745,7 @@ class ImprovedBarracks(Barracks, Building):
 
 class Pastures(Building):
   name = 'pasturas'
-  gold = 4000
+  gold = 5000
   food = 25
   income = 20
 
@@ -2759,7 +2767,7 @@ class Pastures(Building):
 class Stables(Pastures, Building):
   name = 'establos'
   base = Pastures
-  gold = 10500
+  gold = 12500
   income = 50
   unique = 1
 
@@ -2774,7 +2782,7 @@ class Stables(Pastures, Building):
 
 class MeetingCamp(Building):
   name = 'campo de reunión'
-  gold = 2000
+  gold = 3000
   own_terrain = 1
   public_order = 10
   size = 4
@@ -2793,7 +2801,7 @@ class MeetingCamp(Building):
 
 class CultOfLight(MeetingCamp, Building):
   base = MeetingCamp
-  gold = 4500
+  gold = 6500
   name = 'culto de la luz'
   public_order = 25
   upkeep = 100
@@ -2809,7 +2817,7 @@ class CultOfLight(MeetingCamp, Building):
 
 class TempleOfLight(CultOfLight, Building):
   base = MeetingCamp
-  gold = 8000
+  gold = 10000
   name = 'templo de la luz'
   public_order = 50
   upkeep = 400
@@ -2831,7 +2839,7 @@ class Commander(Human):
   type = 'infantry'
   comm = 1
   gold = 400
-  upkeep = 40
+  upkeep = 80
   resource_cost = 25
   food = 5
   pop = 30
@@ -2839,6 +2847,7 @@ class Commander(Human):
   tags = ['commander']
 
   hp = 2
+  mp = [4, 4]
   moves = 6
   resolve = 8
   global_skills = [Organization]
@@ -3007,7 +3016,7 @@ class SwordsMen(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 120
-  upkeep = 12
+  upkeep = 15
   resource_cost = 12
   food = 3
   pop = 20
@@ -3042,7 +3051,7 @@ class GreatSwordsMen(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 180
-  upkeep = 20
+  upkeep = 15
   resource_cost = 16
   food = 4
   pop = 15
@@ -3072,10 +3081,10 @@ class GreatSwordsMen(Human):
 
 class SpearMen(Human):
   name = spearmen_t
-  units = 10
+  units = 5
   type = 'infantry'
   traits = [human_t]
-  gold = 250
+  gold = 150
   upkeep = 25
   resource_cost = 15
   food = 3
@@ -3089,12 +3098,12 @@ class SpearMen(Human):
   global_skills = [BattleBrothers, Regroup]
 
   dfs = 4
-  res = 4
+  res = 3
   arm = 0
   armor = HeavyArmor()
 
   att = 1
-  damage = 2
+  damage = 3
   off = 4
   str = 5
   pn = 1
@@ -3109,8 +3118,8 @@ class Halberdier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 220
-  upkeep = 30
+  gold = 440
+  upkeep = 40
   resource_cost = 18
   food = 4
   pop = 28
@@ -3214,7 +3223,7 @@ class Sagittarii(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 120
-  upkeep = 8
+  upkeep = 10
   resource_cost = 15
   food = 3
   pop = 20
@@ -3350,7 +3359,7 @@ class Equites(Human):
   type = 'cavalry'
   traits = [human_t]
   gold = 380
-  upkeep = 26
+  upkeep = 30
   resource_cost = 18
   food = 5
   pop = 30
@@ -3390,7 +3399,7 @@ class Equites2(Human):
   type = 'cavalry'
   traits = [human_t]
   gold = 505
-  upkeep = 40
+  upkeep = 50
   resource_cost = 30
   food = 8
   pop = 40
@@ -3398,11 +3407,11 @@ class Equites2(Human):
 
   hp = 3
   mp = [3, 3]
-  moves = 8
-  resolve = 7
+  moves = 7
+  resolve = 8
   global_skills = [BattleBrothers, Regroup, Reinforce]
 
-  dfs = 5
+  dfs = 4
   res = 4
   arm = 1
   armor = HeavyArmor()
@@ -3410,8 +3419,8 @@ class Equites2(Human):
   att = 1
   damage = 3
   off = 5
-  str = 4
-  pn = 0
+  str = 5
+  pn = 1
   offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
@@ -3458,7 +3467,7 @@ class CursedHamlet(City):
 
   def set_capital_bonus(self):
     self.food += 100*self.food//100
-    self.grouth += 500*self.grouth//100
+    self.grouth += 300*self.grouth//100
     self.income += 100*self.income//100
     self.public_order += 100*self.public_order//100
     self.upkeep = 0
@@ -3493,7 +3502,7 @@ class CursedHamlet(City):
 
 
 class Cemetery(Building):
-  gold = 2000
+  gold = 3000
   name = cemetery_t
   own_terrain = 1
   size = 4
@@ -3512,7 +3521,7 @@ class Cemetery(Building):
 class Barrow(Cemetery, Building):
   name = 'túmulos'
   base = Cemetery
-  gold = 4500
+  gold = 5500
   tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -3538,7 +3547,7 @@ class Mausoleum(Barrow, Building):
 
 class DesecratedRuins (Building):
   name = 'ruinas profanadas'
-  gold = 3500
+  gold = 4000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -3556,7 +3565,7 @@ class DesecratedRuins (Building):
 class CircleOfBlood(DesecratedRuins, Building):
   name = 'circulo de sangre'
   base = DesecratedRuins
-  gold = 4500
+  gold = 6000
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [CryptHorrors, Necromancer, VarGhul]
@@ -3568,7 +3577,7 @@ class CircleOfBlood(DesecratedRuins, Building):
 class DarkMonolit(CircleOfBlood, Building):
   name = 'monolito oscuro'
   base = DesecratedRuins
-  gold = 8000
+  gold = 12000
   own_terrain = 1
   size = 4
   public_order = 50
@@ -3583,9 +3592,9 @@ class DarkMonolit(CircleOfBlood, Building):
 
 class SmallWood(Building):
   name = 'Bosquecillo'
-  gold = 2000
+  gold = 3000
   own_terrain = 1
-  size = 5
+  size = 4
   tags = [military_t]
   unique = 1
   def __init__(self, nation, pos):
@@ -3600,7 +3609,7 @@ class SmallWood(Building):
 class SinisterForest(SmallWood, Building):
   name = 'bosque abyssal'
   base = SmallWood
-  gold = 5000
+  gold = 6000
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [DireWolves, FellBats, Vargheist]
@@ -3611,10 +3620,10 @@ class SinisterForest(SmallWood, Building):
 
 class Gallows(Building):
   name = 'Gallows'
-  gold = 1000
+  gold = 1200
   public_order = 30
   own_terrain = 1
-  size = 2
+  size = 6
   tags = [unrest_t]
 
   def __init__(self, nation, pos):
@@ -3629,7 +3638,7 @@ class Gallows(Building):
 class ImpaledField(Gallows, Building):
   name = 'campo de empalados'
   base = Gallows
-  gold = 2000
+  gold = 2500
   public_order = 66
   tags = [unrest_t]
 
@@ -3644,7 +3653,7 @@ class Pit(Building):
   name = 'fosa'
   gold = 500
   food = 100
-  grouth = 20
+  grouth = 10
   own_terrain = 1
   resource = 0
   size = 6
@@ -3663,8 +3672,8 @@ class FuneraryDungeon(Pit, Building):
   name = 'mazmorra funeraria'
   base = Pit
   gold = 1800
-  food = 250
-  grouth = 40
+  food = 220
+  grouth = 20
   income = 30
   resource = 1
   tags = [food_t, resource_t]
@@ -3807,7 +3816,7 @@ class BlackKnights(Undead):
 
   hp = 3
   mp = [3, 3]
-  moves = 8
+  moves = 7
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
@@ -3817,10 +3826,10 @@ class BlackKnights(Undead):
   armor = HeavyArmor()
 
   att = 3
-  damage = 3
+  damage = 4
   off = 5
   str = 4
-  pn = 1
+  pn = 2
   offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
@@ -3888,7 +3897,7 @@ class CryptHorrors (Undead):
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
   dfs = 3
-  res = 3
+  res = 4
   arm = 2
   armor = None
 
@@ -3925,13 +3934,13 @@ class DireWolves(Undead):
 
   dfs = 3
   res = 5
-  arm = 1
+  arm = 2
 
-  att = 1
+  att = 2
   damage = 3
-  off = 3
+  off = 5
   str = 5
-  pn = 0
+  pn = 1
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4048,6 +4057,7 @@ class Necromancer(Human):
   str = 3
   pn = 0
   
+  fear = 12
   pref_corpses = 1
   def __init__(self, nation):
     super().__init__(nation)
@@ -4073,9 +4083,9 @@ class GraveGuards(Undead):
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
-  dfs = 4
+  dfs = 5
   res = 4
-  arm = 0
+  arm = 2
   armor = HeavyArmor()
   shield = Shield()
 
@@ -4148,7 +4158,7 @@ class Skeletons(Undead):
 
   dfs = 3
   res = 4
-  arm = 1
+  arm = 2
 
   att = 1
   damage = 2
@@ -4156,6 +4166,7 @@ class Skeletons(Undead):
   str = 3
   pn = 0
 
+  fear = 0
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4181,14 +4192,14 @@ class Vampire(Undead):
   global_skills = [DarkPresence, ElusiveShadow, Fly, NightFerocity, NightSurvival]
 
   dfs = 5
-  res = 4
+  res = 5
   arm = 0
   armor = LightArmor()
 
-  att = 3
-  damage = 2
+  att = 4
+  damage = 3
   off = 5
-  str = 4
+  str = 5
   pn = 1
 
   def __init__(self, nation):
@@ -4218,14 +4229,14 @@ class VampireLord(Undead):
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, NightFerocity, NightSurvival]
 
   dfs = 5
-  res = 4
+  res = 5
   arm = 0
-  armor = HeavyArmor()
+  armor = MediumArmor()
 
   att = 4
-  damage = 2
-  off = 5
-  str = 4
+  damage = 3
+  off = 6
+  str = 5
   pn = 1
   def __init__(self, nation):
     super().__init__(nation)
@@ -4253,16 +4264,17 @@ class Vargheist(Undead):
   resolve = 10
   global_skills = [ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival, TheBeast]
 
-  dfs = 5
+  dfs = 4
   res = 5
   arm = 0
 
-  att = 4
-  damage = 2
-  off = 6
+  att = 6
+  damage = 3
+  off = 5
   str = 5
   pn = 1
 
+  fear = 6
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4292,14 +4304,14 @@ class VladDracul(Undead):
   power_max = 60
   power_res = 4
 
-  dfs = 5
-  res = 4
+  dfs = 6
+  res = 5
   arm = 0
   armor = LightArmor()
 
   att = 6
   damage = 3
-  off = 5
+  off = 6
   str = 5
   pn = 2
 
@@ -4334,10 +4346,12 @@ class VarGhul(Undead):
   res = 5
   arm = 2
 
-  att = 2
+  att = 4
   damage = 2
   off = 4
   str = 5
+
+  fear = 2
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4374,6 +4388,8 @@ class Zombies(Undead, Ground):
   pn = 0
   offensive_skills = [Surrounded]
 
+  sort_chance = 0
+  fear = 0
   def __init__(self, nation):
     super().__init__(nation)
 
@@ -4438,9 +4454,9 @@ class SmallFarm(Fields, Building):
 class Farm(SmallFarm, Building):
   name = farm_t
   base = SmallFarm
-  gold = 3500
+  gold = 4000
   food = 300
-  grouth = 60
+  grouth = 40
   income = 50
 
   def __init__(self, nation, pos):
@@ -4529,7 +4545,7 @@ class HolyEmpire(Nation):
   corruption = 0
   food_limit_builds = 1200
   food_limit_upgrades = 1000
-  grouth_rate = 90
+  grouth_rate = 100
   public_order = 0
   upkeep_base = 60
   upkeep_change = 100
@@ -4541,7 +4557,7 @@ class HolyEmpire(Nation):
   scout_factor = 8
   stalk_rate = 100
 
-  city_req_pop_base = 1000
+  city_req_pop_base = 1200
   commander_rate = 10
   pop_limit = 60
   units_animal_limit = 20
@@ -4561,8 +4577,8 @@ class HolyEmpire(Nation):
     self.soil = [plains_t, grassland_t]
     self.surf = [none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_grassland = 1
-    self.allow_around_plains = 3
+    self.allow_around_grassland = 3
+    self.allow_around_plains = 0
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 2 
     self.unallow_around_swamp = 2
@@ -4592,12 +4608,12 @@ class HolyEmpire(Nation):
 class SilvanElves(Nation):
   name = 'Elfos silvanos'
   nick = ''
-  traits = [elf_t]
+  traits = [elf_t, animal_t]
   gold = 10000
   corruption = 0
   food_limit_builds = 900
   food_limit_upgrades = 1000
-  grouth_rate = 150
+  grouth_rate = 130
   public_order = 0
   upkeep_base = 70
   upkeep_change = 100
@@ -4662,7 +4678,7 @@ class Transylvania(Nation):
   corruption = 0
   food_limit_builds = 350
   food_limit_upgrades = 550
-  grouth_rate = 90
+  grouth_rate = 110
   public_order = 0
   upkeep_base = 70
   upkeep_change = 100
@@ -4674,7 +4690,7 @@ class Transylvania(Nation):
   scout_factor = 15
   stalk_rate = 80
 
-  city_req_pop_base = 500
+  city_req_pop_base = 600
   commander_rate = 10
   pop_limit = 40
   units_animal_limit = 100
@@ -4694,7 +4710,8 @@ class Transylvania(Nation):
     self.soil = [plains_t, waste_t]
     self.surf = [none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_desert = 8
+    self.allow_around_desert = 6
+    self.allow_around_hill = 3
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 1
   
@@ -4724,7 +4741,7 @@ class Archers(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 90
-  upkeep = 4
+  upkeep = 6
   resource_cost = 12
   food = 3
   pop = 15
@@ -4748,7 +4765,7 @@ class Archers(Human):
   pn = 0
   offensive_skills = [Skirmisher]
   
-  fear = 5
+  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -4769,7 +4786,7 @@ class Akhlut(Unit):
   pop = 25
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 12
+  hp = 6
   mp = [2, 2]
   moves = 7
   resolve = 6
@@ -4816,10 +4833,11 @@ class BlackOrcs(Unit):
   mp = [2, 2]
   moves = 7
   resolve = 8
+  global_skills = [BloodyBeast]
 
   dfs = 4
   res = 4
-  arm = 0
+  arm = 2
   armor = HeavyArmor
 
   att = 2
@@ -4906,6 +4924,7 @@ class DesertNomads(Human):
   pn = 0
   offensive_skills = [Charge]
   
+  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -4946,7 +4965,7 @@ class Draugr(Unit):
   
   stealth = 6
 
-  fear = 2
+  fear = 4
   pref_corpses = 1
   def __init__(self, nation):
     super().__init__(nation)
@@ -5010,7 +5029,7 @@ class GiantWolves(Unit):
   mp = [2, 2]
   moves = 7
   resolve = 4
-  global_skills = [Regroup]
+  global_skills = [BloodyBeast, Regroup]
 
   dfs = 4
   res = 4
@@ -5024,7 +5043,7 @@ class GiantWolves(Unit):
   pn = 0
   
   stealth = 6
-  fear = 3
+  fear = 5
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5052,6 +5071,7 @@ class Goblins(Unit):
   mp = [3, 3]
   moves = 6
   resolve = 4
+  global_skills = [BloodyBeast]
 
   dfs = 4
   res = 2
@@ -5067,7 +5087,7 @@ class Goblins(Unit):
   offensive_skills = [Ambushment, Skirmisher] 
   
   stealth = 8
-  fear = 5
+  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5109,7 +5129,7 @@ class Harpy(Unit):
   pn = 0
   
   stealth = 7
-  fear = 5
+  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5136,7 +5156,7 @@ class HellHounds(Undead):
   mp = [2, 2]
   moves = 6
   resolve = 10
-  global_skills = [Regroup, NightFerocity, NightSurvival]
+  global_skills = [BloodyBeast, NightFerocity, NightSurvival, Regroup]
 
   dfs = 4
   res = 5
@@ -5174,7 +5194,7 @@ class Hyaenas(Unit):
   mp = [2, 2]
   moves = 6
   resolve = 4
-  global_skills = [NightSurvival, Regroup]
+  global_skills = [BloodyBeast, NightSurvival, Regroup]
 
   dfs = 3
   res = 4
@@ -5188,7 +5208,7 @@ class Hyaenas(Unit):
   pn = 1
   
   stealth = 8
-  fear = 3
+  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5229,6 +5249,8 @@ class Hunters(Human):
   str = 3
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
+
+  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5260,14 +5282,15 @@ class NomadsRiders(Human):
   arm = 1
   armor = None
 
-  att = 2
+  att = 1
   rng = 15
   damage = 1
   off = 4
   str = 4
   pn = 0
   offensive_skills = [Skirmisher]
-  
+
+  fear = 8
   stealth = 6
   def __init__(self, nation):
     super().__init__(nation)
@@ -5296,10 +5319,11 @@ class Orc_Archers(Unit):
   mp = [2, 2]
   moves = 5
   resolve = 4
+  global_skills = [BloodyBeast]
 
   dfs = 3
   res = 2
-  arm = 0
+  arm = 1
   armor = None
 
   att = 1
@@ -5310,6 +5334,7 @@ class Orc_Archers(Unit):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
   
+  fear = 8
   stealth = 5
   def __init__(self, nation):
     super().__init__(nation)
@@ -5338,10 +5363,11 @@ class Orcs(Unit):
   mp = [2, 2]
   moves = 6
   resolve = 5
+  global_skills = [BloodyBeast]
 
   dfs = 3
   res = 3
-  arm = 0
+  arm = 1
   armor = None
 
   att = 2
@@ -5350,6 +5376,7 @@ class Orcs(Unit):
   str = 4
   pn = 0
   
+  fear = 6
   stealth = 5
   def __init__(self, nation):
     super().__init__(nation)
@@ -5367,7 +5394,7 @@ class Levy(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 50
-  upkeep = 2
+  upkeep = 6
   resource_cost = 10
   food = 3
   pop = 20
@@ -5400,7 +5427,7 @@ class PeasantLevies(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 30
-  upkeep = 2
+  upkeep = 4
   resource_cost = 8
   food = 3
   pop = 20
@@ -5460,7 +5487,7 @@ class Raiders(Human):
   str = 3
   pn = 0
   
-  fear = 2
+  fear = 4
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5499,6 +5526,8 @@ class Riders(Human):
   str = 3
   pn = 0
   offensive_skills = [Charge]
+
+  fear = 4
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5565,7 +5594,7 @@ class Wargs(Unit):
   mp = [2, 2]
   moves = 7
   resolve = 5
-  global_skills = [Regroup]
+  global_skills = [BloodyBeast, Regroup]
 
   dfs = 4
   res = 3
@@ -5579,7 +5608,7 @@ class Wargs(Unit):
   pn = 0
   
   stealth = 7
-  fear = 3
+  fear = 6
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5618,6 +5647,8 @@ class Warriors(Human):
   off = 4
   str = 3
   pn = 0
+
+  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5637,12 +5668,12 @@ class Wolves(Unit):
   food = 4
   pop = 20
   terrain_skills = [ForestSurvival]
-
+  
   hp = 2
   mp = [2, 2]
   moves = 7
   resolve = 4
-  global_skills = [NightFerocity, Regroup]
+  global_skills = [BloodyBeast, NightFerocity, Regroup]
 
   dfs = 4
   res = 3
@@ -5656,7 +5687,7 @@ class Wolves(Unit):
   pn = 0
   
   stealth = 7
-  fear = 5
+  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild

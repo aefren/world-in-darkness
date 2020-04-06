@@ -25,7 +25,7 @@ class Skill:
   def __init__(self, itm):
     self.itm = itm
     self.nation = self.itm.nation    
-  def ai_run(self):
+  def ai_run(self, itm):
     pass
   def run(self):
     pass
@@ -192,12 +192,12 @@ class Ethereal(Skill):
 class Fanatism(Skill):
   effect = 'self'
   name = fanatism_t
-  desc = '+2 damage, +2 str, -2 dfs, +1 moves if enemy is undead.'
+  desc = '+1 att, +1 str, -2 dfs, +1 moves if enemy is undead.'
   type = 0
   def run(self, itm):
     if itm.target and undead_t in itm.target.traits:
       itm.effects.append(self.name)
-      itm.damage_sacred_mod += 2
+      itm.att_mod += 2
       itm.dfs_mod -= 2
       itm.moves_mod += 1
       itm.str_mod += 2
@@ -302,6 +302,27 @@ class ForestWalker(Skill):
       itm.off_mod += 1
       itm.resolve_mod += 1 
       itm.ranking_skills += 5  
+
+
+
+class BloodyBeast(Skill):
+  effect = 'self'
+  desc = 'randomly kill population if tile has population.'
+  name = 'bestia sangrienta'
+  turns = 0
+  type = 2
+  def run(self, itm):
+    if itm.pos and itm.pos.pop:
+      if roll_dice(1) > 4:
+        deads = randint(1, itm.units)
+        deads *= itm.att+itm.att_mod
+        deads *= itm.damage+itm.damage_mod
+        if deads > itm.pos.pop: deads = itm.pos.pop
+        itm.pos.pop -= deads
+        if itm.pos.pop: itm.pos.unrest += deads*100/itm.pos.pop
+        if itm.pos.nation.show_info : sleep(loadsound('spell33')*0.5)
+        msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
+        itm.pos.nation.log[-1].append(msg)
 
 
 class HeavyCharge(Skill):
@@ -812,15 +833,15 @@ class TheBeast(Skill):
   def run(self, itm):
     if itm.pos and roll_dice(2) >= 6 and itm.day_night[0]:
       if itm.pos.pop:
-        pop = randint(2, 5)*itm.units
-        if pop > itm.pos.pop: pop = itm.pos.pop
-        itm.pos.pop -= pop
-        itm.pos.unrest += pop
+        deads = randint(2, 5)*itm.units
+        if deads > itm.pos.pop: deads = itm.pos.pop
+        itm.pos.pop -= deads
+        if itm.pos.pop: itm.pos.unrest += deads*100/itm.pos.pop
         if itm.pos.nation.show_info : sleep(loadsound('spell33')*0.5)
-        msg = f'{itm} {pop} deads {in_t} {itm.pos} {itm.pos.cords}.'
+        msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
         itm.nation.log[-1].append(msg)
       elif itm.pos.pop == 0 and roll_dice(2) >= 10:
-        if itm.nation.show_info: sleep(loadsound('spell33')*0.5)
+        if itm.nation.show_info: sleep(loadsound('spell36')*0.5)
         msg = f'{itm} es ahora {itm.align()}.'
         itm.nation.log[-1].append(msg)
         itm.set_default_align()

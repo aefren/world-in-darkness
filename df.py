@@ -15,6 +15,8 @@ from pygame.time import get_ticks as ticks
 from data.items import Zombies, Orc_Archers
 from basics import roll_dice
 from distutils.log import debug
+from data.lang.es import mountain_survival_t, forest_survival_t,\
+  swamp_survival_t, swamp_t, forest_t
 
 exec('from basics import *')
 exec('from data.lang.es import *')
@@ -593,9 +595,11 @@ class World:
       if go:
         item.pos = tile
         item.nation.update(item.nation.map)
+        loadsound('set10')
         if roll_dice(2) >= 11:
           item.hp_total *= 3
           item.pop *= 3
+          loadsound('set12')
         tile.units.append(item)
         self.units.append(item)
         num -= item.ranking
@@ -687,6 +691,7 @@ def ai_add_settler(nation):
         ct.update()
         logging.debug(f'gold {ct.nation.gold}.')
         units = [it(nation) for it in ct.all_av_units]
+        [i.update() for i in units]
         units = [it for it in units if it.settler]
         shuffle(units)
         if units:ct.train(units[0])
@@ -760,6 +765,8 @@ def ai_attack(nation, info=0):
     logging.debug(f'mean score {nt.mean_score}.')
     logging.debug(f'max score {nt.max_score}.')
     shuffle(nt.seen_tiles)
+    if roll_dice(1) >= 5:
+      nt.seen_tiles.sort(key=lambda x: x.hill)
     #stalk.
     for t in nt.seen_tiles:
       logging.debug(f'can_stalk {can_stalk}.')
@@ -770,8 +777,9 @@ def ai_attack(nation, info=0):
       logging.debug(f'{len(nation.units_free)} unidades disponibles.')
       if len(units) == 0: break 
       units.sort(key=lambda x: x.ranking)
+      units.sort(key=lambda x: x.mp[1] > 2)
+      units.sort(key=lambda x: x.forest_survival or x.mountain_survival or x.swamp_survival or x.rng+x.rng_mod > 5,reverse=True)
       units.sort(key=lambda x: x.pos.get_distance(x.pos, t))
-      units.sort(key=lambda x: any(i for i in [x.can_burn, x.can_raid]),reverse=True)
       itm = units[0]
       if any(i for i in [itm.can_burn,itm.can_raid]):
         itm.create_group(itm.ranking)
@@ -792,9 +800,9 @@ def ai_attack(nation, info=0):
       if can_capture < 1: break
       units = nation.get_free_units()
       units = [i for i in units if i.pos.city 
-               and i.pos.get_distance(i.pos.city.pos, t) <= 4]
-      comms = [i for i in nation.units if i.comm and i.goto == [] 
-               and i.pos.get_distance(i.pos.city.pos, t) <= 3]
+               and i.pos.get_distance(i.pos.city.pos, t) <= 3
+               and i.pos.around_threat == 0]
+      comms = [i for i in units if i.comm] 
       logging.debug(f'unidades {len(nation.units_free)} comandantes {len(comms)}.')
       if len(units+comms) < 1: break 
       logging.debug(f'ranking de {t} {t.threat}')
@@ -802,7 +810,6 @@ def ai_attack(nation, info=0):
       if comms:
         shuffle(comms) 
         itm = comms[0]
-        units.sort(key=lambda x: x.pos.get_distance(x.pos, itm.pos))
       else:
         units.sort(key=lambda x: x.pos.get_distance(x.pos,t)) 
         itm = units[0]
@@ -1119,10 +1126,10 @@ def ai_free_units(nation, scenary, info=0):
       skip = 1
       logging.debug(f'own city.')
     elif uni.pos.nation == uni.nation and uni.pos.buildings:
-      skip = 5
+      skip = 6
       logging.debug(f'have buildings.')
     elif uni.pos.nation == nation and uni.pos.bu == 0:
-      skip = 1
+      skip = 2
       logging.debug(f'not buildings.')
       if ((uni.forest_survival or uni.rng >= 10) 
           and uni.pos.surf.name == forest_t):
@@ -1314,55 +1321,62 @@ def ai_hero_move(nation):
 
 
 def ai_move_group(itm):
-  logging.info(f'move group.')
-  logging.debug(f'{itm} {itm.id} en {itm.pos} {itm.pos.cords}..')
-  logging.debug(f'misión {itm.goal[0]} a {itm.goal[1]}.')
-  logging.debug(f'lidera {len(itm.group)} unidades.')
+  logging.info(f'move group turn {world.turn}.')
+  logging.debug(f'{itm} {itm.id} at {itm.pos} {itm.pos.cords}..')
+  logging.debug(f'goal {itm.goal[0]} to {itm.goal[1]}.')
+  logging.debug(f'leads {len(itm.group)} units.')
+  group = [str(i) for i in itm.group]
+  if itm.group: logging.debug(f'{group}.')
   goto = itm.goto[0][1]
   goto.update(itm.nation)
+
+  itm.pos.update(nation)
+  ranking = sum([i.ranking for i in [itm]+itm.group])
+  threat = goto.threat
+  if goto.hill and mountain_survival_t not in itm.traits: threat *= 1.10
+  if goto.surf.name == forest_t and forest_survival_t not in itm.traits: threat *= 1.10
+  if goto.surf.name == swamp_t and swamp_survival_t not in itm.traits: threat *= 1.10
+  logging.debug(f'ranking {round(ranking)} vs {round(threat)}.')
 
   alt = goto.get_near_tiles(scenary, 1)
   alt = [i for i in alt
         if i.get_distance(i,itm.pos) == 1]
+  [s.update(itm.nation) for s in alt]
   alt.sort(key=lambda x: x.income,reverse=True)
   alt.sort(key=lambda x: x.bu,reverse=True)
   alt.sort(key=lambda x: x.threat)
   defense_roll = 5
   if itm.comm: defense_roll -= 2
-  if roll_dice(1) >= defense_roll and itm.pos.defense_terrain: 
-    alt.sort(key=lambda x: x.defense_terrain and x.defense_terrain <= itm.pos.defense_terrain,reverse=True)
-  
-  itm.pos.update(nation)
-  ranking = sum([i.ranking for i in [itm]+itm.group])
-  threat = goto.threat
-  if goto.defense_terrain == 6: threat = threat*1.10
-  if goto.defense_terrain == 5: threat= threat*1.2
-  if goto.defense_terrain == 4: threat= threat*1.3
-  logging.debug(f'ranking {round(ranking)} vs {round(threat)}.')
+  if roll_dice(1) >= defense_roll: 
+    alt.sort(key=lambda x: x.hill and x.threat < ranking,reverse=True)
+
   if itm.goal[0] == base_t:
     itm.break_group()
     return
   if itm.goal[0] == capture_t:
     if goto.threat > ranking*uniform(0.8, 1.2):
       logging.debug(f'mayor.')
-      if roll_dice(1) >= 2:
-        logging.debug(f'espera.') 
+      if roll_dice(1) > 2:
+        logging.debug(f'wait next turn.') 
         return
       
-      roll = 3
-      if itm.pos.hill: roll += 1
-      if itm.pos.surf.name == forest_t: roll += 1
-      if roll_dice(1) > roll:
-        logging.debug(f'cambiará.')
+      else:
+        logging.debug(f'switch goto.')
         for s in alt:
-          if (s.threat < itm.group_ranking
-              and (s.defense_terrain and s.defense_terrain < itm.pos.defense_terrain)):
-            logging.debug(f'cambió a {s} {s.cords}.')
+          if s.threat < itm.group_ranking:
+            if (itm.day_night[0] 
+                and (s.nation != itm.nation and s.nation != None)
+                and roll_dice(1) >= 3):
+              logging.debug(f'will avoid hills by night.')
+              continue
+            logging.debug(f'changes to {s} {s.cords}.')
             move_set(itm, s)
             return
       
-      go_home(itm)
-      return
+      if roll_dice(1) > 4:
+        logging.debug(f'{itm} go home.')
+        go_home(itm)
+        return
     [move_set(i, itm.goal[1]) for i in itm.group]
     goto.update(goto.nation)
     itm.update()
@@ -1373,11 +1387,12 @@ def ai_move_group(itm):
         itm.break_group()
       return
   if itm.goal[0] == stalk_t:
-    if threat > ranking*1.5:
+    if itm.rng+itm.rng_mod > 5 and itm.pos.day_night[0]: ranking *= 0.2
+    if ranking*1.5 < threat:
       logging.debug(f'mayor.')
       if roll_dice(2) >= 10:
         logging.debug(f'ataca.')
-        if roll_dice(1) >= 3: itm.group.sort(key=lambda x: x.rng >= 6,reverse=True)
+        if roll_dice(1) >= 3: itm.group.sort(key=lambda x: x.rng+x.rng_mod > 5,reverse=True)
         for i in itm.group:
           if i.goto == []: move_set(i,goto)
         goto.update(itm.nation)
@@ -1395,15 +1410,22 @@ def ai_move_group(itm):
           itm.goal = None
           itm.goto = []
           return
-      roll = 3
+      roll = 2
       if itm.pos.hill: roll += 1
       if itm.pos.surf.name == forest_t: roll += 1
-      logging.debug(f'probabilidad de cambio {roll}.')
+      if itm.pos.surf.name == swamp_t: roll += 1
+      logging.debug(f'switch chanse {roll}.')
       if roll_dice(1) >= roll:
-        logging.debug(f'cambiará.')
+        logging.debug(f'will move.')
         for s in alt:
+          logging.debug(f'{s.threat =: }. {s} {s.cords}.')
           if s.threat < itm.group_ranking*0.7:
-            logging.debug(f'cambió a {s} {s.cords}.')
+            if (itm.day_night[0] 
+                and (s.nation != itm.nation and s.nation != None)
+                and roll_dice(1) >= 3):
+              logging.debug(f'will avoid hills by night.')
+              continue
+            logging.debug(f'moves to {s} {s.cords}.')
             move_set(itm, s)
             return
         logging.debug(f'espera.')
@@ -1413,12 +1435,14 @@ def ai_move_group(itm):
         return
       itm.break_group()
       return
-    for i in itm.group:
-      if i.goto == []: i.goto = [g for g in itm.goto]
-    for i in itm.group:
-      moving_unit(i)
-    goto.update(itm.nation)
-    if goto.threat < itm.ranking*1.25: moving_unit(itm)
+    else:
+      logging.debug(f'just moves.')
+      for i in itm.group:
+        if i.goto == []: i.goto = [g for g in itm.goto]
+      for i in itm.group:
+        moving_unit(i)
+      goto.update(itm.nation)
+      moving_unit(itm)
 
 
 def ai_play(nation):
@@ -3511,7 +3535,7 @@ def move_far(itm):
   #logging.debug(f'{len(sq)} terrenos finales.')
   set_favland(itm, sq)
   
-  if randint(1, 100) <= itm.fear:
+  if roll_dice(2) <= itm.fear:
     #logging.debug(f'ordena por fear.')
     sq.sort(key=lambda x: x.threat)
     sq.sort(key=lambda x: x.around_threat)
