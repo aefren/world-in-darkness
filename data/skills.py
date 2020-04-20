@@ -292,7 +292,7 @@ class ForestTerrain(Skill):
 
 class ForestWalker(Skill):
   effect = 'self'
-  desc = '+1 resolve, +1 off, += dfs if unit is into forest.'
+  desc = '+2 resolve, +1 off, += dfs if unit is into forest.'
   name = 'morador del bosque'
   type = 0
   def run(self, itm):
@@ -365,32 +365,39 @@ class HoldPositions(Skill):
 class ImpalingRoots(Skill):
   effect = 'self'
   desc = ''
-  name = 'ra�ces empaladoras'
+  name = 'raíces empaladoras'
   type = -1
   ranking = 10
   def run(self, itm):
-    if itm.target and itm.target.dist <= 10:
+    if (itm.target 
+        and itm.target.dist <= 10 and itm.target.dist > 1):
       target = itm.target
       logging.debug(f'{self.name}.')
+      logging.debug(f'{itm.dist=:}, {target.dist=:}.')
+      damage = 0
       for r in range(5):
-        off = itm.off+itm.off_mod
+        if damage > target.hp_total: break
+        off = 6
         off -= target.dfs+target.dfs_mod
         hit = get_hit_mod(off)
         logging.debug(f'hit {hit}.')
         if roll_dice(1) >= hit:
-          st = itm.str+itm.str_mod
+          st = 6
           st -= target.res+target.res_mod
           wound = get_wound_mod(st)
           logging.debug(f'wound {wound}.')          
           if roll_dice(1) >= wound:
-            damage = 1
+            damage += 2
             if roll_dice(1) == 6:
-              damage += 1
-            itm.damage_done[-1] += damage
-            target.hp_total -= damage
-            target.update()
-            target.deads[-1] += target.c_units-target.units
-            logging.debug(f'hiere on {damage}.')
+              damage += 2
+      #itm.damage_done[-1] += damage
+      if damage:
+        if damage > target.hp_total: damage = target.hp_total
+        target.hp_total -= damage
+        target.update()
+        target.deads[-1] += target.c_units-target.units
+        itm.battlelog += [f'{self.name} ({itm}) {kills_t} {target.deads[-1]}.']
+        logging.debug(f'hiere on {damage}.')
 
 
 class Inspiration(Skill):
@@ -547,7 +554,7 @@ class MountainSurvival(Skill):
 
 class Organization(Skill):
   effect = 'friend'
-  desc = '+1 off, +1 dfs'
+  desc = '+1 off, +1 dfs, +1 resolve'
   name = 'organización'
   type = 0
   def run(self, itm):
@@ -557,6 +564,7 @@ class Organization(Skill):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
+      itm.resolve_mod += 1
 
 
 class PikeSquare (Skill):
