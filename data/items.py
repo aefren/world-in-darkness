@@ -1325,10 +1325,16 @@ class Unit:
       self.pos.burned = 1
       msg = f'{self} {burn_t} {building}. {in_t} {self.pos.city} {self.pos.cords}'
       self.log[-1].append(msg)
+      self.nation.log[-1].append(msg)
       self.pos.nation.log[-1].append(msg)
       logging.debug(msg)
-      if self.pos.nation.show_info: 
-        sp.speak(msg)
+      if building.resource_cost[0] < 1:
+        msg = f'{building} {has_been_destroyed_t} {in_t} {self.pos.cords}.'
+        self.log[-1].append(msg)
+        self.nation.log[-1].append(msg)
+        self.pos.nation.log[-1].append(msg)
+        logging.debug(msg)
+      if any(i for i in [self.nation.show_info, self.pos.nation.show_info]): 
         sleep(loadsound('build_burn01', channel=ch3) * 0.5)
 
   def can_pass(self, pos):
@@ -1500,12 +1506,11 @@ class Unit:
       self.mp[0] -= cost
       self.update()
       self.pos.update()
-      if self.pos.raided <= self.pos.income:
+      if self.pos.raided < self.pos.income:
         logging.info(f'{self} saquea a {self.pos.city} {self.pos.nation} en {self.pos} {self.pos.cords}')
-        logging.debug(f'población {self.pos.pop}.')
-        raided = randint(self.hp, self.units)
-        raided *= self.att+self.att_mod
+        raided = self.hp_total
         if mounted_t in self.traits: raided *= 3
+        raided += (self.moves+self.moves_mod)*2
         if raided > self.pos.income: raided = self.pos.income
         self.pos.raided = raided
         self.pos.city.raid_outcome += raided
@@ -1513,33 +1518,40 @@ class Unit:
         msg = f'{self} {raid_t} {raided} {gold_t} {in_t} {self.pos} {self.pos.cords}, {self.pos.city}.'
         self.pos.nation.log[-1].append(msg)
         self.log[-1].append(msg)
-        if self.pos.nation.show_info: sleep(loadsound('set8', channel=ch3))
+        self.nation.log[-1].append(msg)
+        if any(i for i in [self.pos.nation.show_info, self.show_info]) and raided: 
+          sleep(loadsound('gold2', channel=ch3))
       if self.pos.pop:
-        #print(f'pop inicial {self.pos.pop}')
+        logging.debug(f'{self.pop=:}.')
         pop = self.pos.pop
         dead = self.damage * randint(1, self.units)
         logging.debug(f'initial dead {dead}.')
         dead = dead * randint(1, self.att + self.att_mod + 1)
         logging.debug(f'second dead {dead}.')
         defense = sum([i.units for i in self.pos.units if i.nation == self.pos.nation])
-        if defense: dead -= randint(1, defense * 2)
+        if defense: dead -= randint(int(defense*0.1), int(defense*0.3))
         logging.debug(f'end dead {dead}.')
         if dead < 0: dead = 0
         if dead > pop: dead = pop
         self.pos.pop -= dead
-        if self.pos.pop < 0: self.pos.pop = 0
         if self.pos.pop: self.pos.unrest += randint(dead, dead * 2)
-        if dead >= 50 * pop / 100 and dead >= 30:
+        if dead >= 50 * pop / 100:
           msg = f'masacre!.'
+          self.log[-1].append(msg)
+          self.nation.log[-1].append(msg)
           self.pos.nation.log[-1].append(msg)
           sq = self.pos.get_near_tiles(self.pos.scenary , 1)
           sq = [s for s in sq if s.nation == self.pos.nation]
           for s in sq: s.unrest += randint(15, 30)
-          if self.pos.nation.show_info: sp.speak(f'masacre in {self.pos} {self.pos.cords}. {self.pos.city}.')
-          if self.pos.nation.show_info: sleep(loadsound('spell33') / 2)
+          if any(i for i in [self.pos.nation.show_info, self.show_info]): 
+            sleep(loadsound('spell36', channel=ch3)*0.2)
         if dead:
           msg = f'{dead} población perdida.'
           self.pos.nation.log[-1].append(msg)
+          self.log[-1].append(msg)
+          self.nation.log[-1].append(msg)
+          if any(i for i in [self.show_info, self.pos.nation.show_info]): 
+            sleep(loadsound('notify23')*0.5)
       logging.info(f'raid_income {round(self.pos.nation.raid_income)}.')      
       self.pos.city.update()
 
@@ -1575,28 +1587,26 @@ class Unit:
     if self.pos:
       for nt in self.pos.world.random_nations: 
         if nt.name == self.align.name: self.nation = nt
-  def set_hidden(self, pos):
-    info = 0
-    if info: print(f'set hidden {self} a {pos} {pos.cords}.')
+  def set_hidden(self, pos, info=1):
+    if info: logging.info(f'set hidden {self} a {pos} {pos.cords}.')
     visible = self.units
-    if info: print(f'visible {visible}')
+    if info: logging.debug(f'visible {visible}')
     if self.nation != pos.nation: 
       visible += pos.pop
-      if info: print(f'visible {visible} pop')
+      if info: logging.debug(f'visible {visible} pop')
     visible += sum([it.units for it in pos.units if it.nation != self.nation])
-    if info: print(f'visible {visible} units')
+    if info: logging.debug(f'visible {visible} units')
     visible = round(visible / 20)
-    if info: print(f'visible {visible} rond 20')
+    if info: logging.debug(f'visible {visible} rond 20')
     stealth = self.stealth + self.stealth_mod
-    if info: print(f'stealth {stealth}')
-    if self.day_night[0]: stealth += 2
-    if info: print(f'stealth {stealth} day night.')
+    if info: logging.debug(f'stealth {stealth}')
     stealth -= visible
     roll = roll_dice(2)
-    if info: print(f'roll {roll}. stealth {stealth}.')
+    if info: logging.debug(f'roll {roll}. stealth {stealth}.')
     if roll >= stealth or roll == 12: 
       self.revealed = 1
-      if info: print(f'revelado.')
+      self.update()
+      if info: logging.debug(f'revelado.')
     self.revealed_val = stealth 
 
   def set_id(self):
@@ -1664,6 +1674,9 @@ class Unit:
       if unrest < 0: unrest = 0
       t.unrest += unrest
 
+  def start_turn(self):
+    self.burn()
+    self.raid()
   def update(self):
     self.day_night = self.ambient.day_night
     self.month = self.ambient.month[0]
@@ -3472,7 +3485,7 @@ class CursedHamlet(City):
   def set_capital_bonus(self):
     self.food += 100*self.food//100
     self.grouth += 300*self.grouth//100
-    self.income += 100*self.income//100
+    self.income += 300*self.income//100
     self.public_order += 100*self.public_order//100
     self.upkeep = 0
 
@@ -4149,8 +4162,8 @@ class Skeletons(Undead):
   traits = [death_t]
   traits = [death_t]
   gold = 50
-  upkeep = 1
-  resource_cost = 12
+  upkeep = 0
+  resource_cost = 10
   food = 0
   pop = 0
   terrain_skills = [Burn, Raid]
@@ -4194,9 +4207,9 @@ class Vampire(Undead):
   mp = [2, 2]
   moves = 8
   resolve = 10
-  global_skills = [DarkPresence, ElusiveShadow, Fly, NightFerocity, NightSurvival]
+  global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival]
 
-  dfs = 5
+  dfs = 6
   res = 5
   arm = 0
   armor = LightArmor()
@@ -4204,8 +4217,8 @@ class Vampire(Undead):
   att = 4
   damage = 3
   off = 5
-  str = 5
-  pn = 1
+  str = 6
+  pn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4233,16 +4246,16 @@ class VampireLord(Undead):
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, NightFerocity, NightSurvival]
 
-  dfs = 5
+  dfs = 7
   res = 5
   arm = 0
   armor = MediumArmor()
 
   att = 4
-  damage = 3
+  damage = 4
   off = 6
-  str = 5
-  pn = 1
+  str = 6
+  pn = 2
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = []
@@ -4269,15 +4282,15 @@ class Vargheist(Undead):
   resolve = 10
   global_skills = [ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival, TheBeast]
 
-  dfs = 4
+  dfs = 5
   res = 5
   arm = 0
 
   att = 6
   damage = 3
-  off = 5
-  str = 5
-  pn = 1
+  off = 6
+  str = 7
+  pn = 2
 
   fear = 6
   def __init__(self, nation):
@@ -4309,16 +4322,16 @@ class VladDracul(Undead):
   power_max = 60
   power_res = 4
 
-  dfs = 6
+  dfs = 8
   res = 5
   arm = 0
   armor = LightArmor()
 
   att = 6
-  damage = 3
-  off = 6
-  str = 5
-  pn = 2
+  damage = 5
+  off = 8
+  str = 8
+  pn = 3
 
   stealth = 8
 
@@ -4681,8 +4694,8 @@ class Walachia(Nation):
   traits = [death_t, malignant_t, vampire_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 520
-  food_limit_upgrades = 550
+  food_limit_builds = 620
+  food_limit_upgrades = 600
   grouth_rate = 110
   public_order = 0
   upkeep_base = 70
@@ -4697,7 +4710,7 @@ class Walachia(Nation):
 
   city_req_pop_base = 500
   commander_rate = 10
-  pop_limit = 40
+  pop_limit = 50
   units_animal_limit = 100
   units_fly_limit = 40
   units_human_limit = 20

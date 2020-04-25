@@ -15,7 +15,7 @@ from pygame.time import get_ticks as ticks
 from basics import roll_dice
 from distutils.log import debug
 from data.lang.es import mountain_survival_t, forest_survival_t,\
-  swamp_survival_t, swamp_t, forest_t, holy_empire_t
+  swamp_survival_t, swamp_t, forest_t, holy_empire_t, public_order_t
 
 exec('from basics import *')
 exec('from data.lang.es import *')
@@ -129,6 +129,7 @@ class Terrain:
     unit.update()
     unit.set_hidden(unit.pos)
     unit.revealed = revealed
+    return unit
   def get_distance(self, pos, trg):
     v = 1
     while True:
@@ -228,6 +229,7 @@ class Terrain:
     self.around_grassland = 0
     self.around_hill = 0
     self.around_mountain = 0
+    self.around_nations = []
     self.around_plains = 0
     self.around_swamp = 0
     self.around_threat = 0
@@ -254,6 +256,7 @@ class Terrain:
       if s.sight and s != self:
         self.around_corpses += len(s.corpses)
         if nation:
+          if s.nation and s.nation != nation: self.around_nations += [s.nation]
           for uni in s.units:
             uni.update()
             if uni.nation != nation and uni.hidden == 0:
@@ -805,6 +808,7 @@ def ai_attack(nation, info=0):
              if i.sight and (i.bu or i.is_city)]
     tiles.sort(key=lambda x: len(x.buildings),reverse=True) 
     tiles.sort(key=lambda x: mean([x.threat,x.around_threat]))
+    tiles.sort(key=lambda x: mean([x.threat,x.around_threat]))
     for t in tiles:
       logging.debug(f'can_capture {can_capture}.')
       if can_capture < 1: break
@@ -837,7 +841,6 @@ def ai_attack(nation, info=0):
 def ai_building_upgrade(nation):
   logging.debug(f'ai_building_upgrade. gold {nation.gold}')
   init = time()
-  food_limit_upgrades = nation.food_limit_upgrades
   upgradable = [bu for bu in nation.buildings if bu.is_complete and bu.upgrade]
   logging.debug(f'upgradable {len(upgradable)}.')
   upgrades = []
@@ -846,13 +849,14 @@ def ai_building_upgrade(nation):
     shuffle(ct.buildings)
     ct.status()
     flup = nation.food_limit_upgrades-ceil(10*ct.pop/100)
+    logging.debug(f'{flup=:} {ct.food_probable=:}.')
     ct.buildings.sort(key=lambda x: military_t in x.tags, reverse=True)
     if ct.food_probable < flup:
       ct.buildings.sort(key=lambda x: x.food, reverse=True)
       logging.debug(f'sort by food.')
     [bu.update() for bu in ct.buildings]
     for bu in ct.buildings:
-      gold_limit = ct.nation.upkeep*2
+      gold_limit = ct.nation.upkeep
       if ct.food_probable < flup:
         gold_limit //= 2
         logging.debug(f'gold limit reduced to {gold_limit} by food needs.')
@@ -864,6 +868,9 @@ def ai_building_upgrade(nation):
           continue
         if ct.nation.gold-upgrade.gold < gold_limit:
           logging.debug(f'limite de gasto. {gold_limit}.')
+          continue
+        if public_order_t in bu.tags and bu.pos.public_order > 50:
+          logging.debug(f'unrest not need.')
           continue
         if bu.check_tile_req(bu.pos):
           set_upgrade(bu, upgrade)
@@ -935,7 +942,7 @@ def ai_construct(nation):
           resource = 0
       
       #edificios de órden.
-      if unrest_t in bu.tags and  any(i < 0 for i in [ct.public_order_total]): gold_limit = nation.upkeep*2 
+      if public_order_t in bu.tags and  any(i < 0 for i in [ct.public_order_total]): gold_limit = nation.upkeep*2 
       if nation.gold - bu.gold <= gold_limit:
         logging.debug(f'limite de gold {gold_limit}.')
         continue
@@ -950,7 +957,7 @@ def ai_construct(nation):
         if any(i > 0 for i in [t.threat, t.around_threat]): continue
         t.update(nation)
         ct.update()
-        if unrest_t in bu.tags and (t.public_order > 50 or t.pop == 0):
+        if public_order_t in bu.tags and (t.public_order > 50 or t.pop == 0):
           logging.debug(f'no necesita orden.')
           continue
 
@@ -1616,11 +1623,13 @@ def ai_protect_tiles(nation):
   init = time()
   shuffle(nation.tiles)
   [i.set_around(nation, nation.map) for i in nation.tiles]
-  nation.tiles.sort(key=lambda x: x.income, reverse=True)
   nation.tiles.sort(key=lambda x: x.defense_terrain, reverse=True)
   nation.tiles.sort(key=lambda x: x.hill, reverse=True)
   nation.tiles.sort(key=lambda x: len(x.buildings), reverse=True)
+  nation.tiles.sort(key=lambda x: x.income, reverse=True)
   nation.tiles.sort(key=lambda x: x.is_city,reverse=True)
+  nation.tiles.sort(key=lambda x: len(x.around_nations) > 0, reverse=True)
+  nation.tiles.sort(key=lambda x: x.city.capital,reverse=True)
   for t in nation.tiles:
     defense = sum(u.ranking for u in t.units
                     if u.garrison == 1 and u.nation == nation)
@@ -1860,13 +1869,13 @@ def basic_info(itm):
       
 
 
-def check_enemy(itm, pos, is_city=0):
-  logging.debug(f'check enemy.' )
+def check_enemy(itm, pos, is_city=0, info=0):
+  if info: logging.debug(f'check enemy, {is_city=:}.')
   pos.update(itm.nation)
   if is_city and itm.nation != pos.nation:
+    itm.revealed = 1
     for i in pos.units:
       i.revealed = 1
-      itm.revealed = 0
       i.update()
   itm.update()
   for uni in pos.units:
@@ -1912,10 +1921,10 @@ def combat_menu(itm, pos, target=None, dist=0):
   if itm not in  itm.pos.units:
     logging.debug(f'itm not in itm.pos')
   _units = [it for it in pos.units if it.nation != itm.nation]
-  _units.sort(key=lambda x: x.off+x.off_mod+x.str+x.str_mod,reverse=True)
+  _units.sort(key=lambda x: sum([x.off, x.off_mod, x.str,x.str_mod]),reverse=True)
   _units.sort(key=lambda x: x.rng >= 6,reverse=True)
   _units.sort(key=lambda x: x.comm)
-  _units.sort(key=lambda x: x.mp[0] >= 2,reverse=True)
+  _units.sort(key=lambda x: x.mp[0] >= 0,reverse=True)
   dist += 30
   itm.dist = dist
   logging.debug(f'distancia inicial {dist}.')
@@ -3568,6 +3577,7 @@ def move_far(itm):
   sq = [ti for ti in sq if ti.soil.name in itm.soil and ti.surf.name in itm.surf
         and ti != itm.pos]
   shuffle(sq)
+  sq.sort(key=lambda x: x.cost <= itm.mp[1],reverse=True)
   sq.sort(key=lambda x: x.nation == itm.nation,reverse=True)
   #logging.debug(f'{len(sq)} terrenos finales.')
   set_favland(itm, sq)
@@ -4422,6 +4432,7 @@ def start_turn(nation):
   for uni in nation.units: uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'unidades.')
   for uni in nation.units:
+    uni.start_turn()
     unit_restoring(uni)
     uni.set_hidden(uni.pos)
     if uni.goto: move_unit(uni)
@@ -4593,7 +4604,7 @@ def unit_arrival(goto, itm):
   msg = f'{itm} llega a ({goto}, {goto.cords}.'
   logging.debug(msg)
   itm.log[-1].append(msg)
-  if itm.ai == 0 and itm.goto == []: sleep(loadsound('walk_ft1') / 4)
+  if itm.show_info and itm.goto == []: sleep(loadsound('walk_ft1')/4)
   goto.pos_sight(itm.nation, itm.nation.map)
   pos.update(itm.nation)
   check_position(itm)
@@ -4602,7 +4613,6 @@ def unit_arrival(goto, itm):
   itm.raid()
   [i.set_hidden(itm.pos) for i in itm.pos.units
    if i.nation != itm.nation and i.hidden] 
-  
 
 
 def unit_attrition(itm):
@@ -4664,8 +4674,7 @@ def unit_new_turn(itm):
       and itm.ai == 1):
     oportunist_attack(itm, scenary)
   unit_join_group(itm)
-  itm.raid()
-  itm.burn()
+  itm.start_turn()
   if itm.goto: 
     move_unit(itm)
   unit_attrition(itm)

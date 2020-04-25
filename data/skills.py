@@ -146,11 +146,11 @@ class Carrion(Skill):
 
 class Charge(Skill):
   effect = 'self'
-  desc = 'charge damage = 2'
+  desc = 'charge damage = 1'
   name = 'carga'
   type = 0
   def run(self, itm):
-    itm.damage_charge += 2
+    itm.damage_charge += 1
 
 
 class DesertSurvival(Skill):
@@ -214,8 +214,9 @@ class FearAura(Skill):
       itm.effects.append(fear_t)
       itm.resolve_mod -= 2
       itm.moves_mod -= 2
-      itm.off_mod -= 1
-      itm.dfs_mod -= 1
+      itm.off_mod -= 2
+      itm.dfs_mod -= 2
+      itm.str_mod -= 1
 
 
 class Fly(Skill):

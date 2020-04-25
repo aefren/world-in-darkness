@@ -31,7 +31,7 @@ class Unrest(Event):
         #t.effects.append(self.name)
         rebels = []
         rebelions = 1
-        units = [i(self.itm.nation) for i in self.itm.nation.units_rebels]
+        units = [i for i in self.itm.nation.units_rebels]
         if order >= 4: 
           units = [i for i in units if i.resolve <= 7]
           rebelions += 1
@@ -43,7 +43,9 @@ class Unrest(Event):
         for r in range(rebelions):
           unit = choice(units)
           if t.pop >= unit.pop:
-            t.add_unit(unit)
+            unit = t.add_unit(unit, self.itm.nation.name)
+            for nt in t.world.random_nations:
+              if nt.name == unit.align.name: unit.nation = nt
             t.world.units += [unit]
             rebels += [unit]
             extra = randint(1, rebelions)
