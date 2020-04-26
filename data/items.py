@@ -741,9 +741,9 @@ class City:
     self.set_upgrade()
     # datos de edificios.
     self.grouth_total = round(self.food_total * 100 / self.pop - 100)
-    #print(f'{self.grouth_total = }')
+    print(f'{self.grouth_total = }')
     self.grouth_total += round(self.grouth * self.grouth_total / 100)
-    #print(f'{self.grouth_total = }')
+    print(f'{self.grouth_total = }')
     self.buildings = [b for b in self.buildings if b.type == building_t]
     for b in self.buildings:
       b.update()
@@ -753,9 +753,9 @@ class City:
       if (b.is_complete and b.pos.blocked == 0): 
         self.corruption += b.corruption * self.corruption / 100
         self.grouth_total += b.grouth * self.grouth_total / 100
-    #print(f'{self.grouth_total = }')
+    print(f'{self.grouth_total = }')
     self.grouth_total = round(self.grouth_total / self.nation.grouth_rate,2)
-    #print(f'{self.grouth_total = }')
+    print(f'{self.grouth_total = }')
     
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
@@ -4566,21 +4566,21 @@ class HolyEmpire(Nation):
   traits = [human_t, order_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 1400
-  food_limit_upgrades = 1100
-  grouth_rate = 25
+  food_limit_builds = 7
+  food_limit_upgrades = 5
+  grouth_rate = 20
   public_order = 0
   upkeep_base = 60
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 250
-  capture_rate = 200
+  attack_factor = 500
+  capture_rate = 400
   commander_rate = 7
   explore_range = 3
   scout_factor = 8
-  stalk_rate = 100
+  stalk_rate = 200
 
-  city_req_pop_base = 1200
+  city_req_pop_base = 2000
   commander_rate = 10
   pop_limit = 60
   units_animal_limit = 20
@@ -4638,21 +4638,21 @@ class WoodElves(Nation):
   traits = [elf_t, animal_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 800
-  food_limit_upgrades = 1000
+  food_limit_builds = 6
+  food_limit_upgrades = 6
   grouth_rate = 40
   public_order = 0
   upkeep_base = 70
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 300
-  capture_rate = 300
+  attack_factor = 600
+  capture_rate = 600
   commander_rate = 8
   explore_range = 3
   scout_factor = 5
-  stalk_rate = 200
+  stalk_rate = 400
 
-  city_req_pop_base = 1000
+  city_req_pop_base = 2000
   commander_rate = 7
   pop_limit = 30
   units_animal_limit = 100
@@ -4707,21 +4707,21 @@ class Walachia(Nation):
   traits = [death_t, malignant_t, vampire_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 620
-  food_limit_upgrades = 600
+  food_limit_builds = 6
+  food_limit_upgrades = 5
   grouth_rate = 40
   public_order = 0
   upkeep_base = 70
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 180
-  capture_rate = 150
+  attack_factor = 360
+  capture_rate = 300
   commander_rate = 6
   explore_range = 5
   scout_factor = 15
-  stalk_rate = 80
+  stalk_rate = 160
 
-  city_req_pop_base = 500
+  city_req_pop_base = 1000
   commander_rate = 10
   pop_limit = 50
   units_animal_limit = 100
