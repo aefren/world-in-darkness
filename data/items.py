@@ -1511,8 +1511,8 @@ class Unit:
       self.pos.update()
       if self.pos.raided < self.pos.income:
         logging.info(f'{self} saquea a {self.pos.city} {self.pos.nation} en {self.pos} {self.pos.cords}')
-        raided = self.hp_total
-        if mounted_t in self.traits: raided *= 5
+        raided = self.hp_total*2
+        if mounted_t in self.traits: raided *= 2
         raided *= (self.moves+self.moves_mod)/2
         if raided > self.pos.income: raided = self.pos.income
         self.pos.raided = raided
@@ -1527,9 +1527,10 @@ class Unit:
       if self.pos.pop:
         logging.debug(f'{self.pop=:}.')
         pop = self.pos.pop
-        dead = self.damage * randint(1, self.units)
+        dead = (self.damage +self.damage_mod)* randint(1, self.units)
         logging.debug(f'initial dead {dead}.')
-        dead = dead * randint(1, self.att + self.att_mod + 1)
+        dead *=  randint(1, self.att + self.att_mod + 1)
+        if mounted_t in self.traits: dead *= 2 
         logging.debug(f'second dead {dead}.')
         defense = sum([i.units for i in self.pos.units if i.nation == self.pos.nation])
         if defense: dead -= randint(int(defense*0.1), int(defense*0.3))
@@ -3387,7 +3388,7 @@ class Equites(Human):
 
   hp = 3
   mp = [4, 4]
-  moves = 9
+  moves = 8
   resolve = 6
   global_skills = [BattleBrothers]
 
