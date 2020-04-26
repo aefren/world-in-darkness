@@ -410,16 +410,16 @@ class City:
       self.pop_back -= pop_back
       logging.debug(f'regresan {pop_back} civiles.')
 
-  def reduce_pop(self, number):
+  def reduce_pop(self, number, info=0):
     logging.debug(f'reduce {number} de {self} ({self.pop} pop).')
     tiles = [i for i in self.tiles if i.blocked == 0]
     reduce = number / 20
     shuffle(tiles)
-    logging.warning(f'reducirá {number}.')
+    if info: logging.debug(f'reducirá {number}.')
     while number > 0:
       for t in tiles:
         if t.pop >= reduce and number > 0:
-          logging.debug(f'{t.pop} en {t} {t.cords}.')
+          if info: logging.debug(f'{t.pop} en {t} {t.cords}.')
           t.pop -= reduce
           number -= reduce
 
@@ -554,6 +554,9 @@ class City:
     self.set_seen_units(0, info=1)
     self.set_units_types()
     shuffle(units)
+    if roll_dice(1) >= 3:
+      logging.debug(f'sort by nation traits.')
+      units.sort(key=lambda x: any(i in x.traits for i in self.nation.traits),reverse=True)
     [i.update() for i in units]
     logging.debug(f'recividos {len(units)}.')
     _animal = [i for i in units if animal_t in i.traits]
@@ -565,7 +568,7 @@ class City:
     _undead = [i for i in units if undead_t in i.traits]
     if self.defense_total_percent < 200 and self.nation.score < self.nation.attack_factor * 3:
       logging.debug(f'defensivo.')
-      if roll_dice(1) >= 4: units.sort(key=lambda x: x.rng, reverse=True)
+      if roll_dice(1) >= 5: units.sort(key=lambda x: x.rng, reverse=True)
       units.sort(key=lambda x: x.resource_cost <= self.resource_total, reverse=True)
       return units
     
@@ -623,7 +626,7 @@ class City:
       _units = [i for i in units if mounted_t in i.traits]
       if _units: return _units
     
-    if self.defense_total_percent > 300:
+    if self.defense_total_percent > 200:
       logging.debug(f'expensive.')
       units.sort(key=lambda x: x.ranking, reverse=True)
       units = [i for i in units[:3]]
@@ -796,7 +799,7 @@ class Nation:
   city_req_pop_base = 1000
   pop_limit = 50
 
-  gold_rate = 1
+  gold_rate = 0.1
   income = 0
   military_percent = 0
   military_pop = 0
@@ -883,13 +886,14 @@ class Nation:
   def __str__(self):
     return self.name
 
-  def add_city(self, itm, pos, scenary, unit):
-    itm.nation = self
+  def add_city(self, itm, unit):
+    itm = itm(unit.nation, unit.pos)
+    scenary = unit.pos.scenary
     pop = unit.units*10
+    pos = unit.pos
     itm.pop = pop
-    itm.pos = pos
     pos.buildings.append(itm)
-    unit.pos.units.remove(unit)
+    if unit in unit.pos.units: unit.pos.units.remove(unit)
     itm.set_name()
     if len(self.cities) == 0: itm.capital = 1
     if itm.capital: itm.set_capital_bonus()
@@ -908,7 +912,6 @@ class Nation:
     itm.status()
     self.update(scenary)
     logging.debug(f'{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.')
-
   
   def check_events(self):
     pass
@@ -3478,14 +3481,14 @@ class CursedHamlet(City):
     self.pos = pos
     self.resource_cost = [100, 100]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [none_t]
+    self.surf = [forest_t, none_t]
     self.hill = [0]
     self.av_units = [Levy, Settler2]
 
   def set_capital_bonus(self):
     self.food += 100*self.food//100
     self.grouth += 300*self.grouth//100
-    self.income += 300*self.income//100
+    self.income += 200*self.income//100
     self.public_order += 100*self.public_order//100
     self.upkeep = 0
 
@@ -3691,7 +3694,6 @@ class FuneraryDungeon(Pit, Building):
   gold = 1800
   food = 250
   grouth = 40
-  income = 30
   resource = 1
   tags = [food_t, resource_t]
 
@@ -3787,11 +3789,11 @@ class Bats(Unit):
   units = 10
   type = 'beast'
   traits = [animal_t]
-  gold = 55
-  upkeep = 3
-  resource_cost = 11
-  food = 3
-  pop = 8
+  gold = 85
+  upkeep = 5
+  resource_cost = 12
+  food = 2
+  pop = 15
   terrain_skills = [ForestSurvival]
 
   hp = 1
@@ -3901,7 +3903,7 @@ class CryptHorrors (Undead):
   units = 5
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 120
+  gold = 160
   upkeep = 28
   resource_cost = 16
   food = 0
@@ -4007,7 +4009,7 @@ class Ghouls(Human):
   type = 'infantry'
   traits = [human_t, malignant_t]
   traits = [human_t, malignant_t]
-  gold = 80
+  gold = 90
   upkeep = 5
   resource_cost = 13
   food = 2
@@ -4027,7 +4029,7 @@ class Ghouls(Human):
 
   att = 1
   damage = 2
-  off = 3
+  off = 4
   str = 3
   pn = 0
   offensive_skills = [ToxicClaws]
@@ -4046,7 +4048,7 @@ class Necromancer(Human):
   type = 'infantry'
   traits = [human_t, malignant_t, commander_t, wizard_t]
   gold = 400
-  upkeep = 60
+  upkeep = 200
   resource_cost = 25
   food = 4
   pop = 30
@@ -4161,7 +4163,7 @@ class Skeletons(Undead):
   type = 'infantry'
   traits = [death_t]
   traits = [death_t]
-  gold = 50
+  gold = 90
   upkeep = 0
   resource_cost = 10
   food = 0
@@ -4197,7 +4199,7 @@ class Vampire(Undead):
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
   gold = 400
-  upkeep = 70
+  upkeep = 100
   resource_cost = 25
   food = 0
   pop = 15
@@ -4270,7 +4272,7 @@ class Vargheist(Undead):
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
   gold = 220
-  upkeep = 50
+  upkeep = 80
   resource_cost = 30
   food = 0
   pop = 30
@@ -4348,7 +4350,7 @@ class VarGhul(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, commander_t, vampire_t]
-  gold = 170
+  gold = 370
   upkeep = 50
   resource_cost = 20
   food = 5
@@ -4358,7 +4360,7 @@ class VarGhul(Undead):
   mp = [2, 2]
   moves = 6
   resolve = 5
-  global_skills = [LordOfBlodd, NightFerocity, NightSurvival]
+  global_skills = [Carrion, LordOfBlodd, NightFerocity, NightSurvival]
 
   dfs = 4
   res = 5
@@ -4368,11 +4370,13 @@ class VarGhul(Undead):
   damage = 2
   off = 4
   str = 5
+  offensive_skills = [ToxicClaws]
 
   fear = 2
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
+    self.corpses = [CryptHorrors]
     self.favhill = [0, 1]
     self.favsoil = [waste_t]
     self.favsurf = [forest_t, none_t, swamp_t]
@@ -4383,20 +4387,20 @@ class Zombies(Undead, Ground):
   units = 10
   type = 'infantry'
   traits = [death_t]
-  gold = 100
-  upkeep = 1
+  gold = 120
+  upkeep = 0
   resource_cost = 10
   food = 0
-  pop = 15
+  pop = 0
 
   hp = 2
   mp = [2, 2]
-  moves = 4
+  moves = 3
   resolve = 10
   global_skills = [Spread]
 
   dfs = 2
-  res = 3
+  res = 4
   arm = 0
 
   att = 1
@@ -4561,7 +4565,7 @@ class HolyEmpire(Nation):
   traits = [human_t, order_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 1000
+  food_limit_builds = 1400
   food_limit_upgrades = 1100
   grouth_rate = 100
   public_order = 0
@@ -4619,8 +4623,12 @@ class HolyEmpire(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
+    #initial placement.
+    self.initial_placement = Hamlet
+    #initial settler.
+    self.initial_settler = Settler 
     # Unidades iniciales.
-    self.start_units = [PeasantLevies, PeasantLevies, Settler]
+    self.start_units = [PeasantLevies, PeasantLevies]
 
 
 class WoodElves(Nation):
@@ -4629,7 +4637,7 @@ class WoodElves(Nation):
   traits = [elf_t, animal_t]
   gold = 10000
   corruption = 0
-  food_limit_builds = 900
+  food_limit_builds = 800
   food_limit_upgrades = 1000
   grouth_rate = 130
   public_order = 0
@@ -4684,8 +4692,12 @@ class WoodElves(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
-    # Unidades iniciales.
-    self.start_units = [ForestGuard, ForestGuard, ElvesSettler]
+    #initial placement.
+    self.initial_placement = Hall
+    #initial settler.
+    self.initial_settler = ElvesSettler
+    # initial units.
+    self.start_units = [ForestGuard, ForestGuard]
 
 
 class Walachia(Nation):
@@ -4726,7 +4738,7 @@ class Walachia(Nation):
     # Casilla inicial permitida.
     self.hill = [0]
     self.soil = [plains_t, waste_t]
-    self.surf = [none_t]
+    self.surf = [forest_t, none_t]
     # Terrenos adyacentes permitidos
     self.allow_around_desert = 6
     self.allow_around_hill = 3
@@ -4748,8 +4760,12 @@ class Walachia(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Raiders, Riders, Ghouls, VarGhul]
+    #initial placement.
+    self.initial_placement = CursedHamlet
+    #initial settler.
+    self.initial_settler = Settler2
     # Unidades iniciales.
-    self.start_units = [Settler2, Zombies, Zombies, VampireLord]
+    self.start_units = [Zombies, Zombies, Zombies, VampireLord]
 
 
 # unidades random.

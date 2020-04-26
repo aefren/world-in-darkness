@@ -59,7 +59,7 @@ class BattleBrothers(Skill):
 
 
 class CastBloodRain(Skill):
-  cost = 20
+  cost = 40
   cast = 8
   name = 'blood rain'
   ranking = 10

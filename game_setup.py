@@ -8,9 +8,9 @@ DIFFICULTY_TYPE = 'dynamic'
 
 #factions.
 HOLY = HolyEmpire()
-HOLY.ai = 0
+HOLY.ai = 1
 TRANS = Walachia()
-TRANS.ai = 1
+TRANS.ai = 0
 ELF = WoodElves()
 ELF.ai = 1
 NATIONS = [HOLY, ELF, TRANS]

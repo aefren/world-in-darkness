@@ -367,7 +367,7 @@ class Terrain:
       logging.debug(f'casilla reduce cadaver de {i}.')
   
   def update(self, nation=None):
-    self.ambient = world.ambient
+    if mapeditor == 0: self.ambient = world.ambient
     self.has_city = 1 if self.city else 0
     self.is_city = 1 if [i for i in self.buildings if i.type == city_t] else 0
     if mapeditor == 0: self.set_skills()
@@ -1468,7 +1468,7 @@ def ai_move_group(itm):
 
 def ai_play(nation):
   logging.info(f'{turn_t} {of_t} {nation}. ai = {nation.ai}, info = {nation.show_info}.')
-  sp.speak(f'{nation}.')
+  sp.speak(f'{nation}.',1)
   # ingresos.
   nation.set_income()
   
@@ -1483,7 +1483,7 @@ def ai_play(nation):
     ct.status()
     ct.set_seen_units(new=1)
     
-    # unidades.
+  # unidades.
   for uni in nation.units:
     uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'movimiento de unidades.')
@@ -1502,6 +1502,8 @@ def ai_play(nation):
   nation.set_seen_nations()
   # parametros de casillas cercanas.
   set_near_tiles(nation, scenary)
+  #initial placement.
+  if nation.cities == []: nation_start_placement(nation)
   # colonos.
   logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.')
   [set_settler(it, scenary) for it in nation.units if it.settler and it.goto == []]
@@ -1750,28 +1752,13 @@ def ai_train(nation):
     if ct.defense_percent >= 100 and ct.military_percent > ct.military_limit:
       logging.debug(f'military limit.')
       units = [i for i in units if i.pop == 0]
-    elif ct.defense_total_percent >= 300:
-      upkeep_limit *= 1.2
-      if upkeep_limit > nation.income: upkeep_limit = nation.income*0.8
-      logging.debug(f'upkeep increased to {upkeep_limit}.')
     logging.debug(f'entrenables {[i.name for i in units]}.')
-    if roll_dice(1) >= 4:
-      logging.debug(f'sort by nation traits.')
-      units.sort(key=lambda x: any(i in x.traits for i in nation.traits),reverse=True)
     for uni in units:
       if req_unit(uni, nation, ct):
         logging.debug(f'suma upkeep {nation.upkeep+uni.upkeep }.')
-        to_avoid = uni.to_avoid
-        if to_avoid: logging.debug(f'to avoid {to_avoid}.')
-        if ct.defense_percent < 100:
-          to_avoid //= 2
-          logging.debug(f'reducido a {to_avoid}.')
-        if uni.upkeep > 0 and nation.upkeep + uni.upkeep > upkeep_limit:
+        if uni.upkeep and nation.upkeep + uni.upkeep > upkeep_limit:
             logging.debug(f'toca el mantenimiento.')
             continue
-        if roll_dice(2) < to_avoid:
-          logging.debug(f'unidad evitada.')
-          continue
         ct.train(uni)
         break
   
@@ -1922,6 +1909,7 @@ def combat_menu(itm, pos, target=None, dist=0):
     logging.debug(f'itm not in itm.pos')
   _units = [it for it in pos.units if it.nation != itm.nation]
   _units.sort(key=lambda x: sum([x.off, x.off_mod, x.str,x.str_mod]),reverse=True)
+  _units.sort(key=lambda x: x.units,reverse=True)
   _units.sort(key=lambda x: x.rng >= 6,reverse=True)
   _units.sort(key=lambda x: x.comm)
   _units.sort(key=lambda x: x.mp[0] >= 0,reverse=True)
@@ -2789,7 +2777,7 @@ def get_cast(itm):
   while True:
     sleep(0.05)
     if say and itm.spells:
-      sp.speak(f'{itm.spells[x].name}')
+      sp.speak(f'{itm.spells[x].name}. {cost_t} {itm.spells[x].cost}.',1)
       say = 0
 
     for event in pygame.event.get():
@@ -2797,13 +2785,17 @@ def get_cast(itm):
         if event.key == pygame.K_HOME:
           x = 0
           loadsound('s2')
+          say = 1
         if event.key == pygame.K_END:
           x = len(itm.spells) - 1
           loadsound('s2')
+          say = 1
         if event.key == pygame.K_UP:
           x = selector(itm.spells, x, go="up")
+          say = 1
         if event.key == pygame.K_DOWN:
           x = selector(itm.spells, x, go="down")
+          say = 1
         if event.key == pygame.K_i:
           pass
         if event.key == pygame.K_RETURN:
@@ -3803,6 +3795,15 @@ def nation_start_position(itm, tiles):
     if done == 1: break
 
 
+
+def nation_start_placement(nation):
+  logging.debug(f'{nation} start placement in {nation.pos}.')
+  pos = nation.units[0].pos
+  settler = nation.initial_settler(nation)
+  settler.pos = pos
+  nation.add_city(nation.initial_placement, settler)
+
+
 def nation_set_start_position(nation):
   logging.debug(f'{nation} set start position in {nation.pos}.')
   pos = nation.pos
@@ -4236,7 +4237,7 @@ def set_settler(itm, scenary):
         item = choice(itm.buildings)
         item = item(itm.nation, itm.pos)
         if item.can_build():
-          itm.nation.add_city(item, itm.pos, scenary, itm)
+          itm.nation.add_city(item, itm)
           return 1
         else:
           random_move(itm, scenary, value=1)
@@ -4409,7 +4410,7 @@ def start():
 
 def start_turn(nation):
   global sayland
-  sp.speak(f'{nation}.',1 )
+  sp.speak(f'{nation}.',1)
   sp.speak(f'{ambient.day_night[1][ambient.day_night[0]]}.')
   sayland = 1
   if nation.map: nation.map[0].pos_sight(nation, nation.map)
@@ -4427,7 +4428,9 @@ def start_turn(nation):
     city.check_training()
     city.status()
     city.update()
-
+  
+  #initial placement.
+  if nation.cities == []: nation_start_placement(nation)
   # Unidades.
   for uni in nation.units: uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'unidades.')
