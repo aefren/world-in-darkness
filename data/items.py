@@ -1877,9 +1877,9 @@ class Hall(City):
 
 class GlisteningPastures(Building):
   name = 'Pasturas radiantes'
-  gold = 5000
+  gold = 7000
   food = 100
-  income = 10
+  income = 20
 
   own_terrain = 1
   size = 6
@@ -1899,7 +1899,7 @@ class GlisteningPastures(Building):
 class WindsStables(GlisteningPastures, Building):
   name = 'Establos del viento'
   base = GlisteningPastures
-  gold = 12000
+  gold = 15000
 
   own_terrain = 1
   tags = [military_t]
@@ -1915,7 +1915,7 @@ class WindsStables(GlisteningPastures, Building):
 class ForestLookout(Building):
   name = 'Observatorio forestal'
   unique = 1
-  gold = 2000
+  gold = 2500
 
   own_terrain = 1
   size = 4
@@ -1935,7 +1935,7 @@ class ForestLookout(Building):
 class EagleRefuge(ForestLookout, Building):
   name = 'refugio del alcón'
   base = ForestLookout
-  gold = 5000
+  gold = 9000
   own_terrain = 1
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -1951,7 +1951,7 @@ class EagleRefuge(ForestLookout, Building):
 
 class Santuary(Building):
   name = 'santuario'
-  gold = 3000
+  gold = 6000
   food = 100
   income = 100
   unique = 1
@@ -1972,7 +1972,7 @@ class Santuary(Building):
 class HauntedForest(Santuary, Building):
   name = 'Bosque embrujado'
   base = Santuary
-  gold = 7000
+  gold = 15000
   own_terrain = 1
   size = 5
   tags = [military_t]
@@ -1989,7 +1989,7 @@ class HauntedForest(Santuary, Building):
 class MoonsFountain(HauntedForest, Building):
   name = 'Fuente de la luna'
   base = Santuary
-  gold = 16000
+  gold = 30000
   tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -2001,10 +2001,10 @@ class MoonsFountain(HauntedForest, Building):
 
 class Grove(Building):
   name = 'Huerto'
-  gold = 1000
-  food = 70
-  grouth = 10
-  income = 50
+  gold = 1500
+  food = 50
+  #grouth = 10
+  #income = 50
 
   own_terrain = 1
   size = 6
@@ -2021,10 +2021,10 @@ class Grove(Building):
 class GrapeVines(Grove, Building):
   name = 'racimos de uva'
   base = Grove
-  gold = 2000
-  food = 140
-  grouth = 20
-  income = 100
+  gold = 3500
+  food = 120
+  #grouth = 20
+  income = 50
   own_terrain = 1
   tags = [food_t]
   def __init__(self, nation, pos):
@@ -2040,9 +2040,9 @@ class GrapeVines(Grove, Building):
 class Vineyard(GrapeVines, Building):
   name = 'Viñedo'
   base = GrapeVines
-  gold = 5000
-  food = 210
-  grouth = 40
+  gold = 10000
+  food = 180
+  #grouth = 40
   income = 200
   own_terrain = 1
   tags = [food_t]
@@ -2060,7 +2060,7 @@ class CraftmensTree(Building):
   name = 'Artesanos de los árboles'
   gold = 2000
   food = 50
-  income = 100
+  income = 50
   resource = 100
   own_terrain = 1
   size = 6
@@ -2600,8 +2600,8 @@ class Hamlet(City):
   name = hamlet_t
   events = [Unrest]
   food = 50
-  grouth = 10
-  income = 40
+  #grouth = 10
+  #income = 40
   public_order = 20
   resource = 0
   upkeep = 1000
@@ -2631,7 +2631,7 @@ class Hamlet(City):
   def set_capital_bonus(self):
     self.food += 50*self.food//100
     #self.grouth += 200*self.grouth//100
-    self.income += 100*self.income//100
+    #self.income += 100*self.income//100
     self.public_order += 100*self.public_order//100
     self.upkeep = 0
 
@@ -2641,22 +2641,22 @@ class Hamlet(City):
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 50
+      #self.income -= 10
       self.public_order -= 20
     if self.level == 2 and self.pop <= 1200:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 50
+      #self.income -= 10
       self.public_order -= 20
     if self.level == 3 and self.pop <= 50000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 50
+      #self.income -= 10
       self.public_order -= 20
     if msg:
       self.nation.log[-1].append(msg)
@@ -2671,22 +2671,22 @@ class Hamlet(City):
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food += 100
-      self.income += 10
+      self.food += 500
+      #self.income += 10
       self.public_order += 20
     if self.level == 1 and self.pop >= 20000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food += 100
-      self.income += 10
+      self.food += 50
+      #self.income += 10
       self.public_order += 20
     if self.level == 2 and self.pop >= 100000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
-      self.food += 100
-      self.income += 10
+      self.food += 500
+      #self.income += 10
       self.public_order += 20
     if msg:
       logging.debug(msg)
@@ -2859,7 +2859,7 @@ class Commander(Human):
   units = 10
   type = 'infantry'
   comm = 1
-  gold = 400
+  gold = 500
   upkeep = 30
   resource_cost = 25
   food = 5
@@ -2898,8 +2898,8 @@ class Aquilifer(Human):
   units = 30
   type = 'infantry'
   traits = [human_t, leader_t]
-  gold = 700
-  upkeep = 100
+  gold = 1000
+  upkeep = 50
   resource_cost = 30
   food = 5
   pop = 100
@@ -2934,7 +2934,7 @@ class Priest(Human):
   units = 10
   type = 'infantry'
   traits = [human_t, commander_t]
-  gold = 200
+  gold = 500
   upkeep = 40
   resource_cost = 30
   food = 3
@@ -2969,7 +2969,7 @@ class Settler(Human):
   units = 500
   type = 'civil'
   traits = [human_t, settler_t]
-  gold = 1000
+  gold = 2000
   upkeep = 1
   resource_cost = 50
   food = 2
@@ -3036,7 +3036,7 @@ class SwordsMen(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 120
+  gold = 250
   upkeep = 15
   resource_cost = 12
   food = 3
@@ -3071,7 +3071,7 @@ class GreatSwordsMen(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 380
+  gold = 320
   upkeep = 35
   resource_cost = 16
   food = 4
@@ -3105,7 +3105,7 @@ class SpearMen(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 250
+  gold = 350
   upkeep = 25
   resource_cost = 15
   food = 3
@@ -3173,7 +3173,7 @@ class Inquisitors(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 200
+  gold = 400
   upkeep = 30
   resource_cost = 25
   food = 4
@@ -3207,7 +3207,7 @@ class PriestWarriors(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 350
+  gold = 450
   upkeep = 40
   resource_cost = 25
   food = 4
@@ -3243,7 +3243,7 @@ class Sagittarii(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 180
+  gold = 240
   upkeep = 10
   resource_cost = 15
   food = 3
@@ -3277,7 +3277,7 @@ class CrossBowMen(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 120
+  gold = 220
   upkeep = 20
   resource_cost = 18
   food = 3
@@ -3312,7 +3312,7 @@ class Arquebusier(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 300
-  upkeep = 16
+  upkeep = 30
   resource_cost = 25
   food = 3
   pop = 30
@@ -3346,7 +3346,7 @@ class Musket(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 350
-  upkeep = 20
+  upkeep = 40
   resource_cost = 25
   food = 3
   pop = 30
@@ -3379,7 +3379,7 @@ class Equites(Human):
   units = 25
   type = 'cavalry'
   traits = [human_t]
-  gold = 380
+  gold = 880
   upkeep = 30
   resource_cost = 18
   food = 5
@@ -3419,7 +3419,7 @@ class Equites2(Human):
   units = 20
   type = 'cavalry'
   traits = [human_t]
-  gold = 505
+  gold = 1400
   upkeep = 50
   resource_cost = 30
   food = 8
@@ -3458,7 +3458,7 @@ class CursedHamlet(City):
   events = [Unrest]
   food = 150
   grouth = 10
-  income = 200
+  #income = 100
   public_order = 50
   resource = 0
   size = 6
@@ -3488,8 +3488,8 @@ class CursedHamlet(City):
 
   def set_capital_bonus(self):
     self.food += 100*self.food//100
-    self.grouth += 300*self.grouth//100
-    self.income += 200*self.income//100
+    #self.grouth += 300*self.grouth//100
+    #self.income += 200*self.income//100
     self.public_order += 100*self.public_order//100
     self.upkeep = 0
 
@@ -3513,7 +3513,7 @@ class CursedHamlet(City):
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = cursed_village_t
-      self.income += 50
+      #self.income += 50
       self.public_order += 100
     if msg:
       logging.debug(msg)
@@ -3672,9 +3672,9 @@ class ImpaledField(Gallows, Building):
 
 class Pit(Building):
   name = 'fosa'
-  gold = 600
+  gold = 800
   food = 100
-  grouth = 10
+  #grouth = 10
   own_terrain = 1
   resource = 0
   size = 6
@@ -3692,9 +3692,9 @@ class Pit(Building):
 class FuneraryDungeon(Pit, Building):
   name = 'mazmorra funeraria'
   base = Pit
-  gold = 1800
+  gold = 2400
   food = 250
-  grouth = 40
+  #grouth = 40
   resource = 1
   tags = [food_t, resource_t]
 
@@ -4442,10 +4442,10 @@ class Dock(Building):
 
 class Fields(Building):
   name = fields_t
-  gold = 800
+  gold = 1000
   food = 75
-  grouth = 10
-  income = 20
+  #grouth = 10
+  #income = 20
   own_terrain = 1
   size = 6
   tags = [food_t]
@@ -4462,10 +4462,10 @@ class Fields(Building):
 class SmallFarm(Fields, Building):
   name = small_farm_t
   base = Fields
-  gold = 2300
+  gold = 3000
   food = 150
-  grouth = 25
-  income = 50
+  #grouth = 25
+  #income = 50
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -4477,10 +4477,10 @@ class SmallFarm(Fields, Building):
 class Farm(SmallFarm, Building):
   name = farm_t
   base = SmallFarm
-  gold = 5000
+  gold = 6000
   food = 300
-  grouth = 50
-  income = 50
+  #grouth = 50
+  #income = 50
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -4775,7 +4775,7 @@ class Archers(Human):
   units = 15
   type = 'infantry'
   traits = [human_t]
-  gold = 90
+  gold = 120
   upkeep = 6
   resource_cost = 12
   food = 3
