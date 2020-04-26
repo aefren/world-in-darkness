@@ -293,7 +293,7 @@ class Terrain:
     self.public_order = self.pop * 100 / self.food
     self.public_order_buildings = 0
     self.public_order = 100 - self.public_order
-    self.public_order += self.city.public_order*0.50
+    self.public_order += self.city.public_order
     # de edificios
     for b in self.buildings:
       self.public_order_buildings += b.public_order_pre
@@ -489,7 +489,7 @@ class Glacier(Terrain):
 class Grassland(Terrain):
   cost = 2
   cost_fly = 2
-  food = 150
+  food = 300
   name = grassland_t
   resource = 1
 
@@ -533,7 +533,7 @@ class Ocean(Terrain):
 class Plains(Terrain):
   cost = 2
   cost_fly = 2
-  food = 100
+  food = 200
   name = plains_t
   resource = 1
 
