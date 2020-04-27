@@ -3338,13 +3338,14 @@ def menu_city(itm, sound='in1'):
     sleep(0.05)
     if say:
       prod = empty_t
+      grouth_total = round(itm.food_total * 100 / itm.pop - 100,2)
       if itm.production:
         progress = int(ceil(itm.prod_progress / itm.resource_total))
         prod = f'{itm.production[0]} {in_t} {progress} {turns_t}.'
       lista = [
         f'{itm.nick}, {itm.name}.',
         f'{training_t} {prod}',
-        f'{food_t} {itm.food_need} {of_t} {itm.food_total} ({itm.food_val}).',
+        f'{food_t} {itm.food_need} {of_t} {itm.food_total} ({grouth_total}).',
         f'{resources_t} {itm.resource_total}.',
         f'{buildings_t} {len(itm.buildings)}.',
         f'{income_t} {round(itm.income_total, 1)}.',

@@ -739,11 +739,11 @@ class City:
     # mejorar ciudad.
     self.set_downgrade()
     self.set_upgrade()
-    # datos de edificios.
-    self.grouth_total = round(self.food_total * 100 / self.pop - 100)
-    print(f'{self.grouth_total = }')
-    self.grouth_total += round(self.grouth * self.grouth_total / 100)
-    print(f'{self.grouth_total = }')
+    # data buildings.
+    self.grouth_total = round(self.food_total * 100 / self.pop - 100,2)
+    #print(f'{self.grouth_total = }')
+    self.grouth_total += round(self.grouth * self.grouth_total / 100,2)
+    #print(f'{self.grouth_total = }')
     self.buildings = [b for b in self.buildings if b.type == building_t]
     for b in self.buildings:
       b.update()
@@ -753,9 +753,9 @@ class City:
       if (b.is_complete and b.pos.blocked == 0): 
         self.corruption += b.corruption * self.corruption / 100
         self.grouth_total += b.grouth * self.grouth_total / 100
-    print(f'{self.grouth_total = }')
+    #print(f'{self.grouth_total = }')
     self.grouth_total = round(self.grouth_total / self.nation.grouth_rate,2)
-    print(f'{self.grouth_total = }')
+    #print(f'{self.grouth_total = }')
     
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
