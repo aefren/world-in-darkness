@@ -45,14 +45,14 @@ class Ambushment(Skill):
 
 class BattleBrothers(Skill):
   effect = 'self'
-  desc = 'agrega 1 de resolve por cada 10 unidades hasta 2'
+  desc = '+1 resolve if 40 units, +2 if 60.'
   name = 'hermanos de batalla'
   type = 0
   def run(self, itm):
-    if itm.units >= 30: 
+    if itm.units >= 60: 
       itm.effects.append(self.name+str( 2))
       itm.resolve_mod += 2
-    elif itm.units >= 20:
+    elif itm.units >= 40:
       itm.effects.append(self.name+str( 1)) 
       itm.resolve_mod += 1
 
@@ -570,11 +570,11 @@ class Organization(Skill):
 
 class PikeSquare (Skill):
   effect = 'self'
-  desc = 'agrega 1 ataque si la unidad tiene 20 o mas unidades. Anula la carga de cavallería enemiga.'
+  desc = '+1 att if 40 units. Enemy can not charge.'
   name = 'formación de picas'
   type = 0
   def run(self, itm):
-    if itm.units >= 20:
+    if itm.units >= 40:
       itm.effects.append(self.name) 
       itm.att_mod += 1
     if itm.target: 

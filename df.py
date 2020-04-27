@@ -88,9 +88,9 @@ class Terrain:
   cost = 0
   defense_terrain = 0
   defense_magic = 0
-  food = 0
+  food = 1
   grouth_total = 0
-  resource = 0
+  resource = 1
   temp = 0
   daytemp = [0, 0, 0, 0]
   nighttemp = [0, 0, 0, 0]
@@ -278,15 +278,11 @@ class Terrain:
     self.incomes = [self.income]
     self.income += self.public_order * self.income / 100
     self.incomes += [self.income]
-    self.income -= self.corruption * self.income / 100
-    self.incomes += [self.income]
-    self.income -= self.nation.corruption * self.income / 100
-    self.incomes += [self.income]
     # de edificios.
     for b in self.buildings:
-      self.income += b.income_pre * self.income / 100
+      self.income *= b.income_pre
       if b.is_complete or b.type == city_t:
-        self.income += b.income * self.income / 100
+        self.income *= b.income
         self.incomes += [str(f'{b}'), self.income]
   def set_public_order(self):
     if self.nation == None: return
@@ -301,7 +297,7 @@ class Terrain:
       if b.is_complete or b.type == city_t:
         self.public_order_buildings += b.public_order
     
-    self.public_order += round(self.defense/2) 
+    self.public_order += self.defense
     if self.public_order: 
       self.public_order_unrest = self.unrest*100//abs(self.public_order)
       self.public_order -= self.public_order_unrest
@@ -411,31 +407,30 @@ class Terrain:
                              if i.resource_cost[0] < i.resource_cost[1]] else 0
 
     #suelos.
-    self.corruption = 0
     self.cost = self.soil.cost
     self.cost += self.surf.cost
     self.food = self.soil.food
-    self.food += self.surf.food * self.food / 100
+    self.food *= self.surf.food
     self.grouth_total = 0
     if self.pop < 0: self.pop = 0
     
     self.resource = self.soil.resource
-    self.resource += self.surf.resource
+    self.resource *= self.surf.resource
     if self.hill:
       self.cost += 1
-      self.food -= 50 * self.food / 100
-      self.resource += 1
+      self.food *= 0.5
+      self.resource *= 2
     self.size = self.size_total
     # básico de edificios.
     for b in self.buildings:
       if b.is_complete == 0:
-        self.food += b.food_pre * self.food/100
+        self.food *= b.food_pre
         self.grouth_total += b.grouth_pre
-        self.resource += b.res_pre * self.resource/100
+        self.resource *= b.res_pre
       if b.is_complete or b.type == city_t:
-        self.food += b.food * self.food / 100
-        self.grouth_total += b.grouth_total
-        self.resource += b.resource * self.resource/ 100
+        self.food *= b.food
+        self.grouth_total *= b.grouth_total
+        self.resource *= b.resource
     self.set_public_order()
     self.set_income()
     self.size -= sum([b.size for b in self.buildings])
@@ -447,7 +442,6 @@ class Terrain:
     self.food_available = self.food - self.food_need
     #rounding.
     self.around_threat = round(self.around_threat)
-    self.corruption = round(self.corruption)
     self.defense = round(self.defense)
     self.food_available = round(self.food_available)
     self.food = round(self.food)
@@ -469,7 +463,7 @@ class Terrain:
 class Desert(Terrain):
   cost = 2
   cost_fly = 2
-  food = 50
+  food = 100
   name = waste_t
   resource = 1
 
@@ -498,9 +492,9 @@ class Grassland(Terrain):
 
 class Forest(Terrain):
   cost = 1
-  food = -30
+  food = 0.7
   name = forest_t
-  resource = 1
+  resource = 2
   def __init__(self):
     Terrain.__init__(self)
     self.tile_effects = [ForestTerrain]
@@ -509,16 +503,16 @@ class Forest(Terrain):
 class Mountain(Terrain):
   cost = 2
   cost_fly = 1
-  food = -90
+  food = -0.1
   name = mountain_t
   resource = 0
 
 
 class Swamp(Terrain):
   cost = 1
-  food = -50
+  food = 0.5
   name = swamp_t
-  resource = 0
+  resource = 1
   def __init__(self):
     Terrain.__init__(self)
     self.tile_effects = [SwampTerrain]
@@ -550,7 +544,7 @@ class River(Terrain):
 class Tundra(Terrain):
   cost = 2
   cost_fly = 2
-  food = 70
+  food = 100
   name = tundra_t
   resource = 0
 
@@ -2919,13 +2913,12 @@ def info_building(itm, sound='in1'):
       upgrades = [i.name for i in itm.upgrade]
       lista = [
         f'{itm}, {size_t} {itm.size}.',
-        f'{resources_t} {itm.resource_cost[1]}. {gold_t} {itm.gold}. {upkeep_t} {itm.upkeep}.',
+        f'{gold_t} {itm.gold}. {upkeep_t} {itm.upkeep}, {resources_t} {itm.resource_cost[1]}.',
         f'{units_t} {av_units if itm.av_units else str()}.',
         f'{upgrades_t} {upgrades if itm.upgrade else str()}.',
         f'{income_t} {itm.income}%.',
         f'{public_order_t} {itm.public_order}%. {grouth_t} {itm.grouth}.',
         f'{food_t} {itm.food}%. {resources_t} {itm.resource}%.',
-        f'{dp_t} {itm.defense_terrain}%.',
         ]
 
       sp.speak(lista[x])
@@ -3352,7 +3345,6 @@ def menu_city(itm, sound='in1'):
         f'{buildings_t} {len(itm.buildings)}.',
         f'{income_t} {round(itm.income_total, 1)}.',
         f'{public_order_t} {round(itm.public_order_total, 1)}.',
-        f'{corruption_t} {itm.nation.corruption}%.',
         f'{grouth_t} {itm.grouth_total}%.',
         f'{population_t} {itm.pop}, ({itm.pop_percent}%).',
         f'militar {itm.pop_military}, ({itm.military_percent}%).',
@@ -4568,9 +4560,9 @@ def train_unit(city, items, msg, sound='in1'):
       prod = item.resource_cost / city.resource_total
       prod = int(ceil(prod))
       sp.speak(f'{item} {in_t} {prod}.', 1)
-      sp.speak(f'{population_t} {item.pop}.')
-      sp.speak(f'{cost_t} {item.gold}.')
+      sp.speak(f'{cost_t} {item.gold}. {upkeep_t} {item.upkeep*item.units}.')
       sp.speak(f'{resources_t} {item.resource_cost}.')
+      sp.speak(f'{population_t} {item.pop}.')
       say = 0
       
     for event in pygame.event.get():

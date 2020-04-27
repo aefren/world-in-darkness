@@ -50,20 +50,6 @@ def get_armor_mod(num):
   if num <= 0: return 0
 
 
-
-def get_grouth_mod(num):
-  if num >= 200: return 10
-  elif num >= 180: return 9
-  elif num >= 160: return 8
-  elif num >= 140: return 7
-  elif num >= 120: return 6
-  elif num >= 100: return 5
-  elif num >= 80: return 4
-  elif num >= 60: return 3
-  elif num >= 40: return 2
-  elif num >= 20: return 1
-  else: return 0
-
 def get_hit_mod(num):
   if num >= 4: return 2
   elif num >= 1: return 3
