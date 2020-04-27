@@ -57,7 +57,7 @@ class Building:
   food_pre = 0
   free_terrain = 0
   gold = 0
-  grouth = 0
+  grouth = 1
   grouth_total = 0
   grouth_pre = 0
   income = 0
@@ -147,7 +147,7 @@ class City:
   food_pre = 0
   food_total = 0
   events = []
-  grouth_total = 0
+  grouth_total = 1
   grouth = 0
   grouth_pre = 0
   capital = 0
@@ -740,21 +740,22 @@ class City:
     self.set_downgrade()
     self.set_upgrade()
     # data buildings.
-    self.grouth_total = round(self.food_total * 100 / self.pop - 100,2)
+    self.grouth_total = self.nation.grouth_rate
     #print(f'{self.grouth_total = }')
-    self.grouth_total += round(self.grouth * self.grouth_total / 100,2)
-    #print(f'{self.grouth_total = }')
+    food_percent = round(self.food_total*100/self.pop-100)
+    self.grouth_total += get_grouth_mod(food_percent)
     self.buildings = [b for b in self.buildings if b.type == building_t]
+    #print(f'{self.grouth_total = }')
     for b in self.buildings:
       b.update()
       if b.is_complete == 0:
-        self.corruption += b.corruption_pre * self.corruption / 100
-        self.grouth_total += b.grouth_pre * self.grouth_total / 100
+        self.corruption *= b.corruption_pre
+        self.grouth_total *= b.grouth_pre 
       if (b.is_complete and b.pos.blocked == 0): 
-        self.corruption += b.corruption * self.corruption / 100
-        self.grouth_total += b.grouth * self.grouth_total / 100
+        self.corruption *= b.corruption 
+        self.grouth_total *= b.grouth 
     #print(f'{self.grouth_total = }')
-    self.grouth_total = round(self.grouth_total / self.nation.grouth_rate,2)
+    self.grouth_total = round(self.grouth_total,2)
     #print(f'{self.grouth_total = }')
     
     tiles = [i for i in self.tiles if i.pop > 0]
@@ -780,7 +781,7 @@ class Nation:
   corruption = 50
   food_limit_builds = 200
   food_limit_upgrades = 800
-  grouth_rate = 100
+  grouth_rate = 1
   public_order = 0
   upkeep_base = 50
   upkeep_change = 100
@@ -4568,7 +4569,7 @@ class HolyEmpire(Nation):
   corruption = 0
   food_limit_builds = 7
   food_limit_upgrades = 5
-  grouth_rate = 20
+  grouth_rate = 4
   public_order = 0
   upkeep_base = 60
   upkeep_change = 200
@@ -4640,7 +4641,7 @@ class WoodElves(Nation):
   corruption = 0
   food_limit_builds = 6
   food_limit_upgrades = 6
-  grouth_rate = 40
+  grouth_rate = 2
   public_order = 0
   upkeep_base = 70
   upkeep_change = 200
@@ -4709,7 +4710,7 @@ class Walachia(Nation):
   corruption = 0
   food_limit_builds = 6
   food_limit_upgrades = 5
-  grouth_rate = 40
+  grouth_rate = 4
   public_order = 0
   upkeep_base = 70
   upkeep_change = 200
