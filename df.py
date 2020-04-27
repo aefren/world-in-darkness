@@ -290,6 +290,7 @@ class Terrain:
         self.incomes += [str(f'{b}'), self.income]
   def set_public_order(self):
     if self.nation == None: return
+
     self.public_order = self.pop * 100 / self.food
     self.public_order_buildings = 0
     self.public_order = 100 - self.public_order
@@ -304,6 +305,7 @@ class Terrain:
     if self.public_order: 
       self.public_order_unrest = self.unrest*100//abs(self.public_order)
       self.public_order -= self.public_order_unrest
+    
     self.public_order_reduction = self.public_order_buildings*abs(self.public_order)/100
     self.public_order += self.public_order_reduction
     if self.public_order > 100: self.public_order = 100
@@ -3345,7 +3347,7 @@ def menu_city(itm, sound='in1'):
       lista = [
         f'{itm.nick}, {itm.name}.',
         f'{training_t} {prod}',
-        f'{food_t} {itm.food_need} {of_t} {itm.food_total} ({grouth_total}).',
+        f'{food_t} {itm.food_need} {of_t} {itm.food_total} ({grouth_total}%).',
         f'{resources_t} {itm.resource_total}.',
         f'{buildings_t} {len(itm.buildings)}.',
         f'{income_t} {round(itm.income_total, 1)}.',

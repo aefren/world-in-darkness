@@ -227,21 +227,20 @@ class City:
     itm.nation.log[-1].append(msg)
     self.update()
 
-  def add_pop(self, number):
+  def add_pop(self, number, info=0):
     [i.update(self.nation) for i in self.tiles]
     tiles = [i for i in self.tiles if i.blocked == 0
              and i.soil.name != ocean_t]
     
     grouth = ceil(number / 100)
-    logging.info(f'crecerá {number}. grouth_total {grouth}.')
+    if info: logging.info(f'crecerá {number}. grouth_total {grouth}.')
     shuffle(self.tiles)
     [i.update(self.nation) for i in self.tiles]
     tries = 1000
     while number > 0:
       tries -= 1
       if tries < 0: 
-        print(f'paró')
-        sp.speak(f'add pop stoped!')
+        sp.speak(f'add pop stoped!',1)
         sleep(2)
         
       t = choice(tiles)
@@ -249,7 +248,7 @@ class City:
       rnd -= floor(t.unrest/10)
       if rnd < 1: rnd = 1
       roll = roll_dice(1)
-      # logging.debug(f'rnd {rnd} roll {roll}')
+      if info:  logging.debug(f'rnd {rnd} roll {roll}')
       
       try:
         if rnd >= roll:
@@ -399,9 +398,8 @@ class City:
   def population_change(self):
     self.update()
     grouth = round(self.grouth_total * self.pop / 100)
-    logging.debug(f'en población {grouth}.')
-    grouth += round(randint(-25, 25) * grouth / 100)
     if grouth < 1: grouth = 1
+    logging.debug(f'en población {grouth}.')
     self.add_pop(grouth)
     
     if self.pop_back > 0: 
@@ -760,6 +758,8 @@ class City:
     
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
+    self.grouth_total -= round(self.public_order*self.grouth_total/100,2)
+    #print(f'{self.grouth_total = }')
     self.status()
     self.set_av_units()
     
@@ -2441,31 +2441,31 @@ class ForestRider(Elf):
 
 class ElvesSettler(Human):
   name = 'Silvan settler'
-  units = 200
+  units = 300
   type = 'civil'
   traits = [elf_t, settler_t]
   gold = 1000
   upkeep = 10
   resource_cost = 60
-  food = 2
+  food = 1
   pop = 500
   terrain_skills = [ForestSurvival]
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
-  resolve = 4
+  resolve = 3
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
   rng = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):
@@ -2603,7 +2603,7 @@ class Hamlet(City):
   food = 50
   #grouth = 10
   #income = 40
-  public_order = 20
+  public_order = 0
   resource = 0
   upkeep = 1000
 
@@ -2633,7 +2633,7 @@ class Hamlet(City):
     self.food += 50*self.food//100
     #self.grouth += 200*self.grouth//100
     #self.income += 100*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.public_order += 10
     self.upkeep = 0
 
   def set_downgrade(self):
@@ -2973,23 +2973,23 @@ class Settler(Human):
   gold = 2000
   upkeep = 1
   resource_cost = 50
-  food = 2
+  food = 1
   pop = 2000
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
   resolve = 3
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):
@@ -4127,29 +4127,29 @@ class GraveGuards(Undead):
 
 class Settler2(Human):
   name = settler_t
-  units = 100
+  units = 200
   type = 'civil'
   traits = [human_t, settler_t]
   gold = 1000
   upkeep = 0
   resource_cost = 50
-  food = 2
+  food = 1
   pop = 1000
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
   resolve = 4
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):

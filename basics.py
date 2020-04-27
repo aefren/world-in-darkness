@@ -52,7 +52,11 @@ def get_armor_mod(num):
 
 
 def get_grouth_mod(num):
-  if num >= 120: return 6
+  if num >= 200: return 10
+  elif num >= 180: return 9
+  elif num >= 160: return 8
+  elif num >= 140: return 7
+  elif num >= 120: return 6
   elif num >= 100: return 5
   elif num >= 80: return 4
   elif num >= 60: return 3
@@ -77,12 +81,12 @@ def get_wound_mod(num):
 
 
 def get_unrest_mod(num):
-  if num >= 50: return 0
-  if num >= 30: return 1
-  if num >= 10: return 2
-  if num >= -10: return 3
-  if num >= -30: return 4
-  if num >= -50: return  5
+  if num > 10: return 0
+  if num <= 10: return 1
+  if num <= 0: return 2
+  if num <= -10: return 3
+  if num <= -20: return 4
+  if num <= -30: return  5
   if num < -50: return 6
 
 
