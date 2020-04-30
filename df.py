@@ -133,7 +133,7 @@ class Terrain:
   def get_distance(self, pos, trg):
     v = 1
     while True:
-      sq = pos.get_near_tiles(self.scenary, v)
+      sq = pos.get_near_tiles(v)
       if pos == trg: return 0
       if trg in sq:
         return v
@@ -152,19 +152,31 @@ class Terrain:
             self.skill_names.append(sk.name)
             
       self.skill_names.sort()
-  def get_near_tiles(self, scenary, value):
+  def get_near_tiles(self, value):
     tiles = []
     x = [self.x - value, self.x + value]
     y = [self.y - value, self.y + value]
-    for t1 in scenary:
+    for t1 in self.scenary:
       if (t1.x >= x[0] and t1.x <= x[1]) and (t1.y >= y[0] and t1.y <= y[1]):
         tiles.append(t1)
     return tiles
 
+  def get_nearest_nation(self):
+    distance = 1
+    tries = 500
+    while tries > 0:
+      tiles = self.get_near_tiles(distance)
+      for tl in tiles:
+        if tl.nation: return distance
+      
+      distance += 1
+      tries -= 1
+        
+      
   def get_tile_value(self, nation, scenary):
     self.food_value = self.food
     self.res_value = self.resource
-    sq = self.get_near_tiles(scenary, 1)
+    sq = self.get_near_tiles(1)
     for s in sq:
       if s != self and s in nation.map:
         self.food_value += s.food
@@ -194,7 +206,7 @@ class Terrain:
       if t.city and t.city.nation == nation:
           t.sight = 1
           if t not in nation.map: nation.map.append(t)
-          sq = t.get_near_tiles(t.scenary, 1)
+          sq = t.get_near_tiles(1)
           for s in sq:
             if s not in nation.map: nation.map.append(s)
             if s.surf.name not in [forest_t] and s.hill not in [1]:
@@ -202,13 +214,13 @@ class Terrain:
         
       for uni in t.units:
         if uni.nation == nation:
-          sq = t.get_near_tiles(t.scenary, 1)
+          sq = t.get_near_tiles(1)
           for s in sq:
             s.sight = 1
             if s not in nation.map: nation.map.append(s)
           if (uni.pos.hill or uni.can_fly) and uni.day_night[0] == 0:
             for s in sq:
-              sq1 = s.get_near_tiles(s.scenary, 1)
+              sq1 = s.get_near_tiles(1)
               for s1 in sq1:
                 if s1 not in nation.map: 
                   nation.map.append(s1)
@@ -236,7 +248,7 @@ class Terrain:
     self.around_tundra = 0
     self.around_volcano = 0
     self.coast = 0
-    sq = self.get_near_tiles(scenary, 1)
+    sq = self.get_near_tiles(1)
     for s in sq:
       if s != self:
         if s.hill: self.around_hill += 1
@@ -576,18 +588,21 @@ class World:
   units = []
   west = 0
   width = 0
-  def add_random_unit(self, num):
+  def add_random_unit(self, num, info=1):
     logging.info(f'score aleatóreo a agregar. {num}.')
     tries = 100
     while tries > 0 and num > 0:
       tries -= 1
       tiles = [i for i in self.map
-               if i.city == None]
+               if i.nation == None and i.get_nearest_nation() <= 3]
       shuffle(tiles)
       nat = choice(self.random_nations)
       item = choice(nat.av_units)(nat)
       tiles= [i for i in tiles if item.get_favland(i)]
-      logging.info(f'agregará {item}.')
+      if tiles == []: continue
+      if info: 
+        logging.debug(f'agregará {item}.')
+        logging.debug(f'nearest nation distance {tiles[0].get_nearest_nation()}.')
       if item.pref_corpses: tiles.sort(key=lambda x: len(x.corpses),reverse=True) 
       tile = tiles[0]
       go = 1
@@ -601,13 +616,13 @@ class World:
         item.nation.update(item.nation.map)
         loadsound('set10')
         if roll_dice(2) >= 11:
-          item.hp_total *= 3
-          item.pop *= 3
+          item.hp_total *= 2
+          item.pop *= 2
           loadsound('set12')
         tile.units.append(item)
         self.units.append(item)
         num -= item.ranking
-        logging.info(f'{item}. ranking {item.ranking}.')
+        if info: logging.info(f'{item}. ranking {item.ranking}.')
   def clean_nations(self):
     global PLAYING
     [nt.update(nt.map) for nt in self.nations]
@@ -657,11 +672,12 @@ def ai_action_random(itm):
       if len(itm.pos.units) > 1: ai_join_units(itm)
       # ataque hidden.
       itm.pos.update(itm.nation)
-      rnd = randint(round(itm.ranking*0.75), round(itm.ranking*1.25))
+      rnd = randint(round(itm.ranking*0.6), round(itm.ranking*1.2))
       if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd*0.2
       if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd*0.2
       if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd*0.2
       if commander_t in itm.traits: rnd -= rnd*0.2
+      logging.debug(f'{rnd=:}, {itm.pos.threat=:}.')
       if rnd > itm.pos.threat:
         auto_attack(itm)
         if any(i <= 0 for i in [itm.mp[0], itm.hp_total]): return
@@ -1057,7 +1073,7 @@ def ai_explore(nation, scenary, info=0):
            and tries > 0):
       tries -= 1
       distanse = uni.mp[1]+uni.nation.explore_range
-      sq1 = uni.city.pos.get_near_tiles(scenary, distanse)
+      sq1 = uni.city.pos.get_near_tiles(distanse)
       sq = uni.pos.get_near_tiles(scenary, 1)
       sq = [it for it in sq if it.soil.name in uni.soil and it.surf.name in uni.surf
             and it in sq1 and it != uni.pos]
@@ -1158,7 +1174,7 @@ def ai_free_units(nation, scenary, info=0):
       if skip >= roll:
         logging.debug(f'salta.')
         break
-      sq = uni.pos.get_near_tiles(scenary, num)
+      sq = uni.pos.get_near_tiles(num)
       sq = [it for it in sq if it.soil.name in uni.soil and it.surf.name in uni.surf
             and it != uni.pos and it.nation == uni.nation]
       logging.debug(f'num {num} tiles {len(sq)}.')
@@ -1204,7 +1220,7 @@ def ai_garrison(nation):
   units.sort(key=lambda x: x.rng, reverse=True)
   for uni in units:
     if uni.mp[0] < 1: continue
-    sq = uni.pos.get_near_tiles(scenary, 1)
+    sq = uni.pos.get_near_tiles(1)
     sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
             and s != uni.pos and s.threat > 0]
     if roll_dice(1) >= 5: sq.sort(key=lambda x: x.threat, reverse=True)
@@ -1234,7 +1250,7 @@ def ai_garrison(nation):
   units.sort(key=lambda x: x.ranking,reverse=True)
   if roll_dice(1) >= 4: units.sort(key=lambda x: x.pos.is_city)
   for uni in units:
-    sq = uni.pos.get_near_tiles(scenary, 1)
+    sq = uni.pos.get_near_tiles(1)
     sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
             and s != uni.pos and s.threat > 0]
     if roll_dice(1) >= 3: sq.sort(key=lambda x: x.threat, reverse=True)
@@ -1305,7 +1321,7 @@ def ai_hero_move(nation):
     if uni.pos.nation == uni.nation:
       oportunist_attack(uni, scenary)
       if any(v < 1 for v in [uni.mp[0], uni.hp_total]): continue
-      sq = uni.pos.get_near_tiles(scenary, 1)
+      sq = uni.pos.get_near_tiles(1)
       sq = [s for s in sq if uni.can_pass(s)]
       [s.update(uni.nation) for s in sq]
       sq.sort(key=lambda x: x.is_city,reverse=True)
@@ -1325,7 +1341,7 @@ def ai_hero_move(nation):
     elif uni.pos.nation != uni.nation and uni.goal == None:
       num = 1
       while True:
-        sq = uni.pos.get_near_tiles(scenary, num)
+        sq = uni.pos.get_near_tiles(num)
         set_favland(uni, sq)
         num += 1
         for t in sq:
@@ -1352,7 +1368,7 @@ def ai_move_group(itm):
   if goto.surf.name == swamp_t and swamp_survival_t not in itm.traits: threat *= 1.10
   logging.debug(f'ranking {round(ranking)} vs {round(threat)}.')
 
-  alt = goto.get_near_tiles(scenary, 1)
+  alt = goto.get_near_tiles(1)
   alt = [i for i in alt
         if i.get_distance(i,itm.pos) == 1]
   [s.update(itm.nation) for s in alt]
@@ -1683,6 +1699,7 @@ def ai_random():
     if uni.hp_total> 0:
       uni.log.append([f'{turn_t} {world.turn}.'])
       unit_restoring(uni)
+      uni.set_hidden(uni.pos)
       if uni.goto: moving_unit(uni)
       if uni.goto == []:
         oportunist_attack(uni, scenary)
@@ -1789,11 +1806,11 @@ def ai_train_comm(nation):
 
 def ai_unit_cast(nation):
   logging.info(f'commander cast.')
-  tries = 20
   units = [i for i in nation.units if i.power > 0]
   for uni in units:
     spells = [sp for sp in uni.spells]
     shuffle(spells)
+    tries = 10
     while uni.power > 0 and tries > 0:
       tries -= 1
       for sp in spells:
@@ -2270,12 +2287,12 @@ def control_game(event):
         if local_units[x].mp[0] < 1 or local_units[x].nation != nation:
           error(msg='sin movimientos')
           return
-        itm = get_item(items1=local_units[x].buildings, msg='crear')
+        itm = get_item(items1=local_units[x].buildings, msg='crear', simple=1)
         if itm:
-          if itm.can_build() == 0:
+          if itm(nation, local_units[x].pos).can_build() == 0:
             error()
             return
-          local_units[x].nation.add_city(itm, pos, scenary, local_units[x])
+          local_units[x].nation.add_city(itm, local_units[x])
           pos.pos_sight(nation, nation.map)
           sayland = 1
           x = -1
@@ -2356,7 +2373,7 @@ def control_game(event):
         if expand_city(city, pos):
           filter_expand = 0
           pos.update(nation)
-          near_tiles = pos.get_near_tiles(pos.scenary, 2)
+          near_tiles = pos.get_near_tiles(2)
           pos.pos_sight(nation, nation.map)
           pos.city.update()
           nation.update(scenary)
@@ -2427,7 +2444,7 @@ def control_game(event):
       for ti in nation.map:
         if ti.sight:
           for uni in ti.units:
-            sq = uni.pos.get_near_tiles(scenary, 1)
+            sq = uni.pos.get_near_tiles(1)
             go = 0
             for s in sq:
               if s.nation == nation: go = 1
@@ -2850,7 +2867,7 @@ def get_item(items1=[], items2=[], msg='', name=None, simple=0, sound='in1'):
 
 def get_retreat_pos(itm):
   logging.debug(f'pocición inicial {itm.pos} {itm.pos.cords}.')
-  sq = itm.pos.get_near_tiles(scenary, 1)
+  sq = itm.pos.get_near_tiles(1)
   sq = [i for i in sq
         if i.soil.name in itm.soil and i.surf.name in itm.surf and i != itm.pos
         and (itm.can_fly == 0 and i.cost <= itm.mp[0])
@@ -3333,7 +3350,7 @@ def menu_city(itm, sound='in1'):
     sleep(0.05)
     if say:
       prod = empty_t
-      grouth_total = round(itm.food_total * 100 / itm.pop - 100,2)
+      grouth_total = round(itm.food_total * 100 / itm.pop - 100,1)
       if itm.production:
         progress = int(ceil(itm.prod_progress / itm.resource_total))
         prod = f'{itm.production[0]} {in_t} {progress} {turns_t}.'
@@ -3345,7 +3362,7 @@ def menu_city(itm, sound='in1'):
         f'{buildings_t} {len(itm.buildings)}.',
         f'{income_t} {round(itm.income_total, 1)}.',
         f'{public_order_t} {round(itm.public_order_total, 1)}.',
-        f'{grouth_t} {itm.grouth_total}%.',
+        f'{grouth_t} {round(itm.grouth_total,1)}%.',
         f'{population_t} {itm.pop}, ({itm.pop_percent}%).',
         f'militar {itm.pop_military}, ({itm.military_percent}%).',
         f'total {int(itm.pop_total)}.',
@@ -3526,7 +3543,7 @@ def movepos(value):
     sp.speak(f'move', 1)
   if filter_expand == 1:
     new_pos = scenary[scenary.index(pos) + value]
-    sq = new_pos.get_near_tiles(scenary, 1)
+    sq = new_pos.get_near_tiles(1)
     go = 0
     for s in sq:
       if s.nation == nation: go = 1
@@ -3545,7 +3562,7 @@ def move_far(itm):
   
   pos = itm.pos
   
-  sq = itm.pos.get_near_tiles(scenary, 1)
+  sq = itm.pos.get_near_tiles(1)
   #logging.debug(f'{len(sq)} terrenos iniciales.')
   if goto.x > pos.x:
     #logging.debug(f'al este.')
@@ -3577,7 +3594,7 @@ def move_far(itm):
     move_set(itm, sq[0])
   else:
     logging.debug(f'{itm} en {itm.pos} {itm.pos.cords}. no hay donde mover.')
-    sq = itm.goto[0][1].get_near_tiles(itm.pos.scenary,2)
+    sq = itm.goto[0][1].get_near_tiles(2)
     sq = [ti for ti in sq if ti.soil.name in itm.soil and ti.surf.name in itm.surf
         and ti != itm.pos and ti in itm.nation.map]
     move_set(itm, choice(sq))
@@ -3630,7 +3647,7 @@ def move_unit(itm):
     while (itm.goto and itm.mp[0] > 0 and itm.hp_total> 0
            and isinstance(itm.goto[0], list)):
       goto = itm.goto[0][1]
-      square = itm.pos.get_near_tiles(scenary, 1)
+      square = itm.pos.get_near_tiles(1)
       if goto not in square:
         move_far(itm)
       
@@ -3776,7 +3793,7 @@ def nation_start_position(itm, tiles):
       continue
     done = 1
     #logging.debug(f'done.')
-    sq = tl.get_near_tiles(tiles, 6)
+    sq = tl.get_near_tiles(6)
     for t in unallowed_tiles:
         if t in sq: 
           done = 0
@@ -3907,7 +3924,7 @@ def next_play():
 
 def oportunist_attack(itm, scenary):
   logging.info(f'ataque de oportunidad de {itm}.')
-  sq = itm.pos.get_near_tiles(scenary, 1)
+  sq = itm.pos.get_near_tiles(1)
   [i.update(itm.nation) for i in sq]
   
   sq = [it for it in sq if it.soil.name in itm.soil and it.surf.name in itm.surf
@@ -3925,7 +3942,7 @@ def oportunist_attack(itm, scenary):
     if s.hill and itm.mountain_survival == 0: 
       ranking -= ranking*0.2
       logging.debug(f'reduce by mountain.')
-    rnd = randint(round(ranking*0.75), round(ranking* 1.25))
+    rnd = randint(round(ranking*0.6), round(ranking* 1.2))
     logging.debug(f'threat {s.threat}, rnd {rnd}, threat_around {s.around_threat}')
     if (rnd > s.threat and s.around_threat < itm.ranking
         and s.cost <= itm.mp[0]):
@@ -3951,7 +3968,7 @@ def random_move(itm, scenary, sq=None, value=1):
   logging.debug(f'movimiento aleatoreo para {itm} en {itm.pos}.')
   done = 0
   if sq == None:
-    sq = itm.pos.get_near_tiles(scenary, value)
+    sq = itm.pos.get_near_tiles(value)
     sq = [it for it in sq if itm.can_pass(it)]
     logging.debug(f'{len(sq)} casillas iniciales.')
   if sq:
@@ -3960,6 +3977,7 @@ def random_move(itm, scenary, sq=None, value=1):
     move = 1
     sort = 0
     shuffle(sq)
+    if itm.nation not in world.nations: sq.sort(key=lambda x: x.get_nearest_nation())
     map_update(itm.nation, sq)
     if randint(1, 100) < itm.sort_chance:
       sort = 1
@@ -3977,9 +3995,9 @@ def random_move(itm, scenary, sq=None, value=1):
     if roll_dice(1) <= itm.fear:
       logging.debug(f'ordena por miedo')
       fear = 1
-      sq.sort(key=lambda x: x.around_threat < rnd,reverse=True)
-      sq.sort(key=lambda x: x.threat < rnd,reverse=True)
       sq.sort(key=lambda x: x.defense,reverse=True)
+      sq.sort(key=lambda x: x.around_threat < randint(int(itm.ranking*0.6), int(itm.ranking*1.2)),reverse=True)
+      sq.sort(key=lambda x: x.threat < randint(int(itm.ranking*0.6), int(itm.ranking*1.2)),reverse=True)
     if itm.scout:
       #logging.debug(f'ordena para exploración')
       fear = 1
@@ -3990,11 +4008,12 @@ def random_move(itm, scenary, sq=None, value=1):
       sq.sort(key=lambda x: x.around_threat)
     
     # casillas finales.
+    sq.sort(key=lambda x: x.food-x.food_need < itm.food)
     movstatus = f'fear {fear}, sort {sort}.'
     itm.log[-1].append(movstatus)
     #logging.debug(f'{len(sq)} casillas finales.')
     goto = sq[0]
-    rnd = randint(round(itm.ranking*0.75), round(itm.ranking* 1.25))
+    rnd = randint(round(itm.ranking*0.9), round(itm.ranking* 1.3))
     #logging.debug(f'rnd {rnd} amenaza {round(goto.threat)}.')
     if fear and rnd < goto.threat:
       move = 0
@@ -4183,7 +4202,7 @@ def set_near_tiles(nation, scenary):
                     and it.hill in ct.nation.hill]
     ct.tiles_far.sort(key=lambda x: x.mean, reverse=True)
     for ti in ct.tiles_near:
-      sq = ti.get_near_tiles(scenary, 1)
+      sq = ti.get_near_tiles(1)
       go = 0
       for s in sq:
         if s.city == ct: go = 1
@@ -4223,7 +4242,7 @@ def set_settler(itm, scenary):
   logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.units_se')
   if itm.mp[0] > 0:
     if len(itm.nation.cities) == 0:
-      sq = itm.pos.get_near_tiles(scenary, 1)
+      sq = itm.pos.get_near_tiles(1)
       done = 1
       for ti in sq:
         if ti.nation: done = 0
@@ -4482,7 +4501,7 @@ def terrain_info(pos, nation):
     if mapeditor == 0:
       pos.pos_sight(nation, nation.map)
       pos.update(nation)
-      #sq = pos.get_near_tiles(scenary,10)
+      #sq = pos.get_near_tiles(10)
       #map_update(nation, sq)
       #[it.update(nation) for it in scenary]
       #nation.update(scenary)
@@ -4663,6 +4682,7 @@ def unit_join_group(itm):
 
 
 def unit_new_turn(itm):
+  logging.info(f'new turn {world.turn=:} {to_t} {itm} {in_t} {itn.pos.cords}.')
   if itm.hp_total< 1: return
   unit_restoring(itm)
   itm.set_hidden(itm.pos)

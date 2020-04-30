@@ -172,8 +172,8 @@ class City:
   public_order = 1
   public_order_pre = 1
   raid_outcome = 0
-  resource = 5
-  res_pre = 0
+  resource = 1
+  res_pre = 1
   size = 6
   seen_threat = 0 
   type = city_t
@@ -220,7 +220,7 @@ class City:
     itm.nation.log[-1].append(msg)
     self.update()
 
-  def add_pop(self, number, info=1):
+  def add_pop(self, number, info=0):
     [i.update(self.nation) for i in self.tiles]
     tiles = [i for i in self.tiles if i.blocked == 0
              and i.soil.name != coast_t]
@@ -243,8 +243,16 @@ class City:
         if t.is_city: rnd += 3
         rnd += ceil((t.food-t.pop)/50)
         rnd -= t.unrest//10
-        roll = roll_dice(2)
-        if info:  logging.debug(f'{t}. {rnd=:}, {roll=:}.')
+        if rnd < 1:
+          rnd = 1
+          if t.soil.name == grassland_t and t.surf.name == none_t and t.hill == 0: 
+            rnd += 4 
+            if t.buildings: rnd += 2
+            if t.is_city: rnd += 2
+            rnd -= t.unrest//10
+            if rnd < 1: rnd = 0
+        roll = randint(1, 12)
+        if info:  logging.debug(f'{t}. {rnd=:}, {roll=:}. {ceil((t.food-t.pop)/50)}.')
         
         try:
           if rnd >= roll:
@@ -393,8 +401,7 @@ class City:
   def population_change(self):
     self.update()
     grouth = round(self.grouth_total * self.pop / 100)
-    if grouth < 1: grouth = 1
-    logging.debug(f'en población {grouth}.')
+    logging.debug(f'{self.grouth_total}. extra population {grouth}.')
     self.add_pop(grouth)
     
     if self.pop_back > 0: 
@@ -466,7 +473,7 @@ class City:
       self.nick = self.nation.city_names.pop()
   def set_seen_units(self, new=0, info=0):
     # logging.debug(f'set seen units {self}.')
-    tiles = [t for t in self.pos.get_near_tiles(self.pos.scenary, 6)
+    tiles = [t for t in self.pos.get_near_tiles(6)
              if t.units]
     self.pos.pos_sight(self.nation, self.nation.map)
     tiles = [t for t in tiles if t in self.nation.map and t.sight and t.units]
@@ -732,18 +739,17 @@ class City:
     self.set_downgrade()
     self.set_upgrade()
     # data buildings.
-    self.grouth_total = self.nation.grouth_rate
+    self.grouth_total = self.nation.grouth_base
     print(f'{self.grouth_total = }')
-    food_percent = round(self.food_total*100/self.pop-100)/30
-    self.grouth_total += food_percent
-    print(f'{food_percent=:}, {self.grouth_total = }')
-    self.grouth_total = round(self.grouth_total,1)
+    self.grouth_total += (self.food_total*100/self.pop-100)/self.nation.grouth_rate
     print(f'{self.grouth_total = }')
-    
+    self.grouth_total += self.grouth
+    print(f'from city {self.grouth_total = }')
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
     self.grouth_total -= round(abs(self.public_order_total-100)*self.grouth_total/100)
     print(f'{round(abs(self.public_order_total-100)*self.grouth_total/100)}, {self.grouth_total = }.')
+    if self.grouth_total < 0: self.grouth_total = 0.1
     self.status()
     self.set_av_units()
     
@@ -783,7 +789,7 @@ class Nation:
   city_req_pop_base = 1000
   pop_limit = 50
 
-  gold_rate = 0.5
+  gold_rate = 1
   income = 0
   military_percent = 0
   military_pop = 0
@@ -792,7 +798,7 @@ class Nation:
   raid_outcome = 0
   show_info = 0
   stalk = 0
-  tile_cost = 600
+  tile_cost = 1200
   tile_power = 1
   tile_area_limit = 3
   type = nation_t
@@ -873,7 +879,7 @@ class Nation:
   def add_city(self, itm, unit):
     itm = itm(unit.nation, unit.pos)
     scenary = unit.pos.scenary
-    pop = unit.units*2
+    pop = unit.units*3
     pos = unit.pos
     itm.pop = pop
     pos.buildings.append(itm)
@@ -881,7 +887,7 @@ class Nation:
     itm.set_name()
     if len(self.cities) == 0: itm.capital = 1
     if itm.capital: itm.set_capital_bonus()
-    tiles = pos.get_near_tiles(scenary, 1)
+    tiles = pos.get_near_tiles(1)
     for t in tiles:
       if t.nation == None:
         t.city = itm
@@ -1528,7 +1534,7 @@ class Unit:
           self.log[-1].append(msg)
           self.nation.log[-1].append(msg)
           self.pos.nation.log[-1].append(msg)
-          sq = self.pos.get_near_tiles(self.pos.scenary , 1)
+          sq = self.pos.get_near_tiles(1)
           sq = [s for s in sq if s.nation == self.pos.nation]
           for s in sq: s.unrest += randint(15, 30)
           if any(i for i in [self.pos.nation.show_info, self.show_info]): 
@@ -1577,12 +1583,12 @@ class Unit:
         if nt.name == self.align.name: self.nation = nt
   def set_hidden(self, pos, info=1):
     if info: logging.info(f'set hidden {self} a {pos} {pos.cords}.')
-    visible = self.units
+    visible = self.units+(self.pop-self.units)
     if info: logging.debug(f'visible {visible}')
     if self.nation != pos.nation: 
       visible += pos.pop
       if info: logging.debug(f'visible {visible} pop')
-    visible += sum([it.units for it in pos.units if it.nation != self.nation])
+    visible += sum([it.units+(it.pop-it.units) for it in pos.units if it.nation != self.nation])
     if info: logging.debug(f'visible {visible} units')
     visible = round(visible / 20)
     if info: logging.debug(f'visible {visible} rond 20')
@@ -1643,7 +1649,7 @@ class Unit:
     self.ranking = round(self.ranking/3)
   def set_tile_attr(self):
     info = 1
-    tiles = self.pos.get_near_tiles(self.pos.scenary, 1)
+    tiles = self.pos.get_near_tiles(1)
     tiles = [t for t in tiles if t.nation 
            and t.nation != self.nation and t.pop]
     if info and tiles: print(f'set_tile_attr {self} en {self.pos} {self.pos.cords}')
@@ -2424,7 +2430,7 @@ class ForestRider(Elf):
 
 class ElvesSettler(Human):
   name = 'Silvan settler'
-  units = 300
+  units = 200
   type = 'civil'
   traits = [elf_t, settler_t]
   gold = 1000
@@ -2584,11 +2590,11 @@ class Hamlet(City):
   name = hamlet_t
   events = [Unrest]
   food = 1.5
-  #grouth = 10
+  grouth = 0
   #income = 40
   public_order = 0
-  resource = 0
-  upkeep = 1000
+  resource = 1
+  upkeep = 5000
 
   free_terrain = 1
   own_terrain = 0
@@ -2626,6 +2632,7 @@ class Hamlet(City):
       self.level = 0
       self.name = hamlet_t
       self.food -= 1.5
+      self.grouth -= 1
       #self.income -= 10
       self.public_order -= 30
     if self.level == 2 and self.pop <= 1200:
@@ -2633,6 +2640,7 @@ class Hamlet(City):
       self.level = 1
       self.name = village_t
       self.food -= 1.5
+      self.grouth -= 1
       #self.income -= 10
       self.public_order -= 30
     if self.level == 3 and self.pop <= 50000:
@@ -2640,6 +2648,7 @@ class Hamlet(City):
       self.level = 2
       self.name = town_t
       self.food -= 1.5
+      self.grouth -= 1
       #self.income -= 10
       self.public_order -= 30
     if msg:
@@ -2656,6 +2665,7 @@ class Hamlet(City):
       self.level = 1
       self.name = village_t
       self.food += 1.5
+      self.grouth += 1
       #self.income += 10
       self.public_order += 30
     if self.level == 1 and self.pop >= 20000:
@@ -2663,6 +2673,7 @@ class Hamlet(City):
       self.level = 2
       self.name = town_t
       self.food += 1.5
+      self.grouth += 1
       #self.income += 10
       self.public_order += 30
     if self.level == 2 and self.pop >= 100000:
@@ -2670,6 +2681,7 @@ class Hamlet(City):
       self.level = 3
       self.name = city_t
       self.food += 1.5
+      self.grouth += 1
       #self.income += 10
       self.public_order += 30
     if msg:
@@ -2682,7 +2694,7 @@ class Hamlet(City):
 # edificios.
 class TrainingCamp(Building):
   name = 'campo de entrenamiento'
-  gold = 4000
+  gold = 12000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -2700,7 +2712,7 @@ class TrainingCamp(Building):
 
 class ImprovedTrainingCamp(TrainingCamp, Building):
   base = TrainingCamp
-  gold = 9000
+  gold = 20000
   name = 'campo de entrenamiento mejorado'
   public_order = 10
   size = 4
@@ -2716,7 +2728,7 @@ class ImprovedTrainingCamp(TrainingCamp, Building):
 
 class Barracks(ImprovedTrainingCamp, Building):
   base = TrainingCamp
-  gold = 15000
+  gold = 30000
   name = 'cuartel'
   public_order = 10
   tags = [military_t, unrest_t]
@@ -2733,7 +2745,7 @@ class Barracks(ImprovedTrainingCamp, Building):
 
 class ImprovedBarracks(Barracks, Building):
   base = TrainingCamp
-  gold = 25000
+  gold = 40000
   name = 'cuartel mejorado'
   public_order = 15
   tags = [military_t, unrest_t]
@@ -2749,7 +2761,7 @@ class ImprovedBarracks(Barracks, Building):
 
 class Pastures(Building):
   name = 'pasturas'
-  gold = 9000
+  gold = 15000
   food = 1.5
   income = 1.5
 
@@ -2771,7 +2783,7 @@ class Pastures(Building):
 class Stables(Pastures, Building):
   name = 'establos'
   base = Pastures
-  gold = 25000
+  gold = 30000
   food = 2
   income = 3
   unique = 1
@@ -2787,7 +2799,7 @@ class Stables(Pastures, Building):
 
 class MeetingCamp(Building):
   name = 'campo de reunión'
-  gold = 3000
+  gold = 6000
   own_terrain = 1
   public_order = 10
   size = 4
@@ -2806,7 +2818,7 @@ class MeetingCamp(Building):
 
 class CultOfLight(MeetingCamp, Building):
   base = MeetingCamp
-  gold = 8500
+  gold = 12500
   name = 'culto de la luz'
   public_order = 25
   upkeep = 1000
@@ -2814,7 +2826,7 @@ class CultOfLight(MeetingCamp, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors]
+    self.av_units = [Inquisitors, PriestWarriors, Priest]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]
@@ -2822,7 +2834,7 @@ class CultOfLight(MeetingCamp, Building):
 
 class TempleOfLight(CultOfLight, Building):
   base = MeetingCamp
-  gold = 16000
+  gold = 40000
   name = 'templo de la luz'
   public_order = 50
   upkeep = 2500
@@ -2830,7 +2842,7 @@ class TempleOfLight(CultOfLight, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Priest]
+    self.av_units = [KnightsTemplar ]
     self.resource_cost = [0, 160]
     self.size = 0
     self.upgrade = []
@@ -2843,8 +2855,8 @@ class Commander(Human):
   units = 10
   type = 'infantry'
   comm = 1
-  gold = 500
-  upkeep = 30
+  gold = 1500
+  upkeep = 50
   resource_cost = 25
   food = 5
   pop = 40
@@ -2882,8 +2894,8 @@ class Aquilifer(Human):
   units = 30
   type = 'infantry'
   traits = [human_t, leader_t]
-  gold = 1000
-  upkeep = 50
+  gold = 4000
+  upkeep = 70
   resource_cost = 30
   food = 5
   pop = 100
@@ -2918,7 +2930,7 @@ class Priest(Human):
   units = 10
   type = 'infantry'
   traits = [human_t, commander_t]
-  gold = 500
+  gold = 1000
   upkeep = 40
   resource_cost = 30
   food = 3
@@ -2950,7 +2962,7 @@ class Priest(Human):
 # unidades
 class Settler(Human):
   name = settler_t
-  units = 500
+  units = 300
   type = 'civil'
   traits = [human_t, settler_t]
   gold = 2000
@@ -2987,8 +2999,8 @@ class Flagellants(Human):
   units = 30
   type = 'infantry'
   traits = [human_t]
-  gold = 95
-  upkeep = 5
+  gold = 140
+  upkeep = 10
   resource_cost = 11
   food = 2
   pop = 40
@@ -3021,7 +3033,7 @@ class SwordsMen(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 250
-  upkeep = 15
+  upkeep = 18
   resource_cost = 12
   food = 3
   pop = 30
@@ -3055,8 +3067,8 @@ class GreatSwordsMen(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 320
-  upkeep = 35
+  gold = 720
+  upkeep = 32
   resource_cost = 16
   food = 4
   pop = 30
@@ -3089,8 +3101,8 @@ class SpearMen(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 350
-  upkeep = 25
+  gold = 620
+  upkeep = 30
   resource_cost = 15
   food = 3
   pop = 50
@@ -3123,8 +3135,8 @@ class Halberdier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 440
-  upkeep = 40
+  gold = 450
+  upkeep = 50
   resource_cost = 18
   food = 4
   pop = 23
@@ -3157,8 +3169,8 @@ class Inquisitors(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 400
-  upkeep = 30
+  gold = 600
+  upkeep = 60
   resource_cost = 25
   food = 4
   pop = 40
@@ -3188,19 +3200,19 @@ class Inquisitors(Human):
 
 class PriestWarriors(Human):
   name = priest_warriors_t
-  units = 10
+  units = 30
   type = 'infantry'
   traits = [human_t]
-  gold = 450
+  gold = 900
   upkeep = 40
-  resource_cost = 25
+  resource_cost = 20
   food = 4
   pop = 35
   global_skills = [Burn, Raid]
 
   hp = 2
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 8
   global_skills = [Regroup, Reinforce]
 
@@ -3222,13 +3234,50 @@ class PriestWarriors(Human):
     self.corpses = [Zombies]
 
 
+
+class KnightsTemplar (Human):
+  name = knights_templar_t
+  units = 10
+  type = 'infantry'
+  traits = [human_t]
+  gold = 550
+  upkeep = 60
+  resource_cost = 20
+  food = 4
+  pop = 35
+  global_skills = [Burn, Raid]
+
+  hp = 2
+  mp = [2, 2]
+  moves = 7
+  resolve = 9
+  global_skills = [Regroup, Reinforce]
+
+  dfs = 5
+  res = 4
+  arm = 0
+  armor = HeavyArmor()
+  shield = None
+
+  att = 2
+  damage = 3
+  off = 6
+  str = 4
+  pn = 0
+  offensive_skills = [ShadowHunter]
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Zombies]  
+
+
 class Sagittarii(Human):
   name = 'sagittarii'
   units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 280
-  upkeep = 10
+  gold = 320
+  upkeep = 18
   resource_cost = 15
   food = 3
   pop = 40
@@ -3261,8 +3310,8 @@ class CrossBowMen(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 220
-  upkeep = 20
+  gold = 420
+  upkeep = 30
   resource_cost = 18
   food = 3
   pop = 30
@@ -3295,8 +3344,8 @@ class Arquebusier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 300
-  upkeep = 30
+  gold = 520
+  upkeep = 40
   resource_cost = 25
   food = 3
   pop = 30
@@ -3329,8 +3378,8 @@ class Musket(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 350
-  upkeep = 40
+  gold = 550
+  upkeep = 50
   resource_cost = 25
   food = 3
   pop = 30
@@ -3363,8 +3412,8 @@ class Equites(Human):
   units = 25
   type = 'cavalry'
   traits = [human_t]
-  gold = 880
-  upkeep = 30
+  gold = 1500
+  upkeep = 50
   resource_cost = 18
   food = 5
   pop = 60
@@ -3403,8 +3452,8 @@ class Equites2(Human):
   units = 20
   type = 'cavalry'
   traits = [human_t]
-  gold = 1400
-  upkeep = 50
+  gold = 3400
+  upkeep = 70
   resource_cost = 30
   food = 8
   pop = 70
@@ -4426,8 +4475,8 @@ class Dock(Building):
 
 class Fields(Building):
   name = fields_t
-  gold = 1000
-  food = 1.75
+  gold = 2000
+  food = 1.5
   #grouth = 10
   #income = 1.2
   own_terrain = 1
@@ -4446,8 +4495,8 @@ class Fields(Building):
 class SmallFarm(Fields, Building):
   name = small_farm_t
   base = Fields
-  gold = 3000
-  food = 2.5
+  gold = 6000
+  food = 3
   #grouth = 25
   #income = 1.5
 
@@ -4461,8 +4510,8 @@ class SmallFarm(Fields, Building):
 class Farm(SmallFarm, Building):
   name = farm_t
   base = SmallFarm
-  gold = 6000
-  food = 3
+  gold = 15000
+  food = 5
   #grouth = 50
   #income = 50
 
@@ -4509,8 +4558,8 @@ class Market(Building):
 
 class Quarry(Building):
   name = 'cantera'
-  gold = 3000
-  food = 1.2
+  gold = 10000
+  food = 1.4
   income = 1.2
   resource = 2
   own_terrain = 1
@@ -4527,7 +4576,7 @@ class Quarry(Building):
 
 class SawMill(Building):
   name = 'aserradero'
-  gold = 2500
+  gold = 8000
   income = 10
   food = 1.3
   resource = 1.5
@@ -4549,10 +4598,11 @@ class HolyEmpire(Nation):
   name = holy_empire_t
   nick = nation_phrase1_t
   traits = [human_t, order_t]
-  gold = 10000
+  gold = 30000
   food_limit_builds = 7
   food_limit_upgrades = 5
-  grouth_rate = 6
+  grouth_base = 4
+  grouth_rate = 60
   public_order = 0
   upkeep_base = 60
   upkeep_change = 200
@@ -4584,11 +4634,11 @@ class HolyEmpire(Nation):
     self.soil = [plains_t, grassland_t]
     self.surf = [none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_grassland = 3
+    self.allow_around_grassland = 4
     self.allow_around_plains = 0
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 2 
-    self.unallow_around_swamp = 2
+    self.unallow_around_swamp = 1
     self.unallow_around_tundra = 0
     self.unallow_around_glacier = 0
 
@@ -4757,8 +4807,8 @@ class Archers(Human):
   units = 15
   type = 'infantry'
   traits = [human_t]
-  gold = 120
-  upkeep = 6
+  gold = 160
+  upkeep = 13
   resource_cost = 12
   food = 3
   pop = 25
@@ -5443,8 +5493,8 @@ class PeasantLevies(Human):
   units = 30
   type = 'infantry'
   traits = [human_t]
-  gold = 60
-  upkeep = 3
+  gold = 90
+  upkeep = 8
   resource_cost = 8
   food = 3
   pop = 40
