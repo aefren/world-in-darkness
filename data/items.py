@@ -1211,7 +1211,7 @@ class Unit:
   desert_survival = 0
   dist = 0
   fled = 0
-  fear = 8
+  fear = 4
   food = 0
   forest_survival = 0
   garrison = 0
@@ -1236,7 +1236,7 @@ class Unit:
   settler = 0
   show_info = 0
   sight = 1
-  sort_chance = 66
+  sort_chance = 50
   stopped = 0
   swamp_survival = 0
   units_min = 0
@@ -1285,10 +1285,7 @@ class Unit:
     return name
 
   def autokill(self):
-    if (self.pos and (self.pos.soil.name not in self.favsoil 
-                      or self.pos.surf.name not in self.favsurf
-                      or self.pos.hill not in self.favhill)
-                      and self in self.pos.world.units and roll_dice(2) > round(self.ranking/7)):
+    if self.pos.get_nearest_nation() > 3 and self in self.pos.world.units:
       self.hp_total = 0
       loadsound('set9')
   def break_group(self):
@@ -1583,14 +1580,15 @@ class Unit:
         if nt.name == self.align.name: self.nation = nt
   def set_hidden(self, pos, info=1):
     if info: logging.info(f'set hidden {self} a {pos} {pos.cords}.')
-    visible = self.units+(self.pop-self.units)
+    visible = self.units
     if info: logging.debug(f'visible {visible}')
     if self.nation != pos.nation: 
       visible += pos.pop
       if info: logging.debug(f'visible {visible} pop')
-    visible += sum([it.units+(it.pop-it.units) for it in pos.units if it.nation != self.nation])
+    visible += sum([it.units for it in pos.units if it.nation != self.nation])
     if info: logging.debug(f'visible {visible} units')
-    visible = round(visible / 20)
+    visible = floor(visible / 300)
+    if visible > 7: visible = 7
     if info: logging.debug(f'visible {visible} rond 20')
     stealth = self.stealth + self.stealth_mod
     if info: logging.debug(f'stealth {stealth}')
@@ -1655,15 +1653,10 @@ class Unit:
     if info and tiles: print(f'set_tile_attr {self} en {self.pos} {self.pos.cords}')
     for t in tiles:
       t.update(self.nation)
-      defense = t.pop + t.defense
-      if info: print(f'defense en {t} {t.cords} {defense}')
-      defense += t.around_defense * 0.1
-      if info: print(f'around defense {defense}')
       unrest = self.ranking * 0.1
       if info: print(f'unrest {unrest}')
-      if t != self.pos: unrest = unrest / 2
+      if t == self.pos: unrest *= 2
       if info: print(f'diferente que. unrest {unrest}')
-      unrest = unrest * 100 / defense
       if info: print(f'unrest final {unrest}')
       if unrest < 0: unrest = 0
       t.unrest += unrest
@@ -3277,7 +3270,7 @@ class Sagittarii(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 320
-  upkeep = 18
+  upkeep = 15
   resource_cost = 15
   food = 3
   pop = 40
@@ -4068,8 +4061,8 @@ class Ghouls(Human):
   pn = 0
   offensive_skills = [ToxicClaws]
 
+  populated_land = 1
   pref_corpses = 1
-
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4256,6 +4249,7 @@ class Vampire(Undead):
   str = 6
   pn = 2
 
+  populated_land = 1
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = []
@@ -4329,6 +4323,7 @@ class Vargheist(Undead):
   pn = 2
 
   fear = 6
+  populated_land = 1
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4407,6 +4402,7 @@ class VarGhul(Undead):
   offensive_skills = [ToxicClaws]
 
   fear = 2
+  populated_land = 1
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4444,8 +4440,9 @@ class Zombies(Undead, Ground):
   pn = 0
   offensive_skills = [Surrounded]
 
-  sort_chance = 0
   fear = 0
+  populated_land = 1
+  sort_chance = 50
   def __init__(self, nation):
     super().__init__(nation)
 
@@ -4577,10 +4574,9 @@ class Quarry(Building):
 class SawMill(Building):
   name = 'aserradero'
   gold = 8000
-  income = 10
   food = 1.3
+  income = 1.5
   resource = 1.5
-  income = 2
   own_terrain = 1
   size = 6
   tags = [resource_t]
@@ -4808,7 +4804,7 @@ class Archers(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 160
-  upkeep = 13
+  upkeep = 10
   resource_cost = 12
   food = 3
   pop = 25
@@ -4832,7 +4828,9 @@ class Archers(Human):
   pn = 0
   offensive_skills = [Skirmisher]
   
-  fear = 10
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -4914,6 +4912,8 @@ class BlackOrcs(Unit):
   pn = 1
 
   fear = 2
+  populated_land = 1
+  sort_chance = 70
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4991,7 +4991,9 @@ class DesertNomads(Human):
   pn = 0
   offensive_skills = [Charge]
   
-  fear = 8
+  fear = 3
+  populated_land = 1
+  sort_chance = 80
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5109,8 +5111,10 @@ class GiantWolves(Unit):
   str = 5
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 4
-  fear = 5
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5153,8 +5157,10 @@ class Goblins(Unit):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher] 
   
+  fear = 3
+  populated_land = 1
+  sort_chance = 90
   stealth = 6
-  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5195,8 +5201,10 @@ class Harpy(Unit):
   str = 3
   pn = 0
   
+  fear = 1
+  populated_land = 1
+  sort_chance = 90
   stealth = 7
-  fear = 10
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5236,8 +5244,8 @@ class HellHounds(Undead):
   str = 5
   pn = 0
   
-  stealth = 8
   fear = 2
+  stealth = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5274,8 +5282,10 @@ class Hyaenas(Unit):
   str = 4
   pn = 1
   
+  fear = 5
+  populated_land = 1
+  sort_chance = 90
   stealth = 5
-  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5317,7 +5327,9 @@ class Hunters(Human):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
 
-  fear = 10
+  fear = 6
+  populated_land = 1
+  sort_chance = 90
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5357,7 +5369,9 @@ class NomadsRiders(Human):
   pn = 0
   offensive_skills = [Skirmisher]
 
-  fear = 8
+  fear = 3
+  populated_land = 1
+  sort_chance = 90
   stealth = 4
   def __init__(self, nation):
     super().__init__(nation)
@@ -5401,7 +5415,9 @@ class Orc_Archers(Unit):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
   
-  fear = 8
+  fear = 4
+  populated_land = 1
+  sort_chance = 80
   stealth = 4
   def __init__(self, nation):
     super().__init__(nation)
@@ -5443,7 +5459,9 @@ class Orcs(Unit):
   str = 4
   pn = 0
   
-  fear = 6
+  fear = 4
+  populated_land = 1
+  sort_chance = 80
   stealth = 4
   def __init__(self, nation):
     super().__init__(nation)
@@ -5461,7 +5479,7 @@ class Levy(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 50
-  upkeep = 6
+  upkeep = 8
   resource_cost = 10
   food = 3
   pop = 20
@@ -5494,7 +5512,7 @@ class PeasantLevies(Human):
   type = 'infantry'
   traits = [human_t]
   gold = 90
-  upkeep = 8
+  upkeep = 6
   resource_cost = 8
   food = 3
   pop = 40
@@ -5555,6 +5573,8 @@ class Raiders(Human):
   pn = 0
   
   fear = 4
+  populated_land = 1
+  sort_chance = 80
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5595,6 +5615,8 @@ class Riders(Human):
   offensive_skills = [Charge]
 
   fear = 4
+  populated_land = 1
+  sort_chance = 80
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5674,8 +5696,10 @@ class Wargs(Unit):
   str = 4
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 5
-  fear = 6
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5715,7 +5739,9 @@ class Warriors(Human):
   str = 3
   pn = 0
 
-  fear = 8
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5753,8 +5779,10 @@ class Wolves(Unit):
   str = 4
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 4
-  fear = 8
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild

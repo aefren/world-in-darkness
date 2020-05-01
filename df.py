@@ -2933,9 +2933,9 @@ def info_building(itm, sound='in1'):
         f'{gold_t} {itm.gold}. {upkeep_t} {itm.upkeep}, {resources_t} {itm.resource_cost[1]}.',
         f'{units_t} {av_units if itm.av_units else str()}.',
         f'{upgrades_t} {upgrades if itm.upgrade else str()}.',
-        f'{income_t} {itm.income}%.',
-        f'{public_order_t} {itm.public_order}%. {grouth_t} {itm.grouth}.',
-        f'{food_t} {itm.food}%. {resources_t} {itm.resource}%.',
+        f'{income_t} {itm.income}, {upkeep_t} {itm.upkeep}.',
+        f'{food_t} {itm.food}. {resources_t} {itm.resource}.',
+        f'{public_order_t} {itm.public_order}. {grouth_t} {itm.grouth}.',
         ]
 
       sp.speak(lista[x])
@@ -3932,6 +3932,7 @@ def oportunist_attack(itm, scenary):
   logging.debug(f'{len(sq)} casillas.')
   for s in sq:
     ranking = itm.ranking
+    logging.debug(f'{ranking=:}.')
     if itm.comm: ranking -= ranking*0.5
     if s.surf.name == forest_t and itm.forest_survival == 0: 
       ranking -= ranking*0.2
@@ -3942,14 +3943,19 @@ def oportunist_attack(itm, scenary):
     if s.hill and itm.mountain_survival == 0: 
       ranking -= ranking*0.2
       logging.debug(f'reduce by mountain.')
-    rnd = randint(round(ranking*0.6), round(ranking* 1.2))
-    logging.debug(f'threat {s.threat}, rnd {rnd}, threat_around {s.around_threat}')
-    if (rnd > s.threat and s.around_threat < itm.ranking
-        and s.cost <= itm.mp[0]):
-      if s.cost > itm.mp[0] and roll_dice(1) >= 5:
-        logging.debug(f'costo mayor de movimiento.') 
-        continue 
-      logging.debug(f'threat {s.threat} around_threat {s.around_threat}, ranking {itm.ranking}.')
+    rnd = randint(round(ranking*0.9), round(ranking* 1.2))
+    if itm.nation not in world.nations: 
+      rnd *= 1.5
+      logging.debug(f'rnd increased by random unit.')
+    logging.debug(f'{rnd=:}, {s.threat=:}, {s.around_threat=:}')
+    if itm.fear in [5, 6]: fear = 1.5
+    if itm.fear in [4, 3]: fear = 2
+    if itm.fear <= 2: fear = 3
+    logging.debug(f'{rnd*fear=:}, {s.around_threat=:}.')
+    if rnd*fear < s.around_threat:
+      logging.debug(f'afraid.')
+      continue
+    if rnd > s.threat and s.cost <= itm.mp[0]:
       msg = f'{itm} en {itm.pos} aprobecha y ataqua a {s}.'
       logging.debug(msg)
       itm.log[-1].append(msg)
@@ -3965,7 +3971,7 @@ def play_sound(unit, sound, ch=0):
 
 
 def random_move(itm, scenary, sq=None, value=1):
-  logging.debug(f'movimiento aleatoreo para {itm} en {itm.pos}.')
+  logging.debug(f'movimiento aleatoreo para {itm} en {itm.pos}, {itm.pos.cords}.')
   done = 0
   if sq == None:
     sq = itm.pos.get_near_tiles(value)
@@ -3980,6 +3986,7 @@ def random_move(itm, scenary, sq=None, value=1):
     if itm.nation not in world.nations: sq.sort(key=lambda x: x.get_nearest_nation())
     map_update(itm.nation, sq)
     if randint(1, 100) < itm.sort_chance:
+      logging.debug(f'sorted.')
       sort = 1
       [s.set_threat(itm.nation) for s in sq]
       if itm.populated_land:
@@ -3987,17 +3994,20 @@ def random_move(itm, scenary, sq=None, value=1):
         sq.sort(key=lambda x: x.pop, reverse=True)
       set_favland(itm, sq)
     
-    rnd = randint(round(itm.ranking*0.75), round(itm.ranking*1.25))
-    if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd*0.2
-    if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd*0.2
-    if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd*0.2
-    if commander_t in itm.traits: rnd -= rnd*0.2    
+    logging.debug(f'{itm.ranking=:}.')
+    rnd = randint(round(itm.ranking*0.9), round(itm.ranking*1.3))
+    if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd*0.3
+    if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd*0.3
+    if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd*0.3
+    if commander_t in itm.traits: rnd -= rnd*0.3
+    if itm.nation not in world.nations: rnd *= 1.5
     if roll_dice(1) <= itm.fear:
       logging.debug(f'ordena por miedo')
       fear = 1
       sq.sort(key=lambda x: x.defense,reverse=True)
-      sq.sort(key=lambda x: x.around_threat < randint(int(itm.ranking*0.6), int(itm.ranking*1.2)),reverse=True)
-      sq.sort(key=lambda x: x.threat < randint(int(itm.ranking*0.6), int(itm.ranking*1.2)),reverse=True)
+      sq.sort(key=lambda x: x.threat <= rnd, reverse=True)
+      sq.sort(key=lambda x: x.around_threat <= rnd, reverse=True)
+      if roll_dice(1) >= 3: sq.sort(key=lambda x: x.food-x.food_need < itm.food)
     if itm.scout:
       #logging.debug(f'ordena para exploración')
       fear = 1
@@ -4008,20 +4018,27 @@ def random_move(itm, scenary, sq=None, value=1):
       sq.sort(key=lambda x: x.around_threat)
     
     # casillas finales.
-    sq.sort(key=lambda x: x.food-x.food_need < itm.food)
+    sq.sort(key=lambda x: x != itm.pos,reverse=True)
     movstatus = f'fear {fear}, sort {sort}.'
     itm.log[-1].append(movstatus)
-    #logging.debug(f'{len(sq)} casillas finales.')
-    goto = sq[0]
-    rnd = randint(round(itm.ranking*0.9), round(itm.ranking* 1.3))
-    #logging.debug(f'rnd {rnd} amenaza {round(goto.threat)}.')
-    if fear and rnd < goto.threat:
-      move = 0
-      #logging.debug(f'move = 0')
-    if move: move_set(itm, goto)
-    else:
+    logging.debug(f'{len(sq)} casillas finales.')
+    moved = 0
+    for s in sq:
+      if itm.fear in [6, 5]: fear = 1.5
+      if itm.fear in [4, 3]: fear = 2
+      if itm.fear in [2, 1]: fear = 3
+      logging.debug(f'{rnd*fear=:} {s.around_threat=:}.')
+      if rnd*fear <s.around_threat and itm.fear >= 5: 
+        logging.debug(f'afraid.')
+        continue
+      logging.debug(f'rnd {rnd} amenaza {round(s.threat)} in {s}, {s.cords}.')
+      if rnd >= s.threat:
+        moved = 1
+        move_set(itm, s)
+        break
+    if moved == 0:
       msg = f'no se mueve.!'
-      #logging.debug(msg)
+      logging.debug(msg)
       itm.log[-1].append(msg)
       itm.stopped = 1
   return done
