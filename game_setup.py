@@ -1,4 +1,3 @@
-from data.lang.es import wood_t
 exec('from data.items import *')
 
 
@@ -8,7 +7,7 @@ DIFFICULTY_TYPE = 'dynamic'
 
 #factions.
 HOLY = HolyEmpire()
-HOLY.ai = 0
+HOLY.ai = 1
 TRANS = Walachia()
 TRANS.ai = 0
 ELF = WoodElves()

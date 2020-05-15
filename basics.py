@@ -8,12 +8,12 @@ from data.lang.es import building_t
 
 
 def ai_join_units(itm):
-  if itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group: return
+  if itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group or itm.goto: return
   logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   dice = roll_dice(1)
   needs = ceil(itm.ranking / 20)
-  if itm.pos.around_threat: needs -= 2
+  if itm.pos.around_threat*1.3 > itm.ranking: needs -= 2
   logging.debug(f'dice {dice} needs {needs}.')
   if dice >= needs:
     for i in itm.pos.units:
@@ -22,12 +22,10 @@ def ai_join_units(itm):
           or i.goal or i.leader != itm.leader or i.group):
         continue
       logging.debug(f'{i}.')
-      itm.update()
       i.update()
       dice = roll_dice(1)
       needs = ceil(i.ranking / 20)
-      if itm.pos.around_threat: needs -= 2
-      if i.scout: needs += 1
+      if itm.pos.around_threat*1.3 > itm.ranking: needs -= 2
       logging.debug(f'dice {dice} needs {needs}.')
       if dice >= needs:
         join_units([itm,i])

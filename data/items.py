@@ -16,7 +16,6 @@ from data.skills import *
 from log_module import *
 from screen_reader import *
 from sound import *
-from Tools.demo.sortvisu import steps
 
 
 class LightArmor:
@@ -96,6 +95,24 @@ class Building:
       self.public_order_pre = base.public_order
       self.res_pre = base.resource 
   
+  def improve(self, upgrade):
+    msg = f'{self} actualizará a {upgrade}. {cost_t} {upgrade.gold} en {self.pos} {self.pos.cords}.'
+    logging.info(msg)
+    if self.nation.show_info:
+      sp.speak(msg)
+      sleep(loadsound('gold1') * 0.5)
+    
+    self.nation.gold -= upgrade.gold
+    upgrade.av_units_pre = []
+    for i in self.av_units_pre+self.av_units:
+      if i not in upgrade.av_units_pre: upgrade.av_units_pre.append(i)
+    upgrade.nation = self.nation
+    upgrade.pos = self.pos
+    upgrade.size = self.size
+    if self.pos.city: msg = [f'se actualizará {self} en {self.pos.city}, {self.pos} {self.pos.cords}.']
+    else: msg = [f'se actualizará {self} en {self.pos} {self.pos.cords}.']
+    upgrade.nation.log[-1].append(msg)
+    self.pos.buildings[self.pos.buildings.index(self)] = upgrade
   def can_build(self):
     logging.debug(f'requicitos de {self}.')
     if self.check_tile_req(self.pos) == 0:
@@ -166,7 +183,7 @@ class City:
   pop = 0
   pop_back = 0
   popdef_base = 15
-  popdef_change = 100
+  popdef_change = 200
   popdef_min = 5
   prod_progress = 0
   public_order = 1
@@ -186,6 +203,7 @@ class City:
     
     self.av_units_pre = []
     self.buildings = []
+    #self.buildings_food = []
     self.events = [i(self) for i in self.events]
     self.production = []
     self.resource_cost = [0, 0]
@@ -452,8 +470,7 @@ class City:
         if uni not in units and self.pos.get_distance(uni.pos, self.pos) <= 3: units.append(uni)
     self.seen_threat = sum([i.ranking for i in units])
     
-    if self.seen_threat: self.defense_pred = self.seen_threat // 2
-    if self.seen_threat > self.defense_pred: self.defense_pred = self.seen_threat
+    if self.pos.around_threat > self.defense: self.defense_pred = self.seen_threat // 2
     if self.defense_pred < self.defense_base/2: self.defense_pred = self.defense_base/2
 
   def set_downgrade(self):
@@ -561,20 +578,20 @@ class City:
     logging.debug(f'recividos {len(units)}.')
     _animal = [i for i in units if animal_t in i.traits]
     _anticav = [i for i in units if i.anticav]
-    _archers = [i for i in units if i.rng > 5]
+    _archers = [i for i in units if i.rng+i.rng_mod > 5]
     _fly = [i for i in units if i.can_fly]
     _mounted = [i for i in units if mounted_t in i.traits]
-    _sacred = [i for i in units if i.damage_sacred + i.damage_sacred_mod]
+    _sacred = [i for i in units if sacred_t in i.traits]
     _undead = [i for i in units if undead_t in i.traits]
     if self.defense_total_percent < 200 and self.nation.score < self.nation.attack_factor * 3:
       logging.debug(f'defensivo.')
-      if roll_dice(1) >= 5: units.sort(key=lambda x: x.rng, reverse=True)
+      if roll_dice(1) >= 3: units.sort(key=lambda x: x.rng+x.rng_mod, reverse=True)
       units.sort(key=lambda x: x.resource_cost <= self.resource_total, reverse=True)
       return units
     
     if self.seen_ranged_rnk > (self.units_mounted_rnk + self.units_fly_rnk) * 0.5:
       logging.debug(f'contra ranged.')
-      _units = [i for i in units if i.moves >= 8
+      _units = [i for i in units if i.moves+i.moves_mod >= 8
                 or any(i >= 5 for i in [i.dfs + i.dfs_mod, i.res + i.res_mod])] 
       if roll_dice(1) >= 5: _units.sort(key=lambda x: x.ranking, reverse=True)
       if _units: return _units
@@ -593,14 +610,17 @@ class City:
       logging.debug(f'human')
       units.sort(key=lambda x: any(i in x.traits for i in [human_t]), reverse=True)
       return units
-    
-    logging.debug(f'_anticav {len(_anticav)} limit {self.units_piercing_rnk*100//self.defense_total}.')
+    logging.debug(f'av anticav {len(_anticav)}.')
+    logging.debug(f'total rnk {self.units_piercing_rnk*100//self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_piercing_limit}.')
     if (_anticav and roll_dice(1) >= 3 
-        and self.units_piercing_rnk * 100 // self.defense_total < self.nation.units_sacred_limit):
+        and self.units_piercing_rnk * 100 // self.defense_total < self.nation.units_piercing_limit):
       logging.debug(f'piercing.')
       if roll_dice(1) >= 3: _anticav.sort(key=lambda x: x.ranking, reverse=True)
       if _anticav: return _anticav
-    logging.debug(f'_sacred {len(_sacred)} limit {self.units_sacred_rnk*100//self.defense_total}.')
+    logging.debug(f'av sacred {len(_sacred)}.')
+    logging.debug(f'total rnk {self.units_sacred_rnk*100//self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_sacred_limit}.')
     if (_sacred and roll_dice(1) >= 3 
         and self.units_sacred_rnk * 100 // self.defense_total < self.nation.units_sacred_limit):
       logging.debug(f'sacred.')
@@ -612,14 +632,18 @@ class City:
       logging.debug(f'forest and hills.')
       _units.sort(key=lambda x: x.rng >= 6, reverse=True)
       if _units: return _units
-    logging.debug(f'_archers {len(_archers)} limit {self.units_ranged_rnk*100//self.defense_total}.')
+    logging.debug(f'av archers {len(_archers)}.')
+    logging.debug(f'total rnk {self.units_ranged_rnk*100//self.defense_total}')
+    logging.debug(f'limit {self.nation.units_ranged_limit}.')
     if (_archers and roll_dice(1) >= 3 
         and self.units_ranged_rnk * 100 // self.defense_total < self.nation.units_ranged_limit):
       logging.debug(f'ranged.')
-      if roll_dice(1) >= 3: _archers.sort(key=lambda x: x.ranking, reverse=True)
+      if roll_dice(1) >= 2: _archers.sort(key=lambda x: x.ranking, reverse=True)
       _archers.sort(key=lambda x: x.rng >= 6, reverse=True)
       if _archers: return _archers
-    logging.debug(f'_mounted {len(_mounted)} limit {self.units_mounted_rnk*100/self.defense_total}.')
+    logging.debug(f'av mounted {len(_mounted)}.')
+    logging.debug(f'total rnk {self.units_mounted_rnk*100/self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_mounted_limit}.')
     if (_mounted and roll_dice(1) >= 4
         and self.units_mounted_rnk * 100 / self.defense_total < self.nation.units_mounted_limit):
       logging.debug(f'mounted.')
@@ -636,6 +660,7 @@ class City:
     return units
 
   def status(self, info=0):
+    logging.info(f'city status {self}.')
     self.defensive_tiles = self.get_tiles_defense(self.tiles)
     self.defensive_tiles.sort(key=lambda x: x.hill, reverse=True)
     self.for_food_tiles = self.get_tiles_food(self.tiles)
@@ -740,15 +765,15 @@ class City:
     self.set_upgrade()
     # data buildings.
     self.grouth_total = self.nation.grouth_base
-    print(f'{self.grouth_total = }')
+    #print(f'{self.grouth_total = }')
     self.grouth_total += (self.food_total*100/self.pop-100)/self.nation.grouth_rate
-    print(f'{self.grouth_total = }')
+    #print(f'{self.grouth_total = }')
     self.grouth_total += self.grouth
-    print(f'from city {self.grouth_total = }')
+    #print(f'from city {self.grouth_total = }')
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
     self.grouth_total -= round(abs(self.public_order_total-100)*self.grouth_total/100)
-    print(f'{round(abs(self.public_order_total-100)*self.grouth_total/100)}, {self.grouth_total = }.')
+    #print(f'{round(abs(self.public_order_total-100)*self.grouth_total/100)}, {self.grouth_total = }.')
     if self.grouth_total < 0: self.grouth_total = 0.1
     self.status()
     self.set_av_units()
@@ -903,6 +928,94 @@ class Nation:
     self.update(scenary)
     logging.debug(f'{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.')
   
+  def build(self, city):
+    #Build food buildings.
+    city.status()
+    shuffle(city.tiles)
+    city.tiles.sort(key=lambda x: x.is_city, reverse=True)
+    buildings = [b for b in self.av_buildings if food_t in b.tags and b.gold < self.gold]
+    count = randint(1,2)
+    if city.buildings_food_complete == []: count += 2
+    for b in buildings:
+      for t in city.tiles:
+        building = b(self, t)
+        if building.can_build():
+          city.add_building(building, t)
+          logging.debug(f'{building} added at {t} {t.cords}.')
+          count -= 1
+          if count < 1: break
+    
+    #build misc buildings.
+    city.status()
+    if city.buildings_food:
+      buildings = [b for b in self.av_buildings if any(i in b.tags for i in [unrest_t, resource_t]) and b.gold < self.gold]
+      cost_mean = sum([b.gold for b in buildings])
+      completed = len(city.buildings_res_complete)
+      if completed == 0: completed = 1
+      shuffle(buildings)
+      count = 1
+      if len(city.buildings_res_complete) > len(city.tiles)//4: count = 0
+      if self.gold > cost_mean*completed: count = 1
+      for b in buildings:
+        if count == 0: break
+        for t in city.tiles:
+          building = b(self, t)
+          if building.can_build():
+            city.add_building(building, t)
+            logging.debug(f'{building} added at {t} {t.cords}.')
+            count = 0
+            break
+    
+    #build military buildings.
+    city.status()
+    if city.buildings_food:
+      buildings = [b for b in self.av_buildings if military_t in b.tags and b.gold < self.gold]
+      shuffle(buildings)
+      count = 1
+      for b in buildings:
+        if count == 0: break
+        for t in city.tiles:
+          building = b(self, t)
+          if building.can_build():
+            city.add_building(building, t)
+            logging.debug(f'{building} added at {t} {t.cords}.')
+            count = 0
+            break
+    
+  def improve_food(self, city):
+    logging.info(f'build_food_upgrade.')
+    #food upgrades.
+    buildings = [b for b in city.buildings_food_complete if b.upgrade]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    for b in buildings:
+      if b.pos.food > b.pos.pop+abs(b.pos.po-100): 
+        logging.debug(f'food not need.')
+        continue
+      upg = choice(b.upgrade)(self, self.pos)
+      
+      if upg.gold < self.gold:
+        b.improve(upg)
+  def improve_military(self, city):
+    logging.info(f'build_military_upgrade.')
+    #military upgrades.
+    buildings = [b for b in city.buildings_military_complete if b.upgrade]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    for b in buildings:
+      upg = choice(b.upgrade)(self, self.pos)
+      
+      if upg.gold < self.gold:
+        b.improve(upg)
+  def improve_misc(self, city):
+    logging.info(f'build_misc_upgrade.')
+    #misc upgrades.
+    buildings = [b for b in city.buildings if b.upgrade and b.is_complete
+                 and any(i in b.tags for i in [resource_t, unrest_t])]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    for b in buildings:
+      upg = choice(b.upgrades)(self, self.pos)
+      
+      if upg.gold < self.gold:
+        b.improve(upg)
   def check_events(self):
     pass
 
@@ -2595,8 +2708,8 @@ class Hamlet(City):
   military_base = 40
   military_change = 100
   military_max = 60
-  popdef_base = 50
-  popdef_change = 60
+  popdef_base = 15
+  popdef_change = 300
   popdef_min = 5
   tags = [city_t]
 
@@ -2819,7 +2932,7 @@ class CultOfLight(MeetingCamp, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors, Priest]
+    self.av_units = [Inquisitors, SacredWarriors, Priest]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]
@@ -2922,7 +3035,7 @@ class Priest(Human):
   name = 'sacerdote'
   units = 10
   type = 'infantry'
-  traits = [human_t, commander_t]
+  traits = [human_t, commander_t, sacred_t]
   gold = 1000
   upkeep = 40
   resource_cost = 30
@@ -2989,9 +3102,9 @@ class Settler(Human):
 
 class Flagellants(Human):
   name = flagellants_t
-  units = 30
+  units = 20
   type = 'infantry'
-  traits = [human_t]
+  traits = [human_t, sacred_t]
   gold = 140
   upkeep = 10
   resource_cost = 11
@@ -3002,7 +3115,7 @@ class Flagellants(Human):
   hp = 2
   mp = [2, 2]
   moves = 5
-  resolve = 5
+  resolve = 6
 
   dfs = 3
   res = 3
@@ -3091,7 +3204,7 @@ class GreatSwordsMen(Human):
 
 class SpearMen(Human):
   name = spearmen_t
-  units = 20
+  units = 15
   type = 'infantry'
   traits = [human_t]
   gold = 620
@@ -3161,7 +3274,7 @@ class Inquisitors(Human):
   name = inquisitors_t
   units = 10
   type = 'infantry'
-  traits = [human_t]
+  traits = [human_t, sacred_t]
   gold = 600
   upkeep = 60
   resource_cost = 25
@@ -3191,11 +3304,11 @@ class Inquisitors(Human):
     self.corpses = [Zombies]
 
 
-class PriestWarriors(Human):
+class SacredWarriors(Human):
   name = priest_warriors_t
   units = 30
   type = 'infantry'
-  traits = [human_t]
+  traits = [human_t, sacred_t]
   gold = 900
   upkeep = 40
   resource_cost = 20
@@ -3232,7 +3345,7 @@ class KnightsTemplar (Human):
   name = knights_templar_t
   units = 10
   type = 'infantry'
-  traits = [human_t]
+  traits = [human_t, sacred_t]
   gold = 550
   upkeep = 60
   resource_cost = 20
@@ -4103,7 +4216,7 @@ class Necromancer(Human):
   str = 3
   pn = 0
   
-  fear = 12
+  fear = 6
   pref_corpses = 1
   stealth = 6
   def __init__(self, nation):
@@ -4597,7 +4710,7 @@ class HolyEmpire(Nation):
   gold = 30000
   food_limit_builds = 7
   food_limit_upgrades = 5
-  grouth_base = 4
+  grouth_base = 5
   grouth_rate = 60
   public_order = 0
   upkeep_base = 60
@@ -4610,7 +4723,7 @@ class HolyEmpire(Nation):
   scout_factor = 8
   stalk_rate = 200
 
-  city_req_pop_base = 2000
+  city_req_pop_base = 4500
   commander_rate = 10
   pop_limit = 60
   units_animal_limit = 20
@@ -4618,7 +4731,7 @@ class HolyEmpire(Nation):
   units_human_limit = 100
   units_melee_limit = 100
   units_mounted_limit = 20
-  units_piercing_limit = 30
+  units_piercing_limit = 50
   units_ranged_limit = 30
   units_sacred_limit = 20
   units_undead_limit = 30
@@ -4985,11 +5098,11 @@ class DesertNomads(Human):
   shield = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
-  offensive_skills = [Charge]
+  offensive_skills = []
   
   fear = 3
   populated_land = 1
@@ -5341,7 +5454,7 @@ class Hunters(Human):
 
 class NomadsRiders(Human):
   name = nomads_riders_t
-  units = 20
+  units = 30
   type = 'cavalry'
   traits = [human_t]
   gold = 60
@@ -5802,7 +5915,8 @@ class Hell(Nation):
     super().__init__()
     self.log = [[hell_t]]
     self.av_units = [Ghouls, Goblins, Harpy, HellHounds, Hyaenas, Orcs,
-                     Orc_Archers, Skeletons, VarGhul, Wargs, Zombies, Necromancer]
+                     Orc_Archers, Skeletons, Vargheist, VarGhul, Wargs, 
+                     Zombies, Necromancer]
 
 
 class Wild(Nation):

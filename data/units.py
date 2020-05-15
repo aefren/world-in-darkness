@@ -1471,7 +1471,7 @@ class Inquisitors(Human):
     self.corpses = [Zombies]
 
 
-class PriestWarriors(Human):
+class SacredWarriors(Human):
   name = priest_warriors_t
   units = 10
   type = 'infantry'

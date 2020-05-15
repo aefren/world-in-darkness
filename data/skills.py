@@ -192,14 +192,15 @@ class Ethereal(Skill):
 class Fanatism(Skill):
   effect = 'self'
   name = fanatism_t
-  desc = '+1 att, +1 str, -2 dfs, +1 moves if enemy is undead.'
+  desc = '+1 att, +1 str. -2 dfs, +1 moves, +1 resolve if enemy is death.'
   type = 0
   def run(self, itm):
-    if itm.target and undead_t in itm.target.traits:
+    if itm.target and death_t in itm.target.traits:
       itm.effects.append(self.name)
-      itm.att_mod += 2
+      itm.att_mod += 1
       itm.dfs_mod -= 2
       itm.moves_mod += 1
+      itm.resolve_mod += 2
       itm.str_mod += 2
 
 
@@ -241,7 +242,7 @@ class BattleFocus(Skill):
 
 class DarkPresence(Skill):
   name = 'dark presence'
-  desc = 'if undead: in day: +2 res. '
+  desc = 'if death: in day: +2 res. '
   desc += 'if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.'
   effect = 'friend'
   type = 0
@@ -690,10 +691,10 @@ class SermonOfCourage(Skill):
 class ShadowHunter(Skill):
   effect = 'self'
   name = 'cazador de sombras'
-  desc = '+2 damage, +2 str if enemy is undead.'
+  desc = '+2 damage, +2 str if enemy is death.'
   type = 0
   def run(self, itm):
-    if itm.target and dark_t in itm.target.traits:
+    if itm.target and death_t in itm.target.traits:
       itm.effects.append(self.name)
       itm.damage_sacred_mod += 2
       itm.moves_mod += 1
@@ -873,11 +874,11 @@ class ToxicClaws(Skill):
 
 class VigourMourtis(Skill):
   effect = 'friend'
-  desc = '+1 hit roll si la unidad es undead'
+  desc = '+1 hit roll si la unidad es death'
   name = 'vigor mortis'
   type = 0
   def run(self, itm):
-    if itm != self.itm and undead_t in itm.traits:
+    if itm != self.itm and death_t in itm.traits:
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
 

@@ -210,7 +210,7 @@ class CultOfLight(MeetingCamp, Building):
   upkeep = 10
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors]
+    self.av_units = [Inquisitors, SacredWarriors]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]

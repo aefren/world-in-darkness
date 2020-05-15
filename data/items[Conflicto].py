@@ -2768,7 +2768,7 @@ class CultOfLight(MeetingCamp, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors]
+    self.av_units = [Inquisitors, SacredWarriors]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]
@@ -3166,7 +3166,7 @@ class Inquisitors(Human):
     self.corpses = [Zombies]
 
 
-class PriestWarriors(Human):
+class SacredWarriors(Human):
   name = priest_warriors_t
   units = 10
   type = 'infantry'
