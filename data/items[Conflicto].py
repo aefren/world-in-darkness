@@ -3047,7 +3047,7 @@ class GreatSwordsMen(Human):
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3114,7 +3114,7 @@ class Halberdier(Human):
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [BattleBrothers, Regroup, Reinforce, ]
+  global_skills = [BattleBrothers, Regroup, Refit, ]
 
   dfs = 4
   res = 4
@@ -3181,7 +3181,7 @@ class SacredWarriors(Human):
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [Regroup, Reinforce]
+  global_skills = [Regroup, Refit]
 
   dfs = 4
   res = 4
@@ -3386,7 +3386,7 @@ class Equites2(Human):
   mp = [3, 3]
   moves = 8
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -5459,7 +5459,7 @@ class TheKnightsTemplar(Human):
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4

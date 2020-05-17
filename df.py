@@ -15,7 +15,7 @@ from pygame.time import get_ticks as ticks
 from basics import roll_dice
 from distutils.log import debug
 from data.lang.es import holy_empire_t, wallachia_t
-from data.items import SpearMen, Flagellants
+from data.items import SpearMen, Flagellants, Inquisitors, SwordsMen
 #from data.lang.es import holy_empire_t
 #from data.lang.es import mountain_survival_t, forest_survival_t,\
   #swamp_survival_t, swamp_t, forest_t, holy_empire_t, public_order_t
@@ -123,6 +123,7 @@ class Terrain:
     return name
 
   def add_unit(self, unit,nation, revealed=0):
+    global sayland
     for nt in world.nations+world.random_nations:
       if nt.name == nation: unit = unit(nt)
     unit.log += [[f'{turn_t} {world.turn}.']]
@@ -131,6 +132,7 @@ class Terrain:
     unit.update()
     unit.set_hidden(unit.pos)
     unit.revealed = revealed
+    sayland = 1
     return unit
   def get_distance(self, pos, trg):
     v = 1
@@ -304,16 +306,19 @@ class Terrain:
     if self.nation == None: return
 
     self.public_order = self.pop * 100 / self.food
-    self.public_order_buildings = 0
     self.public_order = 100 - self.public_order
     self.public_order += self.city.public_order
     self.po = self.public_order
-    # de edificios
+    # From buildings.
+    self.public_order_buildings = 0
     for b in self.buildings:
       self.public_order_buildings += b.public_order_pre
       if b.is_complete or b.type == city_t:
         self.public_order_buildings += b.public_order
-    
+
+    #From units.
+    self.public_order_units = sum([i.po for i in self.units])
+    self.public_order += self.public_order_buildings+self.public_order_units
     self.public_order += self.defense
     if self.public_order: 
       self.public_order_unrest = self.unrest*100//abs(self.public_order)
@@ -383,6 +388,7 @@ class Terrain:
   
   def update(self, nation=None):
     if mapeditor == 0: self.ambient = world.ambient
+    self.effects = []
     self.has_city = 1 if self.city else 0
     self.is_city = 1 if [i for i in self.buildings if i.type == city_t] else 0
     if mapeditor == 0: self.set_skills()
@@ -1012,7 +1018,7 @@ def ai_divide_units(nation):
     if i.pos.food_need > i.pos.food: need -= 2
     if city and city.seen_threat > city.defense_total*0.5: need += 2 
     if roll >= need:
-      unit_divide(i, 1)
+      i.split()
 
 def ai_expand_city(city):
   '''buscará expandir la ciudad.'''
@@ -1027,14 +1033,13 @@ def ai_expand_city(city):
   logging.debug(f'{request=:}, {rnd=:}.')
   
   # revisara requisitos extras.
-  factor = 100*len(city.tiles)
-  if len(city.tiles) >= 12: factor = 200*len(city.tiles)
-  elif len(city.tiles) >= 15: factor = 500*len(city.tiles)
+  factor = 3000
+  if len(city.tiles) >= 10: factor = (len(city.tiles)-9)*city.nation.expansion
   
-  defense_percent_need = 200
-  if len(city.tiles) >= 11: defense_percent_need = 400
+  defense_percent_need = 300
+  if len(city.tiles) >= 11: defense_percent_need = 500
   if len(city.tiles) >= 13: defense_percent_need = 600
-  if len(city.tiles) >= 15: defense_percent_need = 1200
+  if len(city.tiles) >= 15: defense_percent_need = 1000
 
   if request == 'food':
     logging.debug(f'request food.')
@@ -1060,7 +1065,10 @@ def ai_expand_city(city):
     cost = int(cost)
     logging.debug(f'costo {cost}')
     logging.debug(f'gold limit {factor}.')
-    if city.nation.gold - cost > factor and city.defense_total_percent >= defense_percent_need:
+    if tiles[0].threat+tiles[0].around_threat:
+      logging.debug(f'threat seen.')
+      return
+    if city.nation.gold - cost > factor and city.defense_total_percent >= defense_percent_need and tiles[0].threat+tiles[0].around_threat == 0:
       city.nation.gold -= cost
       city.tiles.append(tiles[0])
       tiles[0].city = city
@@ -1605,7 +1613,7 @@ def ai_protect_cities(nation):
       for r in range(times):
         logging.debug(f'divide {r} de {times}.')
         units.sort(key=lambda x: x.units,reverse=True)
-        unit_divide(units[0], 1)
+        units[0].split()
       for i in units:
         i.garrison = 0
       nation.update(scenary)
@@ -2056,8 +2064,12 @@ def combat_menu(itm, pos, target=None, dist=0):
       for uni in units:
         if uni.hp_total > 0 and uni.rng+uni.rng_mod >= dist:
           combat_fight(dist, uni, _round)
-          # retiradas.
-          if uni.target.hp_total> 0 and uni.target.deads[-1]: uni.target.combat_retreat()
+          # before attack retreats
+          if uni.target.hp_total> 0 and uni.target.deads[-1]: 
+            if uni.target.resolve+uni.target.resolve_mod <= 5: 
+              uni.target.combat_retreat()
+      #After attack retreats.
+      [uni.combat_retreat() for uni in units if uni.resolve+uni.resolve_mod >= 6]
       
       #after combat.
       [round_after(i) for i in units if i.hp_total> 0]
@@ -2293,11 +2305,11 @@ def control_game(event):
     if event.key == pygame.K_7:
       pos.add_unit(Halberdier, holy_empire_t,1)
     if event.key == pygame.K_8:
-      pos.add_unit(AwakenTree, wood_elves_t,1)
+      pos.add_unit(Inquisitors, holy_empire_t,1)
     if event.key == pygame.K_9:
-      pos.add_unit(Zombies, hell_t,1)
+      pos.add_unit(Archers, hell_t,1)
     if event.key == pygame.K_0:
-      pos.add_unit(Flagellants, holy_empire_t,1)
+      pos.add_unit(SwordsMen, holy_empire_t,1)
     if event.key == pygame.K_a:
       if x > -1:
         target = local_units[x].set_attack(local_units)
@@ -2371,7 +2383,7 @@ def control_game(event):
       if x > -1:
         local_units[x].raid()
     if event.key == pygame.K_s:
-      if x > -1: unit_divide(local_units[x], 1)
+      if x > -1: local_units[x].split()
       sayland = 1
 
     if event.key == pygame.K_SPACE:
@@ -3705,9 +3717,9 @@ def move_unit(itm):
       logging.debug(f'{itm} defiende {itm.pos}.')
       del(itm.goto[0])
     elif itm.goto[0] == 'set':
-      item = choice(itm.buildings)(itm.nation, itm.pos)
-      if item.check_tile_req(itm.pos):
-        itm.nation.add_city(item, itm.pos, scenary, itm)
+      placement = choice(itm.buildings)
+      if placement(itm.nation, itm.pos).check_tile_req(itm.pos):
+        itm.nation.add_city(placement, itm)
       else: logging.warning(f'{itm} no puede fundar aldea en {itm.pos}.')
 
 
@@ -4309,11 +4321,14 @@ def set_settler(itm, scenary):
       if len(nation.cities) < 2: nation.tiles_far.sort(key=lambda x: itm.pos.get_distance(x, itm.pos))
       for i in nation.units_scout: i.scout = 0
       if itm.pos.is_city:
-        shuffle(itm.pos.units)
-        for i in itm.pos.units[:3]: i.garrison = 0 
+        itm.pos.units.sort(key=lambda x: x.units,reverse=True)
+        for i in itm.pos.units[:2]: 
+          i.garrison = 0 
+          i.split(4)
+        
       if itm.group == []:
         logging.debug(f'sin grupo.')
-        itm.create_group(60)
+        itm.create_group(150)
         [unit_join_group(i) for i in itm.group]
       if itm.check_ready() :
         move_set(itm, nation.tiles_far[0])
@@ -4678,31 +4693,6 @@ def unit_attrition(itm):
       sleep(loadsound('notify18')*0.5)
 
 
-def unit_divide(itm, times=0):
-  if times == 0: times = 1
-  init = itm.__class__(itm.nation).initial_units
-  if itm.units <= init: return
-  logging.info(f'divide {itm}.')
-  for i in range(times):
-    itm.update()
-    logging.debug(f'{itm} hp {itm.hp_total} units {itm.units} mínimo {itm.initial_units}.')
-    if itm.units <= init:
-      logging.debug(f'mínimo alcansado.')
-      return
-
-    itm.hp_total -= init*itm.hp
-    unit = itm.__class__(nation)
-    unit.city = itm.city
-    unit.pos = itm.pos
-    unit.day_night = world.ambient.day_night
-    unit.revealed = itm.revealed
-    itm.initial_units -= unit.initial_units
-    itm.pop -= unit.pop
-    itm.pos.units.append(unit)
-    itm.update()
-    if itm.show_info: sp.speak(f'{itm}.')
-
-
 def unit_join_group(itm):
   if itm.leader and itm.pos != itm.leader.pos:
     logging.debug(f'{itm} en {itm.pos} {itm.pos.cords} busca unirse a su lider {itm.leader}.')
@@ -4743,12 +4733,16 @@ def unit_restoring(itm):
     logging.debug(f'restaura {res} hp.')
     if itm.hp_total > itm.hp * itm.units: itm.hp_total = itm.hp * itm.units
 
-  # reagrupar.
-  if itm.mp[0] == itm.mp[1] and itm.can_regroup:
-    if itm.units < itm.initial_units and itm.pos.nation == itm.nation:
-      itm.hp_total += itm.hp
-      logging.debug(f'reagrupa {itm.hp}.')
-      choice(itm.pos.city.tiles).pop -= itm.hp
+  # Refit
+  if itm.pos.nation and itm.sts+itm.sts_mod:
+    if itm.units < itm.initial_units:
+      sts = itm.hp*(itm.sts+itm.sts_mod)
+      itm.hp_total += sts
+      msg = f'recovers {sts}.'
+      itm.log[-1] += {msg}
+      logging.debug(msg)
+      reduction = round(itm.pop/itm.initial_units)
+      itm.pos.city.reduce_pop(reduction)
   
   
   # mp.

@@ -57,31 +57,13 @@ class BattleBrothers(Skill):
       itm.resolve_mod += 1
 
 
-
-class CastBloodRain(Skill):
-  cost = 40
-  cast = 8
-  name = 'blood rain'
-  ranking = 10
-  tags = []
+class BattleFocus(Skill):
+  effect = 'self'
+  desc = '++1 hit if unit mp is full.'
+  name = 'Trance de batalla'
+  type = 0
   def run(self, itm):
-    if itm.power < 1:
-      if itm.show_info:
-        sp.speak(f'{not_magic_t}.') 
-        sleep(loadsound('errn1'))
-      return
-    if roll_dice(2) >= self.cast:
-      sleep(loadsound('spell27', channel=ch5, vol=0.7)/2)
-      itm.power -= self.cost
-      dist = randint(3,6)
-      pos = itm.pos
-      sq = pos.get_near_tiles(itm.pos.scenary, dist)
-      for s in sq:
-        if self.name not in [ev.name for ev in s.events]:
-          s.events += [BloodRaining(s)]
-    else:
-      if itm.show_info:
-        sleep(loadsound('spell33', channel=ch5,)/2)
+    if itm.mp[0] == itm.mp[1]: itm.hit_rolls_mod += 1
 
 
 class BloodRaining(Skill):
@@ -144,6 +126,33 @@ class Carrion(Skill):
       itm.str_mod += 1
 
 
+class CastBloodRain(Skill):
+  cost = 40
+  cast = 8
+  name = 'blood rain'
+  ranking = 10
+  tags = []
+  def run(self, itm):
+    if itm.power < 1:
+      if itm.show_info:
+        sp.speak(f'{not_magic_t}.') 
+        sleep(loadsound('errn1'))
+      return
+    if roll_dice(2) >= self.cast:
+      sleep(loadsound('spell27', channel=ch5, vol=0.7)/2)
+      itm.power -= self.cost
+      dist = randint(3,6)
+      pos = itm.pos
+      sq = pos.get_near_tiles(itm.pos.scenary, dist)
+      for s in sq:
+        if self.name not in [ev.name for ev in s.events]:
+          s.events += [BloodRaining(s)]
+    else:
+      if itm.show_info:
+        sleep(loadsound('spell33', channel=ch5,)/2)
+
+
+
 class Charge(Skill):
   effect = 'self'
   desc = 'charge damage = 1'
@@ -201,7 +210,7 @@ class Fanatism(Skill):
       itm.dfs_mod -= 2
       itm.moves_mod += 1
       itm.resolve_mod += 2
-      itm.str_mod += 2
+      itm.str_mod += 1
 
 
 class FearAura(Skill):
@@ -230,14 +239,14 @@ class Fly(Skill):
     if itm.target: itm.target.can_charge = 0
 
 
-
-class BattleFocus(Skill):
+class Furtive(Skill):
   effect = 'self'
-  desc = '++1 hit if unit mp is full.'
-  name = 'Trance de batalla'
+  name = 'furtive'
+  desc = '+5 stealth.'
   type = 0
   def run(self, itm):
-    if itm.mp[0] == itm.mp[1]: itm.hit_rolls_mod += 1
+    itm.effects.append(self.name)
+    itm.stealth_mod += 5
 
 
 class DarkPresence(Skill):
@@ -364,12 +373,24 @@ class HoldPositions(Skill):
       itm.effects.append(self.name)
       itm.dfs_mod += 2
 
+
+class Exaltation(Skill):
+  effect = 'friend'
+  desc = 'undefined.'
+  name = 'exaltación.'
+  type = 0
+  def run(self, itm):
+    if sacred_t in itm.traits:
+      itm.effects += [self.name]
+      itm.resolve_mod += 1
+      itm.hit_rolls_mod += 1
+
+
 class ImpalingRoots(Skill):
   effect = 'self'
   desc = ''
-  name = 'raíces empaladoras'
+  name = 'impaling roots.'
   type = -1
-  ranking = 10
   def run(self, itm):
     if (itm.target 
         and itm.target.dist <= 10 and itm.target.dist > 1):
@@ -556,7 +577,7 @@ class MountainSurvival(Skill):
 
 class Organization(Skill):
   effect = 'friend'
-  desc = '+1 off, +1 dfs, +1 resolve'
+  desc = '+1 off, +1 dfs.'
   name = 'organización'
   type = 0
   def run(self, itm):
@@ -566,7 +587,6 @@ class Organization(Skill):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
-      itm.resolve_mod += 1
 
 
 class PikeSquare (Skill):
@@ -643,11 +663,11 @@ class RaiseDead(Skill):
 
 class Regroup(Skill):
   effect = 'self'
-  desc = 'si la unidad vence reagrupa todos los miembros huídos.'
+  desc = 'if a combat ends with a victory, all retreats are recovered.'
   name = 'reagruparse'
   type = 1
   def run(self, itm):
-    if itm.target and itm.target.hp < 1:
+    if itm.target and itm.target.hp_total < 1:
       itm.hp_total += sum(itm.fled)*itm.hp
       msg = f'{itm.name} recupera {sum(itm.fled)} unidades huidas.' 
       itm.log[-1] += msg
@@ -666,15 +686,15 @@ class ReadyAndWaiting(Skill):
       itm.str_mod += 1
 
 
-class Reinforce(Skill):
-  effect = 'friend'
-  desc = '+1 integrante por turno hasta el máximo inicial reclutado si no se gastó mp.'
+class Refit(Skill):
+  effect = 'self'
+  desc = '+2 sts if at friendly position and units less than maximum units.'
   name = 'refuerzos'
   type = 0
   def run(self, itm):
-    if itm != self.itm:
+    if itm.pos.nation == itm.nation:
       itm.effects.append(self.name)
-      itm.can_regroup = 1
+      itm.sts_mod += 2
 
 
 class SermonOfCourage(Skill):

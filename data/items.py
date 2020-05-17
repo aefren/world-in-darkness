@@ -589,10 +589,12 @@ class City:
       units.sort(key=lambda x: x.resource_cost <= self.resource_total, reverse=True)
       return units
     
-    if self.seen_ranged_rnk > (self.units_mounted_rnk + self.units_fly_rnk) * 0.5:
+    if self.seen_ranged_rnk > (self.units_ranged_rnk + self.units_fly_rnk) * 0.5:
       logging.debug(f'contra ranged.')
-      _units = [i for i in units if i.moves+i.moves_mod >= 8
-                or any(i >= 5 for i in [i.dfs + i.dfs_mod, i.res + i.res_mod])] 
+      _units = [i for i in units if i.rng+i.rng_mod >= 5
+                or i.armor
+                or i.shield] 
+      _units.sort(key=lambda x: x.rng+x.rng_mod, reverse=True)
       if roll_dice(1) >= 5: _units.sort(key=lambda x: x.ranking, reverse=True)
       if _units: return _units
     if self.seen_mounted_rnk > self.units_piercing_rnk + self.units_mounted_rnk:
@@ -929,6 +931,9 @@ class Nation:
     logging.debug(f'{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.')
   
   def build(self, city):
+    if self.income < self.upkeep:
+      logging.debug(f'not enogh gold.')
+      return
     #Build food buildings.
     city.status()
     shuffle(city.tiles)
@@ -938,6 +943,8 @@ class Nation:
     if city.buildings_food_complete == []: count += 2
     for b in buildings:
       for t in city.tiles:
+        t.update(self)
+        if t.around_threat or t.threat: continue
         building = b(self, t)
         if building.can_build():
           city.add_building(building, t)
@@ -959,6 +966,8 @@ class Nation:
       for b in buildings:
         if count == 0: break
         for t in city.tiles:
+          t.update(self)
+          if t.around_threat or t.threat: continue
           building = b(self, t)
           if building.can_build():
             city.add_building(building, t)
@@ -975,6 +984,8 @@ class Nation:
       for b in buildings:
         if count == 0: break
         for t in city.tiles:
+          t.update(self)
+          if t.around_threat or t.threat: continue
           building = b(self, t)
           if building.can_build():
             city.add_building(building, t)
@@ -987,10 +998,20 @@ class Nation:
     #food upgrades.
     buildings = [b for b in city.buildings_food_complete if b.upgrade]
     logging.debug(f'upgradables {len(buildings)=:}.')
+    factor = city.nation.food_limit_upgrades
+    if city.grouth_total >= 5: factor *= 4
+    if city.grouth_total >= 4: factor *= 3
+    if city.grouth_total >= 3: factor *= 2
     for b in buildings:
-      if b.pos.food > b.pos.pop+abs(b.pos.po-100): 
+      count = 1
+      if b.pos.food < b.pos.pop or b.pos.po >= 10:
         logging.debug(f'food not need.')
-        continue
+        count = 0
+      if city.nation.gold-factor >= factor:
+        logging.debug(f'factor True.')
+        count = 1
+      
+      if count == 0: continue
       upg = choice(b.upgrade)(self, self.pos)
       
       if upg.gold < self.gold:
@@ -1250,6 +1271,7 @@ class Unit:
   name = str()
   nick = str()
   units = 0
+  sts = 0
   type = str()
   traits = []
   comm = 0
@@ -1266,8 +1288,9 @@ class Unit:
   mp = []
   moves = 0
   resolve = 0
+  po = 0
   global_skills = []
-  
+
   dfs = 0
   res = 0
   arm = 0
@@ -1493,12 +1516,14 @@ class Unit:
     units = self.nation.get_free_units()
     if same_mp: units = [i for i in units if i.mp[1] >= self.mp[1]] 
     shuffle(units)
-    units.sort(key=lambda x: x.pos == self.pos, reverse=True)
     if self.rng <= 6:
+      units.sort(key=lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key=lambda x: x.rng >= 6, reverse=True)
     elif self.rng >= 6:
+      units.sort(key=lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key=lambda x: x.off, reverse=True)
     if self.settler:
+      units.sort(key=lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key=lambda x: x.mp[1] == self.mp[1], reverse=True)
       units.sort(key=lambda x: x.ranking, reverse=True)
     
@@ -1560,6 +1585,7 @@ class Unit:
     self.resolve_mod = 0
     self.stealth_mod = 0
     self.str_mod = 0
+    self.sts_mod = 0
 
     self.skill_names = []
     self.effects = []
@@ -1774,6 +1800,28 @@ class Unit:
       if unrest < 0: unrest = 0
       t.unrest += unrest
 
+  def split(self, times=1):
+    init = self.__class__(self.nation).initial_units
+    if self.units <= init: return
+    logging.info(f'divide {self}.')
+    for i in range(times):
+      self.update()
+      logging.debug(f'{self} hp {self.hp_total} units {self.units} mínimo {self.initial_units}.')
+      if self.units <= init:
+        logging.debug(f'mínimo alcansado.')
+        return
+  
+      self.hp_total -= init*self.hp
+      unit = self.__class__(self.nation)
+      unit.city = self.city
+      unit.pos = self.pos
+      unit.day_night = self.day_night
+      unit.revealed = self.revealed
+      self.initial_units -= unit.initial_units
+      self.pop -= unit.pop
+      self.pos.units.append(unit)
+      self.update()
+      if self.show_info: sp.speak(f'{self}.')
   def start_turn(self):
     self.burn()
     self.raid()
@@ -1876,11 +1924,11 @@ class Hall(City):
   name = 'salón'
   events = [Unrest]
   food = 2
-  grouth = 10
-  income = 100
-  public_order = 50
-  resource = 0
-  upkeep = 300
+  grouth = 0
+  income = 40
+  public_order = 20
+  resource = 1
+  upkeep = 1500
 
   free_terrain = 1
   own_terrain = 0
@@ -1888,10 +1936,9 @@ class Hall(City):
   military_base = 45
   military_change = 100
   military_max = 70
-  popdef_base = 70
-  popdef_change = 60
+  popdef_base = 150
+  popdef_change = 250
   popdef_min = 5
-
   tags = [city_t]
 
   def __init__(self, nation, pos):
@@ -1905,33 +1952,36 @@ class Hall(City):
     self.hill = [0]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//100
-    self.grouth += 300*self.grouth//100
-    self.income += 100*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.food += 1
+    #self.grouth += 300*self.grouth//100
+    #self.income += 100*self.income//100
+    self.public_order += 50
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 1000:
+    if self.level == 1 and self.pop <= 1500:
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
-      self.food -= 100
+      self.food -= 2
+      self.grouth -= 1
       self.income -= 10
       self.public_order -= 50
     if self.level == 2 and self.pop <= 2400:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food -= 100
+      self.food -= 2
+      self.grouth -= 1
       self.income -= 10
       self.public_order -= 50
     if self.level == 3 and self.pop <= 7000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 1
       self.name = town_t
-      self.food -= 100
+      self.food -= 2
+      self.grouth -= 1
       self.income -= 10
       self.public_order -= 50
     if msg:
@@ -1943,25 +1993,28 @@ class Hall(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 1200:
+    if self.level == 0 and self.pop >= 3000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food += 100
+      self.food += 2
+      self.grouth += 1
       self.income += 10
       self.public_order += 50
-    if self.level == 1 and self.pop >= 2500:
+    if self.level == 1 and self.pop >= 8000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food += 100
+      self.food += 2
+      self.grouth += 1
       self.income += 10
       self.public_order += 50
-    if self.level == 2 and self.pop >= 8000:
+    if self.level == 2 and self.pop >= 20000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
-      self.food += 100
+      self.food += 2
+      self.grouth += 1
       self.income += 10
       self.public_order += 50
     if msg:
@@ -1973,7 +2026,7 @@ class Hall(City):
 
 class GlisteningPastures(Building):
   name = 'Pasturas radiantes'
-  gold = 7000
+  gold = 12000
   food = 100
   income = 20
 
@@ -1995,7 +2048,7 @@ class GlisteningPastures(Building):
 class WindsStables(GlisteningPastures, Building):
   name = 'Establos del viento'
   base = GlisteningPastures
-  gold = 15000
+  gold = 25000
 
   own_terrain = 1
   tags = [military_t]
@@ -2011,7 +2064,7 @@ class WindsStables(GlisteningPastures, Building):
 class ForestLookout(Building):
   name = 'Observatorio forestal'
   unique = 1
-  gold = 2500
+  gold = 7000
 
   own_terrain = 1
   size = 4
@@ -2031,7 +2084,7 @@ class ForestLookout(Building):
 class EagleRefuge(ForestLookout, Building):
   name = 'refugio del alcón'
   base = ForestLookout
-  gold = 9000
+  gold = 20000
   own_terrain = 1
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -2047,7 +2100,7 @@ class EagleRefuge(ForestLookout, Building):
 
 class Santuary(Building):
   name = 'santuario'
-  gold = 6000
+  gold = 10000
   food = 100
   income = 100
   unique = 1
@@ -2068,7 +2121,7 @@ class Santuary(Building):
 class HauntedForest(Santuary, Building):
   name = 'Bosque embrujado'
   base = Santuary
-  gold = 15000
+  gold = 22000
   own_terrain = 1
   size = 5
   tags = [military_t]
@@ -2085,7 +2138,7 @@ class HauntedForest(Santuary, Building):
 class MoonsFountain(HauntedForest, Building):
   name = 'Fuente de la luna'
   base = Santuary
-  gold = 30000
+  gold = 40000
   tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -2097,7 +2150,7 @@ class MoonsFountain(HauntedForest, Building):
 
 class Grove(Building):
   name = 'Huerto'
-  gold = 1500
+  gold = 2000
   food = 50
   #grouth = 10
   #income = 50
@@ -2117,7 +2170,7 @@ class Grove(Building):
 class GrapeVines(Grove, Building):
   name = 'racimos de uva'
   base = Grove
-  gold = 3500
+  gold = 7500
   food = 120
   #grouth = 20
   income = 50
@@ -2136,7 +2189,7 @@ class GrapeVines(Grove, Building):
 class Vineyard(GrapeVines, Building):
   name = 'Viñedo'
   base = GrapeVines
-  gold = 10000
+  gold = 12000
   food = 180
   #grouth = 40
   income = 200
@@ -2154,7 +2207,7 @@ class Vineyard(GrapeVines, Building):
 
 class CraftmensTree(Building):
   name = 'Artesanos de los árboles'
-  gold = 2000
+  gold = 6000
   food = 50
   income = 50
   resource = 100
@@ -2172,7 +2225,7 @@ class CraftmensTree(Building):
 
 class stoneCarvers(Building):
   name = 'Talladores de la piedra'
-  gold = 3000
+  gold = 10000
   income = 50
   food = 50
   resource = 100
@@ -2194,8 +2247,8 @@ class AwakenTree(Elf):
   units = 1
   type = 'infantry'
   traits = [elf_t]
-  gold = 600
-  upkeep = 80
+  gold = 1200
+  upkeep = 140
   resource_cost = 40
   food = 4
   pop = 30
@@ -2231,11 +2284,11 @@ class AwakenTree(Elf):
 
 class BladeDancers(Elf):
   name = 'danzantes de la espada'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 220
-  upkeep = 15
+  gold = 320
+  upkeep = 20
   resource_cost = 24
   food = 3
   pop = 25
@@ -2245,7 +2298,7 @@ class BladeDancers(Elf):
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Regroup]
 
   dfs = 5
   res = 3
@@ -2273,8 +2326,8 @@ class Driad(Elf):
   units = 5
   type = 'infantry'
   traits = [elf_t]
-  gold = 380
-  upkeep = 25
+  gold = 580
+  upkeep = 45
   resource_cost = 30
   food = 3
   pop = 10
@@ -2307,11 +2360,11 @@ class Driad(Elf):
 
 class EternalGuard(Elf):
   name = 'guardia eterna'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 350
-  upkeep = 20
+  gold = 550
+  upkeep = 25
   resource_cost = 25
   food = 4
   pop = 30
@@ -2321,7 +2374,7 @@ class EternalGuard(Elf):
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Refit, Regroup]
 
   dfs = 5
   res = 4
@@ -2382,11 +2435,11 @@ class Falcons(Elf):
 
 class ForestBears(Elf):
   name = 'Osos del bosque'
-  units = 4
+  units = 5
   type = 'beast'
   traits = [animal_t]
-  gold = 300
-  upkeep = 20
+  gold = 400
+  upkeep = 30
   resource_cost = 26
   food = 6
   pop = 20
@@ -2424,7 +2477,7 @@ class ForestEagle(Elf):
   units = 1
   type = 'beast'
   traits = [animal_t]
-  gold = 100
+  gold = 300
   upkeep = 50
   resource_cost = 25
   food = 6
@@ -2456,11 +2509,11 @@ class ForestEagle(Elf):
 
 class ForestGuard(Elf):
   name = 'guardia forestal'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 80
-  upkeep = 3
+  gold = 150
+  upkeep = 8
   resource_cost = 14
   food = 2
   pop = 20
@@ -2495,11 +2548,11 @@ class ForestGuard(Elf):
 
 class ForestRider(Elf):
   name = 'arquero silvano'
-  units = 5
+  units = 10
   type = 'cavalry'
   traits = [elf_t]
-  gold = 450
-  upkeep = 30
+  gold = 850
+  upkeep = 40
   resource_cost = 30
   food = 5
   pop = 30
@@ -2509,20 +2562,20 @@ class ForestRider(Elf):
   mp = [4, 4]
   moves = 8
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Refit, Regroup]
 
   dfs = 4
   res = 3
   arm = 1
-  armor = LightArmor()
+  armor = HeavyArmor
 
-  att = 1
+  att = 2
   damage = 2
-  rng = 1
+  rng = 3
   off = 5
-  str = 3
-  pn = 0
-  offensive_skills = [Charge]
+  str = 5
+  pn = 1
+  offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -2539,7 +2592,7 @@ class ElvesSettler(Human):
   units = 200
   type = 'civil'
   traits = [elf_t, settler_t]
-  gold = 1000
+  gold = 1500
   upkeep = 10
   resource_cost = 60
   food = 1
@@ -2572,11 +2625,11 @@ class ElvesSettler(Human):
 
 class SilvanArcher(Elf):
   name = 'arquero silvano'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 120
-  upkeep = 4
+  gold = 250
+  upkeep = 12
   resource_cost = 20
   food = 2
   pop = 20
@@ -2612,11 +2665,11 @@ class SilvanArcher(Elf):
 
 class HighSilvanArcher(Elf):
   name = 'alto arquero silvano'
-  units = 10
+  units = 15
   type = 'infantry'
   traits = [elf_t]
-  gold = 250
-  upkeep = 15
+  gold = 450
+  upkeep = 20
   resource_cost = 28
   food = 2
   pop = 30
@@ -2626,7 +2679,7 @@ class HighSilvanArcher(Elf):
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [ForestWalker, LongBow]
+  global_skills = [ForestWalker, LongBow, Refit, Regroup]
 
   dfs = 4
   res = 3
@@ -2652,12 +2705,12 @@ class HighSilvanArcher(Elf):
 
 class WildHuntsmen(Elf):
   name = 'Cazadores salvajes'
-  units = 5
+  units = 10
   type = 'cavalry'
   traits = [elf_t]
-  gold = 250
-  upkeep = 20
-  resource_cost = 26
+  gold = 650
+  upkeep = 30
+  resource_cost = 18
   food = 5
   pop = 30
   terrain_skills = [Burn, ForestSurvival, Raid]
@@ -2665,18 +2718,18 @@ class WildHuntsmen(Elf):
   hp = 3
   mp = [3, 3]
   moves = 6
-  resolve = 7
+  resolve = 6
   global_skills = [ForestWalker]
 
   dfs = 4
   res = 3
   arm = 2
-  armor = LightArmor()
+  armor = None
 
-  att = 2
-  damage = 2
+  att = 3
+  damage = 1
   rng = 1
-  off = 3
+  off = 4
   str = 4
   pn = 0
   offensive_skills = [BattleFocus, HeavyCharge]
@@ -2697,10 +2750,9 @@ class Hamlet(City):
   events = [Unrest]
   food = 1.5
   grouth = 0
-  #income = 40
   public_order = 0
   resource = 1
-  upkeep = 5000
+  upkeep = 3000
 
   free_terrain = 1
   own_terrain = 0
@@ -2726,14 +2778,12 @@ class Hamlet(City):
 
   def set_capital_bonus(self):
     self.food += 0.5
-    #self.grouth += 200*self.grouth//100
-    #self.income += 100*self.income//100
     self.public_order += 30
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 3000:
+    if self.level == 1 and self.pop <= 2500:
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
@@ -2741,7 +2791,7 @@ class Hamlet(City):
       self.grouth -= 1
       #self.income -= 10
       self.public_order -= 30
-    if self.level == 2 and self.pop <= 1200:
+    if self.level == 2 and self.pop <= 8000:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
@@ -2749,7 +2799,7 @@ class Hamlet(City):
       self.grouth -= 1
       #self.income -= 10
       self.public_order -= 30
-    if self.level == 3 and self.pop <= 50000:
+    if self.level == 3 and self.pop <= 20000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 2
       self.name = town_t
@@ -2766,15 +2816,14 @@ class Hamlet(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 5000:
+    if self.level == 0 and self.pop >= 4000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
       self.food += 1.5
       self.grouth += 1
-      #self.income += 10
       self.public_order += 30
-    if self.level == 1 and self.pop >= 20000:
+    if self.level == 1 and self.pop >= 10000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
@@ -2782,13 +2831,12 @@ class Hamlet(City):
       self.grouth += 1
       #self.income += 10
       self.public_order += 30
-    if self.level == 2 and self.pop >= 100000:
+    if self.level == 2 and self.pop >= 30000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
       self.food += 1.5
       self.grouth += 1
-      #self.income += 10
       self.public_order += 30
     if msg:
       logging.debug(msg)
@@ -3075,7 +3123,7 @@ class Settler(Human):
   upkeep = 1
   resource_cost = 50
   food = 1
-  pop = 2000
+  pop = 1000
 
   hp = 1
   mp = [2, 2]
@@ -3184,7 +3232,7 @@ class GreatSwordsMen(Human):
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3252,7 +3300,7 @@ class Halberdier(Human):
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [BattleBrothers, Regroup, Reinforce, ]
+  global_skills = [BattleBrothers, Regroup, Refit, ]
 
   dfs = 4
   res = 4
@@ -3285,7 +3333,7 @@ class Inquisitors(Human):
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [Regroup]
+  global_skills = [Exaltation, Furtive, Regroup]
 
   dfs = 3
   res = 3
@@ -3305,22 +3353,22 @@ class Inquisitors(Human):
 
 
 class SacredWarriors(Human):
-  name = priest_warriors_t
-  units = 30
+  name = sacred_warriors_t
+  units = 10
   type = 'infantry'
   traits = [human_t, sacred_t]
-  gold = 900
+  gold = 400
   upkeep = 40
-  resource_cost = 20
+  resource_cost = 16
   food = 4
-  pop = 35
+  pop = 25
   global_skills = [Burn, Raid]
 
   hp = 2
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [Regroup, Reinforce]
+  global_skills = [Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3357,7 +3405,7 @@ class KnightsTemplar (Human):
   mp = [2, 2]
   moves = 7
   resolve = 9
-  global_skills = [Regroup, Reinforce]
+  global_skills = [Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3402,7 +3450,7 @@ class Sagittarii(Human):
   att = 1
   damage = 1
   rng = 15
-  off = 4
+  off = 5
   str = 3
   pn = 0
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
@@ -3569,7 +3617,7 @@ class Equites2(Human):
   mp = [3, 3]
   moves = 7
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 4
   res = 4
@@ -3595,13 +3643,11 @@ class Equites2(Human):
 class CursedHamlet(City):
   name = cursed_hamlet_t
   events = [Unrest]
-  food = 2
-  grouth = 10
-  #income = 100
-  public_order = 50
+  food = 1.5
+  grouth = 0
+  public_order = 10
   resource = 0
-  size = 6
-  upkeep = 200
+  upkeep = 1000
 
   free_terrain = 1
   own_terrain = 0
@@ -3609,10 +3655,9 @@ class CursedHamlet(City):
   military_base = 40
   military_change = 50
   military_max = 70
-  popdef_base = 60
-  popdef_change = 80
+  popdef_base = 20
+  popdef_change = 300
   popdef_min = 5
-  
   tags = [city_t]
 
   def __init__(self, nation, pos):
@@ -3626,20 +3671,33 @@ class CursedHamlet(City):
     self.av_units = [Levy, Settler2]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//100
-    #self.grouth += 300*self.grouth//100
-    #self.income += 200*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.food += 100*self.food//2
+    self.public_order += 5
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 900:
-      logging.debug(f'{self} se degrada a {hamlet_t}.')
+    if self.level == 1 and self.pop <= 1500:
+      logging.debug(f'{self} se degrada a {cursed_hamlet_t}.')
       self.level = 0
       self.name = cursed_hamlet_t
-      self.income -= 50
-      self.public_order -= 100
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
+    if self.level == 2 and self.pop <= 6000:
+      logging.debug(f'{self} se degrada a {village_t}.')
+      self.level = 1
+      self.name = village_t
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
+    if self.level == 3 and self.pop <= 6000:
+      logging.debug(f'{self} se degrada a {town_t}.')
+      self.level = 2
+      self.name = town_t
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
     if msg:
       logging.debug(msg)
       if self.nation.show_info:
@@ -3648,12 +3706,27 @@ class CursedHamlet(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 1000:
+    if self.level == 0 and self.pop >= 3000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = cursed_village_t
-      #self.income += 50
-      self.public_order += 100
+      self.food += 1
+      self.grouth += 0.5
+      self.public_order += 50
+    if self.level == 1 and self.pop >= 8000:
+      msg = f'{self} mejor a {village_t}.'
+      self.level = 1
+      self.name = town_t
+      self.food += 1
+      self.grouth += 0.5
+      self.public_order += 50
+    if self.level == 2 and self.pop >= 18000:
+      msg = f'{self} mejor a {city_t}.'
+      self.level = 3
+      self.name = city_t
+      self.food += 0.5
+      self.grouth += 0.5
+      self.public_order += 50
     if msg:
       logging.debug(msg)
       if self.nation.show_info:
@@ -4708,10 +4781,11 @@ class HolyEmpire(Nation):
   nick = nation_phrase1_t
   traits = [human_t, order_t]
   gold = 30000
-  food_limit_builds = 7
-  food_limit_upgrades = 5
+  food_limit_builds = 3000
+  food_limit_upgrades = 5000
   grouth_base = 5
   grouth_rate = 60
+  expansion = 5000
   public_order = 0
   upkeep_base = 60
   upkeep_change = 200
@@ -4779,11 +4853,13 @@ class WoodElves(Nation):
   name = wood_elves_t
   nick = ''
   traits = [elf_t, animal_t]
-  gold = 10000
-  food_limit_builds = 6
-  food_limit_upgrades = 6
-  grouth_rate = 2
+  gold = 30000
+  food_limit_builds = 3000
+  food_limit_upgrades = 5000
+  grouth_base = 4
+  grouth_rate = 80
   public_order = 0
+  expansion = 6000
   upkeep_base = 70
   upkeep_change = 200
 
@@ -4847,10 +4923,12 @@ class Walachia(Nation):
   name = wallachia_t
   nick = nation_phrase2_t
   traits = [death_t, malignant_t, vampire_t]
-  gold = 10000
-  food_limit_builds = 6
-  food_limit_upgrades = 5
-  grouth_rate = 4
+  gold = 30000
+  food_limit_builds = 3000
+  food_limit_upgrades = 4000
+  grouth_base = 4
+  grouth_rate = 80
+  expansion = 5000
   public_order = 0
   upkeep_base = 70
   upkeep_change = 200
@@ -4935,7 +5013,7 @@ class Archers(Human):
 
   att = 1
   damage = 1
-  rng = 12
+  rng = 15
   off = 3
   str = 3
   pn = 0
@@ -5369,7 +5447,7 @@ class HellHounds(Undead):
 
 class Hyaenas(Unit):
   name = 'hyaenas'
-  units = 20
+  units = 10
   type = 'beast'
   traits = [animal_t]
   gold = 50
@@ -5756,7 +5834,7 @@ class TheKnightsTemplar(Human):
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
