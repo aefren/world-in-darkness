@@ -934,12 +934,12 @@ class Nation:
     if self.income < self.upkeep:
       logging.debug(f'not enogh gold.')
       return
-    #Build food buildings.
     city.status()
+    #Build food buildings.
     shuffle(city.tiles)
     city.tiles.sort(key=lambda x: x.is_city, reverse=True)
     buildings = [b for b in self.av_buildings if food_t in b.tags and b.gold < self.gold]
-    count = randint(1,2)
+    count = randint(2,7)
     if city.buildings_food_complete == []: count += 2
     for b in buildings:
       for t in city.tiles:
@@ -951,6 +951,25 @@ class Nation:
           logging.debug(f'{building} added at {t} {t.cords}.')
           count -= 1
           if count < 1: break
+    
+    #build military buildings.
+    city.status()
+    if city.buildings_food:
+      buildings = [b for b in self.av_buildings if military_t in b.tags and b.gold < self.gold]
+      buildings.sort(key= lambda x: x(self, self.pos).resource_cost[1])
+      if roll_dice(1) >= 5: shuffle(buildings)
+      count = 1
+      for b in buildings:
+        if count == 0: break
+        for t in city.tiles:
+          t.update(self)
+          if t.around_threat or t.threat: continue
+          building = b(self, t)
+          if building.can_build():
+            city.add_building(building, t)
+            logging.debug(f'{building} added at {t} {t.cords}.')
+            count = 0
+            break
     
     #build misc buildings.
     city.status()
@@ -965,27 +984,17 @@ class Nation:
       if self.gold > cost_mean*completed: count = 1
       for b in buildings:
         if count == 0: break
+        if unrest_t in b.tags: city.tiles.sort(key=lambda x: x.po)
+        if resource_t in b.tags: 
+          if roll_dice(1) >= 6:
+            logging.debug(f'roll set to not build.')
+            continue
+          city.tiles.sort(key=lambda x: x.hill,reverse=True)
+
         for t in city.tiles:
           t.update(self)
           if t.around_threat or t.threat: continue
-          building = b(self, t)
-          if building.can_build():
-            city.add_building(building, t)
-            logging.debug(f'{building} added at {t} {t.cords}.')
-            count = 0
-            break
-    
-    #build military buildings.
-    city.status()
-    if city.buildings_food:
-      buildings = [b for b in self.av_buildings if military_t in b.tags and b.gold < self.gold]
-      shuffle(buildings)
-      count = 1
-      for b in buildings:
-        if count == 0: break
-        for t in city.tiles:
-          t.update(self)
-          if t.around_threat or t.threat: continue
+          if unrest_t in b.tags and t.po > 20: continue
           building = b(self, t)
           if building.can_build():
             city.add_building(building, t)
@@ -1924,8 +1933,6 @@ class Hall(City):
   name = 'salón'
   events = [Unrest]
   food = 2
-  grouth = 0
-  income = 40
   public_order = 20
   resource = 1
   upkeep = 1500
@@ -1952,9 +1959,8 @@ class Hall(City):
     self.hill = [0]
 
   def set_capital_bonus(self):
-    self.food += 1
-    #self.grouth += 300*self.grouth//100
-    #self.income += 100*self.income//100
+    self.food += 1.5
+    self.income += 1.5
     self.public_order += 50
     self.upkeep = 0
 
@@ -1966,7 +1972,7 @@ class Hall(City):
       self.name = hamlet_t
       self.food -= 2
       self.grouth -= 1
-      self.income -= 10
+      self.income -= 1.5
       self.public_order -= 50
     if self.level == 2 and self.pop <= 2400:
       msg = f'{self} se degrada a {village_t}.'
@@ -1974,7 +1980,7 @@ class Hall(City):
       self.name = village_t
       self.food -= 2
       self.grouth -= 1
-      self.income -= 10
+      self.income -= 1.5
       self.public_order -= 50
     if self.level == 3 and self.pop <= 7000:
       msg = f'{self} se degrada a {town_t}.'
@@ -1982,7 +1988,7 @@ class Hall(City):
       self.name = town_t
       self.food -= 2
       self.grouth -= 1
-      self.income -= 10
+      self.income -= 1.5
       self.public_order -= 50
     if msg:
       self.nation.log[-1].append(msg)
@@ -1997,17 +2003,17 @@ class Hall(City):
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food += 2
+      self.food += 1.5
       self.grouth += 1
-      self.income += 10
+      self.income += 1.5
       self.public_order += 50
     if self.level == 1 and self.pop >= 8000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food += 2
+      self.food += 1.5
       self.grouth += 1
-      self.income += 10
+      self.income += 1.5
       self.public_order += 50
     if self.level == 2 and self.pop >= 20000:
       msg = f'{self} mejor a {city_t}.'
@@ -2015,7 +2021,7 @@ class Hall(City):
       self.name = city_t
       self.food += 2
       self.grouth += 1
-      self.income += 10
+      self.income += 1.5
       self.public_order += 50
     if msg:
       logging.debug(msg)
@@ -2026,9 +2032,9 @@ class Hall(City):
 
 class GlisteningPastures(Building):
   name = 'Pasturas radiantes'
-  gold = 12000
+  gold = 20000
   food = 100
-  income = 20
+  income = 1.2
 
   own_terrain = 1
   size = 6
@@ -2048,7 +2054,8 @@ class GlisteningPastures(Building):
 class WindsStables(GlisteningPastures, Building):
   name = 'Establos del viento'
   base = GlisteningPastures
-  gold = 25000
+  gold = 30000
+  income = 1.5
 
   own_terrain = 1
   tags = [military_t]
@@ -2064,7 +2071,7 @@ class WindsStables(GlisteningPastures, Building):
 class ForestLookout(Building):
   name = 'Observatorio forestal'
   unique = 1
-  gold = 7000
+  gold = 9000
 
   own_terrain = 1
   size = 4
@@ -2078,10 +2085,10 @@ class ForestLookout(Building):
     self.soil = [grassland_t, plains_t, tundra_t]
     self.surf = [forest_t]
     self.hill = [0, 1]
-    self.upgrade = [EagleRefuge]
+    self.upgrade = [FalconRefuge]
 
 
-class EagleRefuge(ForestLookout, Building):
+class FalconRefuge(ForestLookout, Building):
   name = 'refugio del alcón'
   base = ForestLookout
   gold = 20000
@@ -2100,9 +2107,9 @@ class EagleRefuge(ForestLookout, Building):
 
 class Santuary(Building):
   name = 'santuario'
-  gold = 10000
-  food = 100
-  income = 100
+  gold = 15000
+  food = 2
+  income = 1.5
   unique = 1
 
   own_terrain = 1
@@ -2121,7 +2128,7 @@ class Santuary(Building):
 class HauntedForest(Santuary, Building):
   name = 'Bosque embrujado'
   base = Santuary
-  gold = 22000
+  gold = 25000
   own_terrain = 1
   size = 5
   tags = [military_t]
@@ -2151,9 +2158,7 @@ class MoonsFountain(HauntedForest, Building):
 class Grove(Building):
   name = 'Huerto'
   gold = 2000
-  food = 50
-  #grouth = 10
-  #income = 50
+  food = 1.5
 
   own_terrain = 1
   size = 6
@@ -2171,9 +2176,8 @@ class GrapeVines(Grove, Building):
   name = 'racimos de uva'
   base = Grove
   gold = 7500
-  food = 120
-  #grouth = 20
-  income = 50
+  food = 2.2
+  income = 1.5
   own_terrain = 1
   tags = [food_t]
   def __init__(self, nation, pos):
@@ -2190,9 +2194,8 @@ class Vineyard(GrapeVines, Building):
   name = 'Viñedo'
   base = GrapeVines
   gold = 12000
-  food = 180
-  #grouth = 40
-  income = 200
+  food = 3
+  income = 2
   own_terrain = 1
   tags = [food_t]
   def __init__(self, nation, pos):
@@ -2208,8 +2211,8 @@ class Vineyard(GrapeVines, Building):
 class CraftmensTree(Building):
   name = 'Artesanos de los árboles'
   gold = 6000
-  food = 50
-  income = 50
+  food = 1.2
+  income = 2
   resource = 100
   own_terrain = 1
   size = 6
@@ -2226,8 +2229,8 @@ class CraftmensTree(Building):
 class stoneCarvers(Building):
   name = 'Talladores de la piedra'
   gold = 10000
-  income = 50
-  food = 50
+  food = 1.2
+  income = 1.5
   resource = 100
   own_terrain = 1
   size = 6
@@ -3645,7 +3648,7 @@ class CursedHamlet(City):
   events = [Unrest]
   food = 1.5
   grouth = 0
-  public_order = 10
+  public_order = 40
   resource = 0
   upkeep = 1000
 
@@ -3671,8 +3674,8 @@ class CursedHamlet(City):
     self.av_units = [Levy, Settler2]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//2
-    self.public_order += 5
+    self.food += 2
+    self.public_order += 50
     self.upkeep = 0
 
   def set_downgrade(self):
@@ -3735,8 +3738,8 @@ class CursedHamlet(City):
 
 
 class Cemetery(Building):
-  gold = 2500
   name = cemetery_t
+  gold = 9000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -3754,7 +3757,7 @@ class Cemetery(Building):
 class Barrow(Cemetery, Building):
   name = 'túmulos'
   base = Cemetery
-  gold = 5000
+  gold = 12000
   tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -3767,7 +3770,7 @@ class Barrow(Cemetery, Building):
 class Mausoleum(Barrow, Building):
   name = 'mausoleo'
   base = Cemetery
-  gold = 15000
+  gold = 30000
   public_order = 20
   upkeep = 100
   def __init__(self, nation, pos):
@@ -3780,7 +3783,7 @@ class Mausoleum(Barrow, Building):
 
 class DesecratedRuins (Building):
   name = 'ruinas profanadas'
-  gold = 3500
+  gold = 9000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -3798,7 +3801,7 @@ class DesecratedRuins (Building):
 class CircleOfBlood(DesecratedRuins, Building):
   name = 'circulo de sangre'
   base = DesecratedRuins
-  gold = 6000
+  gold = 14000
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [CryptHorrors, Necromancer, VarGhul]
@@ -3810,7 +3813,7 @@ class CircleOfBlood(DesecratedRuins, Building):
 class DarkMonolit(CircleOfBlood, Building):
   name = 'monolito oscuro'
   base = DesecratedRuins
-  gold = 14000
+  gold = 25000
   own_terrain = 1
   size = 4
   public_order = 50
@@ -3853,7 +3856,7 @@ class SinisterForest(SmallWood, Building):
 
 class Gallows(Building):
   name = 'Gallows'
-  gold = 1200
+  gold = 5200
   public_order = 30
   own_terrain = 1
   size = 6
@@ -3871,7 +3874,7 @@ class Gallows(Building):
 class ImpaledField(Gallows, Building):
   name = 'campo de empalados'
   base = Gallows
-  gold = 2500
+  gold = 8500
   public_order = 66
   tags = [unrest_t]
 
@@ -3884,9 +3887,8 @@ class ImpaledField(Gallows, Building):
 
 class Pit(Building):
   name = 'fosa'
-  gold = 800
-  food = 100
-  #grouth = 10
+  gold = 1500
+  food = 1.5
   own_terrain = 1
   resource = 0
   size = 6
@@ -3904,9 +3906,8 @@ class Pit(Building):
 class FuneraryDungeon(Pit, Building):
   name = 'mazmorra funeraria'
   base = Pit
-  gold = 2400
-  food = 250
-  #grouth = 40
+  gold = 6000
+  food = 2
   resource = 1
   tags = [food_t, resource_t]
 
@@ -4660,8 +4661,6 @@ class Fields(Building):
   name = fields_t
   gold = 2000
   food = 1.5
-  #grouth = 10
-  #income = 1.2
   own_terrain = 1
   size = 6
   tags = [food_t]
@@ -4680,9 +4679,6 @@ class SmallFarm(Fields, Building):
   base = Fields
   gold = 6000
   food = 3
-  #grouth = 25
-  #income = 1.5
-
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 80]
@@ -4761,7 +4757,7 @@ class SawMill(Building):
   name = 'aserradero'
   gold = 8000
   food = 1.3
-  income = 1.5
+  income = 2
   resource = 1.5
   own_terrain = 1
   size = 6
@@ -4856,8 +4852,8 @@ class WoodElves(Nation):
   gold = 30000
   food_limit_builds = 3000
   food_limit_upgrades = 5000
-  grouth_base = 4
-  grouth_rate = 80
+  grouth_base = 2
+  grouth_rate = 100
   public_order = 0
   expansion = 6000
   upkeep_base = 70

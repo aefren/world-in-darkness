@@ -195,7 +195,7 @@ class Terrain:
           and self.blocked == 0 and self.is_city == 0):
         self.blocked = 1
   def play_ambient(self):
-    if self.hill: loadsound('terra_hill1')
+    if self.hill: loadsound('terra_hill5')
     if self.surf.name == forest_t: loadsound('terra_forest1',channel=ch1)
     elif self.surf.name == swamp_t: loadsound('terra_swamp2',channel=ch1,vol=(0.5,0.5))
     elif self.soil.name == waste_t: loadsound('terra_waste1',channel=ch2)
@@ -4602,7 +4602,7 @@ def terrain_info(pos, nation):
           sp.speak(f'{cost} {gold_t}.')
         if pos.sight or pos in nation.nations_tiles: 
           if pos.buildings: sp.speak(f'{len(pos.buildings)} {buildings_t}.')
-          if pos.in_progress: loadsound('construction1')
+          if pos.in_progress: loadsound('construction4', channel=ch4)
       else:
         local_units = []
         sp.speak(f'terra incognita.')
