@@ -136,7 +136,7 @@ class Building:
     if pos.soil.name not in self.soil: go = 0
     if pos.surf.name not in self.surf: go = 0
     if pos.hill not in self.hill: go = 0
-    if pos.around_coast < self.around_coast: go = 0
+    if self.around_coast > 0 and pos.around_coast < self.around_coast: go = 0
     if pos.nation and self.free_terrain: go = 0
     if pos.nation != self.nation and self.own_terrain: go = 0    
     return go
@@ -661,6 +661,7 @@ class City:
       logging.debug(f'expensive.')
       units.sort(key=lambda x: x.ranking, reverse=True)
       units = [i for i in units[:3]]
+      del(units[-1])
       shuffle(units)
       return units    
     
@@ -2608,7 +2609,7 @@ class ElvesSettler(Human):
   upkeep = 10
   resource_cost = 60
   food = 1
-  pop = 500
+  pop = 700
   terrain_skills = [ForestSurvival]
 
   hp = 1
@@ -2860,7 +2861,7 @@ class Hamlet(City):
 # edificios.
 class TrainingCamp(Building):
   name = 'campo de entrenamiento'
-  gold = 12000
+  gold = 10000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -2927,7 +2928,7 @@ class ImprovedBarracks(Barracks, Building):
 
 class Pastures(Building):
   name = 'pasturas'
-  gold = 18000
+  gold = 14000
   food = 1.5
   income = 1.5
 
@@ -2965,7 +2966,7 @@ class Stables(Pastures, Building):
 
 class MeetingCamp(Building):
   name = 'campo de reunión'
-  gold = 8000
+  gold = 7000
   own_terrain = 1
   public_order = 10
   size = 4
@@ -2984,7 +2985,7 @@ class MeetingCamp(Building):
 
 class CultOfLight(MeetingCamp, Building):
   base = MeetingCamp
-  gold = 12500
+  gold = 15500
   name = 'culto de la luz'
   public_order = 25
   upkeep = 1000
@@ -3000,7 +3001,7 @@ class CultOfLight(MeetingCamp, Building):
 
 class TempleOfLight(CultOfLight, Building):
   base = MeetingCamp
-  gold = 40000
+  gold = 25000
   name = 'templo de la luz'
   public_order = 50
   upkeep = 2500
@@ -3575,7 +3576,7 @@ class Musket(Human):
 
 class Equites(Human):
   name = equites_t
-  units = 25
+  units = 10
   type = 'cavalry'
   traits = [human_t]
   gold = 1500
@@ -3595,9 +3596,10 @@ class Equites(Human):
   res = 3
   arm = 1
   armor = None
+  shield = Shield()
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 4
   str = 4
   pn = 0
@@ -3615,13 +3617,13 @@ class Equites(Human):
 
 class Equites2(Human):
   name = feudal_knights_t
-  units = 20
+  units = 10
   type = 'cavalry'
   traits = [human_t]
-  gold = 3400
-  upkeep = 70
-  resource_cost = 30
-  food = 8
+  gold = 1700
+  upkeep = 80
+  resource_cost = 22
+  food = 6
   pop = 70
   terrain_skills = [Burn, Raid]
 
@@ -3631,7 +3633,7 @@ class Equites2(Human):
   resolve = 8
   global_skills = [BattleBrothers, Regroup, Refit]
 
-  dfs = 4
+  dfs = 5
   res = 4
   arm = 1
   armor = HeavyArmor()
@@ -3679,7 +3681,7 @@ class CursedHamlet(City):
     self.resource_cost = [100, 100]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
-    self.hill = [0]
+    self.hill = [1]
     self.av_units = [Levy, Settler2]
 
   def set_capital_bonus(self):
@@ -3746,46 +3748,60 @@ class CursedHamlet(City):
         sleep(loadsound('notify14'))
 
 
-class Cemetery(Building):
-  name = cemetery_t
-  gold = 9000
+class Barrow(Building):
+  name = barrow_t
+  gold = 12000
   own_terrain = 1
   size = 4
   tags = [military_t]
   unique = 1
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghouls, Skeletons]
+    self.av_units = [Ghouls, Zombies]
     self.resource_cost = [0, 30]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [none_t]
     self.hill = [0]
-    self.upgrade = [Barrow]
+    self.upgrade = [Cemetery]
 
 
-class Barrow(Cemetery, Building):
-  name = 'túmulos'
-  base = Cemetery
-  gold = 12000
+class Cemetery(Barrow, Building):
+  name = cemetery_t
+  base = Barrow
+  gold = 18000
   tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Vampire, Vargheist]
+    self.av_units = [VarGhul, Vampire]
     self.resource_cost = [0, 70]
     self.size = 0
     self.upgrade = [Mausoleum]
 
 
-class Mausoleum(Barrow, Building):
+class Mausoleum(Cemetery, Building):
   name = 'mausoleo'
-  base = Cemetery
-  gold = 30000
+  base = Barrow
+  gold = 25000
   public_order = 20
   upkeep = 100
+  tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [GraveGuards, VampireLord, VladDracul]
-    self.resource_cost = [0, 150]
+    self.av_units = [GraveGuards, VampireLord]
+    self.resource_cost = [0, 120]
+    self.size = 0
+    self.upgrade = [CourtOfBlood]
+
+
+class CourtOfBlood(Mausoleum, Building):
+  name = 'corte oscura'
+  base = Barrow
+  gold = 45000
+  public_order = 50
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [black_knights_t, blood_knights_t, VladDracul]
+    self.resource_cost = [0, 159]
     self.size = 0
     self.upgrade = []
 
@@ -3799,21 +3815,21 @@ class DesecratedRuins (Building):
   unique = 1
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghouls, Zombies]
+    self.av_units = [Ghouls, FellBats]
     self.resource_cost = [0, 50]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
     self.hill = [0, 1]
-    self.upgrade = [CircleOfBlood]
+    self.upgrade = [SummoningField]
 
 
-class CircleOfBlood(DesecratedRuins, Building):
-  name = 'circulo de sangre'
+class SummoningField(DesecratedRuins, Building):
+  name = summoning_field_t
   base = DesecratedRuins
   gold = 14000
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [CryptHorrors, Necromancer, VarGhul]
+    self.av_units = [CryptHorrors, Necromancer, Skeletons]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [DarkMonolit]
@@ -3829,22 +3845,22 @@ class DarkMonolit(CircleOfBlood, Building):
   upkeep = 200
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Banshee, BloodKnights, Vargheist]
+    self.av_units = [Banshee, Vargheist]
     self.resource_cost = [0, 250]
     self.size = 0
     self.upgrade = []
 
 
-class SmallWood(Building):
-  name = 'Bosquecillo'
-  gold = 3000
+class HuntingGround(Building):
+  name = hunting_ground_t
+  gold = 10000
   own_terrain = 1
   size = 4
   tags = [military_t]
   unique = 1
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Bats]
+    self.av_units = [Bats, Wolves]
     self.resource_cost = [0, 60]
     self.surf = [forest_t]
     self.hill = [0]
@@ -3853,11 +3869,11 @@ class SmallWood(Building):
 
 class SinisterForest(SmallWood, Building):
   name = 'bosque abyssal'
-  base = SmallWood
-  gold = 6000
+  base = hunting_ground_t
+  gold = 20000
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [DireWolves, FellBats, Vargheist]
+    self.av_units = [DireWolves]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = []
@@ -4048,9 +4064,9 @@ class BlackKnights(Undead):
   units = 5
   type = 'cavalry'
   traits = [death_t, malignant_t]
-  gold = 320
-  upkeep = 25
-  resource_cost = 22
+  gold = 1200
+  upkeep = 70
+  resource_cost = 26
   food = 0
   pop = 25
   terrain_skills = [Burn]
@@ -4061,15 +4077,15 @@ class BlackKnights(Undead):
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
-  dfs = 4
-  res = 4
+  dfs = 5
+  res = 5
   arm = 2
   armor = HeavyArmor()
 
-  att = 3
-  damage = 4
-  off = 5
-  str = 4
+  att = 2
+  damage = 3
+  off = 6
+  str = 5
   pn = 2
   offensive_skills = [HeavyCharge]
 
@@ -4085,31 +4101,31 @@ class BlackKnights(Undead):
 
 class BloodKnights(Undead):
   name = blood_knights_t
-  units = 5
+  units = 2
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 500
-  upkeep = 30
+  gold = 1200
+  upkeep = 120
   resource_cost = 26
   food = 0
   pop = 20
 
-  hp = 3
+  hp = 4
   mp = [2, 2]
   moves = 7
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
-  dfs = 5
-  res = 4
-  arm = 0
+  dfs = 7
+  res = 5
+  arm = 1
   armor = HeavyArmor()
   shield = Shield()
 
   att = 3
   damage = 3
-  off = 5
-  str = 5
+  off = 7
+  str = 6
   pn = 2
 
   def __init__(self, nation):
@@ -4125,8 +4141,8 @@ class CryptHorrors (Undead):
   units = 5
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 160
-  upkeep = 28
+  gold = 460
+  upkeep = 40
   resource_cost = 16
   food = 0
   pop = 15
@@ -4135,16 +4151,16 @@ class CryptHorrors (Undead):
   mp = [2, 2]
   moves = 5
   resolve = 10
-  global_skills = [FearAura, NightFerocity, NightSurvival]
+  global_skills = [FearAura, Fly, NightFerocity, NightSurvival]
 
-  dfs = 3
-  res = 4
+  dfs = 5
+  res = 5
   arm = 2
   armor = None
 
   att = 2
   damage = 2
-  off = 4
+  off = 5
   str = 4
   pn = 1
   offensive_skills = [ToxicClaws]
@@ -4193,23 +4209,23 @@ class DireWolves(Undead):
 
 class FellBats(Undead):
   name = fell_bats_t
-  units = 5
+  units = 10
   type = 'beast'
   traits = [death_t, malignant_t]
-  gold = 220
-  upkeep = 10
+  gold = 320
+  upkeep = 20
   resource_cost = 18
   food = 0
-  pop = 12
+  pop = 16
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 2
   mp = [2, 2]
   moves = 7
   resolve = 10
-  global_skills = [FearAura, Fly, NightFerocity, NightSurvival]
+  global_skills = [Fly, NightFerocity, NightSurvival]
 
-  dfs = 3
+  dfs = 4
   res = 3
   arm = 0
 
@@ -4354,7 +4370,7 @@ class Settler2(Human):
   upkeep = 0
   resource_cost = 50
   food = 1
-  pop = 1000
+  pop = 800
 
   hp = 1
   mp = [2, 2]
@@ -4874,7 +4890,7 @@ class WoodElves(Nation):
   scout_factor = 5
   stalk_rate = 400
 
-  city_req_pop_base = 2000
+  city_req_pop_base = 3000
   commander_rate = 7
   pop_limit = 30
   units_animal_limit = 100
@@ -4944,7 +4960,7 @@ class Walachia(Nation):
   scout_factor = 15
   stalk_rate = 160
 
-  city_req_pop_base = 1000
+  city_req_pop_base = 2000
   commander_rate = 10
   pop_limit = 50
   units_animal_limit = 100
@@ -4960,17 +4976,17 @@ class Walachia(Nation):
   def __init__(self):
     super().__init__()
     # Casilla inicial permitida.
-    self.hill = [0]
+    self.hill = [0,1]
     self.soil = [plains_t, waste_t]
     self.surf = [forest_t, none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_desert = 6
-    self.allow_around_hill = 3
+    self.allow_around_desert = 5
+    self.allow_around_hill = 4
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 1
   
     # edificios iniciales disponibles.
-    self.av_buildings = [Cemetery, DesecratedRuins, SmallWood, Gallows, Pit, Quarry, SawMill]
+    self.av_buildings = [Barrow, DesecratedRuins, HuntingGround, Gallows, Pit, Quarry, SawMill]
     self.av_cities = [CursedHamlet]
     self.city_names = death_citynames
     # terrenos de comida.

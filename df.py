@@ -441,7 +441,7 @@ class Terrain:
     self.resource *= self.surf.resource
     if self.hill:
       self.cost += 1
-      self.food *= 0.5
+      self.food *= 0.6
       self.resource *= 2
     self.size = self.size_total
     # básico de edificios.
@@ -486,7 +486,7 @@ class Terrain:
 class Desert(Terrain):
   cost = 2
   cost_fly = 2
-  food = 100
+  food = 120
   name = waste_t
   resource = 1
 
@@ -1014,7 +1014,7 @@ def ai_divide_units(nation):
     roll = roll_dice(1)
     needs = round(i.ranking/15)
     if i.scout: needs -= 2
-    if i.pos.hill or i.rng+i.rng_mod > 5: needs += 1
+    if i.pos.hill or i.rng+i.rng_mod > 5: needs += 2
     if i.pos.food_need >= i.pos.food: needs = 2
     if city and city.seen_threat > city.defense_total*0.5: needs += 2 
     if roll >= needs:
