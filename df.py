@@ -15,7 +15,7 @@ from pygame.time import get_ticks as ticks
 from basics import roll_dice
 from distutils.log import debug
 from data.lang.es import holy_empire_t, wallachia_t
-from data.items import SpearMen, Flagellants, Inquisitors, SwordsMen
+from data.items import SpearMen, Flagellants, Inquisitors, SwordsMen, Falcons
 #from data.lang.es import holy_empire_t
 #from data.lang.es import mountain_survival_t, forest_survival_t,\
   #swamp_survival_t, swamp_t, forest_t, holy_empire_t, public_order_t
@@ -48,7 +48,7 @@ class Ambient:
     self.season = [0, [winter_t, spring_t, summer_t, autum_t]]
     self.time = [0, [morning_t, noon_t , afternoon_t, evening_t, night_t, midnight_t, dawn_t]]
     self.week = 1
-    self.year = 0
+    self.year = 1
 
 
 ambient = Ambient()
@@ -1012,12 +1012,12 @@ def ai_divide_units(nation):
     city = i.pos.city
     if city: city.get_defense_info()
     roll = roll_dice(1)
-    need = round(i.ranking/15)
-    if i.scout: need -= 2
-    if i.pos.hill: need += 1
-    if i.pos.food_need > i.pos.food: need -= 2
-    if city and city.seen_threat > city.defense_total*0.5: need += 2 
-    if roll >= need:
+    needs = round(i.ranking/15)
+    if i.scout: needs -= 2
+    if i.pos.hill or i.rng+i.rng_mod > 5: needs += 1
+    if i.pos.food_need >= i.pos.food: needs = 2
+    if city and city.seen_threat > city.defense_total*0.5: needs += 2 
+    if roll >= needs:
       i.split()
 
 def ai_expand_city(city):
@@ -1606,7 +1606,7 @@ def ai_protect_cities(nation):
     defense_need = ct.defense_need
     logging.debug(f'defense_pred {ct.defense_pred}, defense {ct.defense}.')
     logging.debug(f'{ct} defense_need {defense_need}')
-    if ct.defense_need < -50:
+    if ct.defense_need < -30:
       logging.debug(f'sobra defensa {defense_need}. {ct.defense}, {ct.defense_pred}.')
       units = [i for i in ct.pos.units if i.garrison]
       times = round(abs(ct.defense_need)/20)
@@ -1639,6 +1639,7 @@ def ai_protect_cities(nation):
         units.sort(key=lambda x: x.pos.around_threat)
         if ct.defense_total > ct.seen_threat: 
           units.sort(key=lambda x: mounted_t in x.traits)
+        units.sort(key=lambda x: x.ranking >= 40,reverse=True)
         for uni in units:
             defense_need = set_defend_pos(defense_need, uni, ct.pos)
             if defense_need == None:
@@ -2305,7 +2306,7 @@ def control_game(event):
     if event.key == pygame.K_7:
       pos.add_unit(Halberdier, holy_empire_t,1)
     if event.key == pygame.K_8:
-      pos.add_unit(Inquisitors, holy_empire_t,1)
+      pos.add_unit(Falcons, holy_empire_t,1)
     if event.key == pygame.K_9:
       pos.add_unit(Archers, hell_t,1)
     if event.key == pygame.K_0:
@@ -2678,7 +2679,9 @@ def control_global(event):
         sp.speak(f'{population_t} {pos.pop}, {public_order_t} {pos.public_order}.',1)
         sp.speak(f'unrest {pos.unrest}.')
       if event.key == pygame.K_4:
-        sp.speak(f'{income_t} {pos.income}.')
+        sp.speak(f'{income_t} {pos.income}.',1)
+        sp.speak(f'{raid_outcome_t} {pos.raided}.')
+        sp.speak(f'{total_t} {pos.income-pos.raided}.')
       if event.key == pygame.K_5:
         sp.speak(f'cost {pos.cost}.')
         sp.speak(f'{size_t} {pos.size}.')
@@ -4719,11 +4722,13 @@ def unit_new_turn(itm):
 
 def unit_restoring(itm):
   logging.debug(f'restaura {itm} id {itm.id}.')
-  itm.revealed = 0
-  itm.stopped = 0
   if itm.hp_total< 1:
     logging.warning(f'sin salud.')
     return
+  itm.history.turns += 1
+  itm.stopped = 0
+  itm.revealed = 0
+  
 
   # hp.
   if itm.hp_total < itm.hp* itm.units:

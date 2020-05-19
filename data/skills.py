@@ -199,9 +199,9 @@ class Ethereal(Skill):
 
 
 class Fanatism(Skill):
-  effect = 'self'
   name = fanatism_t
-  desc = '+1 att, +1 str. -2 dfs, +1 moves, +1 resolve if enemy is death.'
+  desc = '+1 att, +1 str, -2 dfs, +1 moves, +1 resolve if enemy is death.'
+  effect = 'self'
   type = 0
   def run(self, itm):
     if itm.target and death_t in itm.target.traits:
@@ -753,42 +753,44 @@ class Skirmisher(Skill):
 class Spread(Skill):
   effect = 'self'
   desc = 'resucita y une enemigos caidos a la unidad.'
-  cast = 6
+  cast = 4
   name = 'Plaga zombie'
   ranking = 10
   type = 1
   def run(self, itm):
-    deads = sum(itm.target.deads)
-    for i in range(deads):
-      roll = roll_dice(2)
-      if roll >= self.cast:
-        itm.hp_total += itm.hp
-        itm.raised[-1] += 1
-        itm.target.deads[-1] -= 1
-        if itm.target.deads[-1] < 0: itm.target.deads[-1] = 0
-        logging.debug(f'reanima {itm.raised[-1]}.')
+    if death_t not in itm.target.traits:
+      deads = sum(itm.target.deads)
+      for i in range(deads):
+        roll = roll_dice(2)
+        if roll >= self.cast:
+          itm.hp_total += itm.hp
+          itm.raised[-1] += 1
+          itm.target.deads[-1] -= 1
+          if itm.target.deads[-1] < 0: itm.target.deads[-1] = 0
+          logging.debug(f'reanima {itm.raised[-1]}.')
 
 
 class Surrounded(Skill):
   effect = 'self'
-  desc = '+1 dfs, +1 off with each 10 units since 20. limit 3.'
+  desc = '+1off, +1 str since 30 units. limit 50.'
   name = 'rodeados'
   type = 0
   def run(self, itm):
-    if itm.units >= 40:
+    if itm.units >= 50:
       itm.effects.append(self.name+str( 3))
       itm.off_mod += 3
       itm.str_mod += 3
-      itm.ranking_skills += 10
-    elif itm.units >= 30:
+      itm.ranking_skills += 30
+    elif itm.units >= 40:
       itm.effects.append(self.name+str( 2))
       itm.off_mod += 2
       itm.str_mod += 2
-      itm.ranking_skills += 10
-    elif itm.units >= 20:
+      itm.ranking_skills += 20
+    elif itm.units >= 30:
       itm.effects.append(self.name+str( 1))
       itm.off_mod += 1
       itm.str_mod += 1
+      itm.ranking_skills += 30
 
 
 class SwampTerrain(Skill):

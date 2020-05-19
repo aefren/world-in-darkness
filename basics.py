@@ -12,8 +12,11 @@ def ai_join_units(itm):
   logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   dice = roll_dice(1)
-  needs = ceil(itm.ranking / 20)
-  if itm.pos.around_threat*1.3 > itm.ranking: needs -= 2
+  needs = ceil(itm.ranking / 30)
+  if itm.pos.around_threat*1.3 > itm.pos.defense: needs -= 2
+  if itm.rng+itm.rng_mod > 5: needs -= 2
+  if itm.garrison and itm.pos.around_threat < itm.pos.defense: needs += 2
+  if itm.pos.food_need > itm.pos.food: needs += 3
   logging.debug(f'dice {dice} needs {needs}.')
   if dice >= needs:
     for i in itm.pos.units:
@@ -76,6 +79,7 @@ def get_unrest_mod(num):
 
 def join_units(units, info=0):
   name = units[0].name
+  units.sort(key=lambda x: x.history.turns,reverse=True)
   for i in units:
     if i.name != name or i.can_join == 0: return
   unit = units[0]
@@ -83,7 +87,10 @@ def join_units(units, info=0):
     unit.hp_total += i.hp_total
     unit.mp[0] = min(unit.mp[0], i.mp[0])
     unit.pop += i.pop
-    unit.initial_units += i.initial_units
+    unit.squads += i.squads
+    unit.other_skills += i.other_skills
+    msg = f'{i} has joined.'
+    unit.log[-1] += [msg]
     i.hp_total = 0
   unit.update()
   unit.pos.update()

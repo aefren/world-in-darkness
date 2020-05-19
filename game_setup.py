@@ -2,7 +2,7 @@ exec('from data.items import *')
 
 
 #difficulty.
-DIFFICULTY = 40
+DIFFICULTY = 20
 DIFFICULTY_TYPE = 'dynamic'
 
 #factions.

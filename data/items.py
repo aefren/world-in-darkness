@@ -18,6 +18,10 @@ from screen_reader import *
 from sound import *
 
 
+class Empty:
+  pass
+
+
 class LightArmor:
 
   def __init__(self):
@@ -50,6 +54,8 @@ class Building:
   base = None
   citylevel = None
   food = 1
+  resource = 1
+  income = 0
   food_pre = 1
   free_terrain = 0
   gold = 0
@@ -66,7 +72,6 @@ class Building:
   prod_progress = 0
   public_order = 1
   public_order_pre = 1
-  resource = 1
   res_pre = 1
   size = 5
   type = building_t
@@ -787,10 +792,6 @@ class City:
     pass
 
 
-class Empty:
-  pass
-
-
 class Nation:
   name = 'unnamed'
   nick = ''
@@ -939,8 +940,8 @@ class Nation:
     shuffle(city.tiles)
     city.tiles.sort(key=lambda x: x.is_city, reverse=True)
     buildings = [b for b in self.av_buildings if food_t in b.tags and b.gold < self.gold]
-    count = randint(2,7)
-    if city.buildings_food_complete == []: count += 2
+    count = 1
+    if city.buildings_food_complete == []: count = randint(3,6)
     for b in buildings:
       for t in city.tiles:
         t.update(self)
@@ -961,6 +962,7 @@ class Nation:
       count = 1
       for b in buildings:
         if count == 0: break
+        city.tiles.sort(key=lambda x: len(x.around_snations),reverse=True)
         for t in city.tiles:
           t.update(self)
           if t.around_threat or t.threat: continue
@@ -1321,7 +1323,7 @@ class Unit:
   power_max = 0
   power_res = 0
   unique = 0
-  
+
   armor_ign = 0
   damage_critical = 0
   damage_charge = 0
@@ -1333,7 +1335,6 @@ class Unit:
   hp_res = 1
   hp_res_mod = 0
   other_skills = []
-  units_min = 5
 
   ai = 1
   align = None
@@ -1382,6 +1383,7 @@ class Unit:
   show_info = 0
   sight = 1
   sort_chance = 50
+  squads = 1
   stopped = 0
   swamp_survival = 0
   units_min = 0
@@ -1390,6 +1392,8 @@ class Unit:
 
   def __init__(self, nation):
     self.hp_total = self.hp * self.units
+    self.history = Empty()
+    self.history.turns = 1
     self.initial_units = self.units
     self.nation = nation
     self.defensive_skills = [i(self) for i in self.defensive_skills]
@@ -1810,26 +1814,29 @@ class Unit:
       t.unrest += unrest
 
   def split(self, times=1):
-    init = self.__class__(self.nation).initial_units
-    if self.units <= init: return
+    if self.squads <= 1: return
     logging.info(f'divide {self}.')
     for i in range(times):
       self.update()
       logging.debug(f'{self} hp {self.hp_total} units {self.units} mínimo {self.initial_units}.')
-      if self.units <= init:
+      if self.units <= self.initial_units:
         logging.debug(f'mínimo alcansado.')
         return
   
-      self.hp_total -= init*self.hp
       unit = self.__class__(self.nation)
-      unit.city = self.city
-      unit.pos = self.pos
-      unit.day_night = self.day_night
-      unit.revealed = self.revealed
-      self.initial_units -= unit.initial_units
+      self.hp_total -= self.initial_units*self.hp
       self.pop -= unit.pop
-      self.pos.units.append(unit)
+      unit.city = self.city
+      unit.day_night = self.day_night
+      unit.pos = self.pos
+      unit.revealed = self.revealed
+      unit.other_skills += self.other_skills
+      unit.log = [[f'{turn_t} {self.pos.world.turn}.']]
+      msg = f'{unit} detached from {self}.'
+      unit.log[-1] += [msg]
+      self.log[-1] += [msg]
       self.update()
+      self.pos.units.append(unit)
       if self.show_info: sp.speak(f'{self}.')
   def start_turn(self):
     self.burn()
@@ -1866,6 +1873,7 @@ class Unit:
     if self.can_hide: self.hidden = 1
     if self.can_charge and self.target == None: self.charge = 1
     if self.revealed: self.hidden = 0
+    self.squads = ceil(self.units/self.initial_units)
     
     # ranking.
     self.skills = [i for i in self.global_skills + self.terrain_skills + 
@@ -1943,8 +1951,8 @@ class Hall(City):
   military_base = 45
   military_change = 100
   military_max = 70
-  popdef_base = 150
-  popdef_change = 250
+  popdef_base = 30
+  popdef_change = 300
   popdef_min = 5
   tags = [city_t]
 
@@ -2068,35 +2076,15 @@ class WindsStables(GlisteningPastures, Building):
     self.size = 0
 
 
-class ForestLookout(Building):
-  name = 'Observatorio forestal'
-  unique = 1
-  gold = 9000
-
+class FalconRefuge(Building):
+  name = 'refugio del alcón'
+  gold = 7000
   own_terrain = 1
-  size = 4
-  tags = [military_t]
   unique = 1
-
+  tags = [military_t]
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [Falcons, SilvanArcher]
-    self.resource_cost = [0, 80]
-    self.soil = [grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t]
-    self.hill = [0, 1]
-    self.upgrade = [FalconRefuge]
-
-
-class FalconRefuge(ForestLookout, Building):
-  name = 'refugio del alcón'
-  base = ForestLookout
-  gold = 20000
-  own_terrain = 1
-  tags = [military_t]
-  def __init__(self, nation, pos):
-    super().__init__(nation, pos)
-    self.av_units = [Falcons, HighSilvanArcher]
     self.resource_cost = [0, 80]
     self.size = 0
     self.soil = [grassland_t, plains_t, tundra_t]
@@ -2105,7 +2093,28 @@ class FalconRefuge(ForestLookout, Building):
     self.upgrade = []
 
 
-class Santuary(Building):
+class ForestLookout(FalconRefuge, Building):
+  name = 'Observatorio forestal'
+  base = FalconRefuge
+  unique = 1
+  gold = 15000
+
+  own_terrain = 1
+  size = 4
+  tags = [military_t]
+  unique = 1
+
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [ForestEagle, HighSilvanArcher]
+    self.resource_cost = [0, 80]
+    self.soil = [grassland_t, plains_t, tundra_t]
+    self.surf = [forest_t]
+    self.hill = [0, 1]
+    self.upgrade = [FalconRefuge]
+
+
+class Sanctuary(Building):
   name = 'santuario'
   gold = 15000
   food = 2
@@ -2125,9 +2134,9 @@ class Santuary(Building):
     self.upgrade = [HauntedForest]
 
 
-class HauntedForest(Santuary, Building):
+class HauntedForest(Sanctuary, Building):
   name = 'Bosque embrujado'
-  base = Santuary
+  base = Sanctuary
   gold = 25000
   own_terrain = 1
   size = 5
@@ -2144,7 +2153,7 @@ class HauntedForest(Santuary, Building):
 
 class MoonsFountain(HauntedForest, Building):
   name = 'Fuente de la luna'
-  base = Santuary
+  base = Sanctuary
   gold = 40000
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -2763,7 +2772,7 @@ class Hamlet(City):
   military_base = 40
   military_change = 100
   military_max = 60
-  popdef_base = 15
+  popdef_base = 20
   popdef_change = 300
   popdef_min = 5
   tags = [city_t]
@@ -2918,7 +2927,7 @@ class ImprovedBarracks(Barracks, Building):
 
 class Pastures(Building):
   name = 'pasturas'
-  gold = 15000
+  gold = 18000
   food = 1.5
   income = 1.5
 
@@ -2940,7 +2949,7 @@ class Pastures(Building):
 class Stables(Pastures, Building):
   name = 'establos'
   base = Pastures
-  gold = 30000
+  gold = 25000
   food = 2
   income = 3
   unique = 1
@@ -2956,7 +2965,7 @@ class Stables(Pastures, Building):
 
 class MeetingCamp(Building):
   name = 'campo de reunión'
-  gold = 6000
+  gold = 8000
   own_terrain = 1
   public_order = 10
   size = 4
@@ -2965,7 +2974,7 @@ class MeetingCamp(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Flagellants]
+    self.av_units = [Flagellants, SwordsMen]
     self.resource_cost = [0, 50]
     self.soil = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
@@ -3649,7 +3658,7 @@ class CursedHamlet(City):
   food = 1.5
   grouth = 0
   public_order = 40
-  resource = 0
+  resource = 1
   upkeep = 1000
 
   free_terrain = 1
@@ -3658,8 +3667,8 @@ class CursedHamlet(City):
   military_base = 40
   military_change = 50
   military_max = 70
-  popdef_base = 20
-  popdef_change = 300
+  popdef_base = 30
+  popdef_change = 250
   popdef_min = 5
   tags = [city_t]
 
@@ -3890,7 +3899,6 @@ class Pit(Building):
   gold = 1500
   food = 1.5
   own_terrain = 1
-  resource = 0
   size = 6
   tags = [food_t]
 
@@ -3908,7 +3916,7 @@ class FuneraryDungeon(Pit, Building):
   base = Pit
   gold = 6000
   food = 2
-  resource = 1
+  resource = 2
   tags = [food_t, resource_t]
 
   def __init__(self, nation, pos):
@@ -4373,7 +4381,7 @@ class Settler2(Human):
 
 class Skeletons(Undead):
   name = skeletons_t
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [death_t]
   traits = [death_t]
@@ -4892,7 +4900,7 @@ class WoodElves(Nation):
     self.unallow_around_swamp = 2
 
     # edificios iniciales disponibles.
-    self.av_buildings = [CraftmensTree, ForestLookout, GlisteningPastures, Grove, Santuary, stoneCarvers]
+    self.av_buildings = [CraftmensTree, FalconRefuge, GlisteningPastures, Grove, Sanctuary, stoneCarvers]
     self.av_cities = [Hall]
     self.city_names = elven_citynames
     
