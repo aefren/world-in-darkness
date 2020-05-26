@@ -2768,7 +2768,7 @@ class CultOfLight(MeetingCamp, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors]
+    self.av_units = [Inquisitors, SacredWarriors]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]
@@ -3047,7 +3047,7 @@ class GreatSwordsMen(Human):
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3114,7 +3114,7 @@ class Halberdier(Human):
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [BattleBrothers, Regroup, Reinforce, ]
+  global_skills = [BattleBrothers, Regroup, Refit, ]
 
   dfs = 4
   res = 4
@@ -3166,7 +3166,7 @@ class Inquisitors(Human):
     self.corpses = [Zombies]
 
 
-class PriestWarriors(Human):
+class SacredWarriors(Human):
   name = priest_warriors_t
   units = 10
   type = 'infantry'
@@ -3181,7 +3181,7 @@ class PriestWarriors(Human):
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [Regroup, Reinforce]
+  global_skills = [Regroup, Refit]
 
   dfs = 4
   res = 4
@@ -3386,7 +3386,7 @@ class Equites2(Human):
   mp = [3, 3]
   moves = 8
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4
@@ -3968,7 +3968,7 @@ class Ghouls(Human):
   mp = [2, 2]
   moves = 5
   resolve = 6
-  global_skills = [Carrion]
+  global_skills = [Scavenger]
 
   dfs = 3
   res = 3
@@ -5459,7 +5459,7 @@ class TheKnightsTemplar(Human):
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
   res = 4

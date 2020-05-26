@@ -8,7 +8,7 @@ sounds = os.getcwd()+str('/data/sounds/')
 
 
 mixer = pygame.mixer
-pygame.mixer.pre_init(44100, -16, 2, 1000)
+pygame.mixer.pre_init(frequency=44100, size=16, channels=2, buffer=1000)
 pygame.init()
 pygame.mixer.set_num_channels(16)
 

@@ -1,19 +1,22 @@
 from math import ceil
 from random import randint
 
-from log_module import *
-from screen_reader import *
+from log_module import logging
+from screen_reader import sp
 from sound import *
 from data.lang.es import building_t
 
 
 def ai_join_units(itm):
-  if itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group: return
+  if itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group or itm.goto: return
   logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   dice = roll_dice(1)
-  needs = ceil(itm.ranking / 20)
-  if itm.pos.around_threat: needs -= 2
+  needs = ceil(itm.ranking / 30)
+  if itm.pos.around_threat*1.3 > itm.pos.defense: needs -= 2
+  if itm.rng+itm.rng_mod > 5: needs -= 2
+  if itm.garrison and itm.pos.around_threat < itm.pos.defense: needs += 2
+  if itm.pos.food_need > itm.pos.food: needs += 3
   logging.debug(f'dice {dice} needs {needs}.')
   if dice >= needs:
     for i in itm.pos.units:
@@ -22,12 +25,10 @@ def ai_join_units(itm):
           or i.goal or i.leader != itm.leader or i.group):
         continue
       logging.debug(f'{i}.')
-      itm.update()
       i.update()
       dice = roll_dice(1)
       needs = ceil(i.ranking / 20)
-      if itm.pos.around_threat: needs -= 2
-      if i.scout: needs += 1
+      if itm.pos.around_threat*1.3 > itm.ranking: needs -= 2
       logging.debug(f'dice {dice} needs {needs}.')
       if dice >= needs:
         join_units([itm,i])
@@ -67,17 +68,18 @@ def get_wound_mod(num):
 
 
 def get_unrest_mod(num):
-  if num >= 50: return 0
-  if num >= 30: return 1
-  if num >= 10: return 2
-  if num >= -10: return 3
-  if num >= -30: return 4
-  if num >= -50: return  5
+  if num > 10: return 0
+  if num <= 10: return 1
+  if num <= 0: return 2
+  if num <= -10: return 3
+  if num <= -20: return 4
+  if num <= -30: return  5
   if num < -50: return 6
 
 
 def join_units(units, info=0):
   name = units[0].name
+  units.sort(key=lambda x: x.history.turns,reverse=True)
   for i in units:
     if i.name != name or i.can_join == 0: return
   unit = units[0]
@@ -85,7 +87,10 @@ def join_units(units, info=0):
     unit.hp_total += i.hp_total
     unit.mp[0] = min(unit.mp[0], i.mp[0])
     unit.pop += i.pop
-    unit.initial_units += i.initial_units
+    unit.squads += i.squads
+    unit.other_skills += i.other_skills
+    msg = f'{i} has joined.'
+    unit.log[-1] += [msg]
     i.hp_total = 0
   unit.update()
   unit.pos.update()

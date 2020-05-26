@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
-import copy
-from math import ceil, floor
-from pdb import Pdb
-from random import randint, shuffle, choice, uniform
-from time import sleep, process_time
+#from math import ceil, floor
+#from pdb import Pdb
+#from random import randint, shuffle, choice, uniform
+#from time import sleep, process_time
 
-from numpy import mean
+#from numpy import mean
 
-from basics import *
+#from basics import *
 from data.events import *
 from data.lang.es import *
 from data.names import *
 from data.skills import *
-from log_module import *
-from screen_reader import *
-from sound import *
-from Tools.demo.sortvisu import steps
+#from log_module import *
+#from screen_reader import *
+#from sound import *
+
+class Empty:
+  pass
 
 
 class LightArmor:
@@ -26,16 +27,17 @@ class LightArmor:
     self.name = 'light armor'
 
 
+class MediumArmor:
 
-class MediumArmor(Skill):
   def __init__(self):
     self.arm = 3
     self.name = 'medium armor'
 
 
 class HeavyArmor:
+
   def __init__(self):
-    self.arm = 5
+    self.arm = 4
     self.name = 'heavy armor'
 
 
@@ -50,28 +52,26 @@ class Building:
   around_coast = 0
   base = None
   citylevel = None
-  corruption = 0
-  corruption_pre = 0
-  defense_terrain = 0
-  food = 0
-  food_pre = 0
+  food = 1
+  resource = 1
+  income = 0
+  food_pre = 1
   free_terrain = 0
   gold = 0
-  grouth = 0
+  grouth = 1
   grouth_total = 0
-  grouth_pre = 0
-  income = 0
-  income_pre = 0
+  grouth_pre = 1
+  income = 1
+  income_pre = 1
   is_complete = 0
   name = None
   nation = None
   nick = None
   own_terrain = 1
   prod_progress = 0
-  public_order = 0
-  public_order_pre = 0
-  resource = 0
-  res_pre = 0
+  public_order = 1
+  public_order_pre = 1
+  res_pre = 1
   size = 5
   type = building_t
   tag = []
@@ -93,13 +93,31 @@ class Building:
     self.upgrade = []
     if self.base:
       base = self.base(self.nation, self.pos)
-      self.corruption_pre = base.corruption
       self.food_pre = base.food
       self.grouth_pre = base.grouth_total
       self.income_pre = base.income
       self.public_order_pre = base.public_order
       self.res_pre = base.resource 
   
+  def improve(self, upgrade):
+    msg = f'{self} actualizará a {upgrade}. {cost_t} {upgrade.gold} en {self.pos} {self.pos.cords}.'
+    logging.info(msg)
+    if self.nation.show_info:
+      sp.speak(msg)
+      sleep(loadsound('gold1') * 0.5)
+    
+    self.nation.gold -= upgrade.gold
+    upgrade.av_units_pre = []
+    for i in self.av_units_pre + self.av_units:
+      if i not in upgrade.av_units_pre: upgrade.av_units_pre.append(i)
+    upgrade.nation = self.nation
+    upgrade.pos = self.pos
+    upgrade.size = self.size
+    if self.pos.city: msg = [f'se actualizará {self} en {self.pos.city}, {self.pos} {self.pos.cords}.']
+    else: msg = [f'se actualizará {self} en {self.pos} {self.pos.cords}.']
+    upgrade.nation.log[-1].append(msg)
+    self.pos.buildings[self.pos.buildings.index(self)] = upgrade
+
   def can_build(self):
     logging.debug(f'requicitos de {self}.')
     if self.check_tile_req(self.pos) == 0:
@@ -118,13 +136,14 @@ class Building:
     if pos.soil.name not in self.soil: go = 0
     if pos.surf.name not in self.surf: go = 0
     if pos.hill not in self.hill: go = 0
-    if pos.around_coast < self.around_coast: go = 0
+    if self.around_coast > 0 and pos.around_coast < self.around_coast: go = 0
     if pos.nation and self.free_terrain: go = 0
     if pos.nation != self.nation and self.own_terrain: go = 0    
     return go
 
   def launch_event(self):
     pass
+
   def __str__(self):
     name = f'{self.name}.' 
     if self.nick:
@@ -142,24 +161,22 @@ class City:
   defense = 0
   defense_pred = 0
   defense_total = 0
-  food = 10
+  food = 1
   food_need = 0
-  food_pre = 0
+  food_pre = 1
   food_total = 0
   events = []
-  grouth_total = 0
-  grouth = 0
-  grouth_pre = 0
+  grouth_total = 1
+  grouth = 1
+  grouth_pre = 1
   capital = 0
-  corruption = 0
   cost = 0
-  defense_terrain = 0
   defense_total_percent = 0
   free_terrain = 1
   gold = 0
   hp_total = [80, 80]
-  income = 0
-  income_pre = 0
+  income = 1
+  income_pre = 1
   is_complete = 1
   level = 0
   military_limit = 30
@@ -172,15 +189,14 @@ class City:
   pop = 0
   pop_back = 0
   popdef_base = 15
-  popdef_change = 100
+  popdef_change = 200
   popdef_min = 5
   prod_progress = 0
-  public_order = 0
-  public_order_pre = 0
-  public_order = 0
+  public_order = 1
+  public_order_pre = 1
   raid_outcome = 0
-  resource = 5
-  res_pre = 0
+  resource = 1
+  res_pre = 1
   size = 6
   seen_threat = 0 
   type = city_t
@@ -193,6 +209,7 @@ class City:
     
     self.av_units_pre = []
     self.buildings = []
+    # self.buildings_food = []
     self.events = [i(self) for i in self.events]
     self.production = []
     self.resource_cost = [0, 0]
@@ -227,37 +244,47 @@ class City:
     itm.nation.log[-1].append(msg)
     self.update()
 
-  def add_pop(self, number):
+  def add_pop(self, number, info = 0):
     [i.update(self.nation) for i in self.tiles]
     tiles = [i for i in self.tiles if i.blocked == 0
-             and i.soil.name != ocean_t]
-    
-    grouth = ceil(number / 100)
-    logging.info(f'crecerá {number}. grouth_total {grouth}.')
-    shuffle(self.tiles)
-    [i.update(self.nation) for i in self.tiles]
-    tries = 1000
+             and i.soil.name != coast_t]
+    shuffle(tiles)
+    tiles.sort(key = lambda x: x.food, reverse = True)
+    grouth = ceil(number / 200)
+    if info: logging.info(f'crecerá {number}. grouth_total {grouth}.')
+    tries = 5000
     while number > 0:
       tries -= 1
       if tries < 0: 
-        print(f'paró')
-        sp.speak(f'add pop stoped!')
+        sp.speak(f'add pop stoped!', 1)
         sleep(2)
         
-      t = choice(tiles)
-      rnd = round((t.food - t.pop) / 50)
-      rnd -= floor(t.unrest/10)
-      if rnd < 1: rnd = 1
-      roll = roll_dice(1)
-      # logging.debug(f'rnd {rnd} roll {roll}')
-      
-      try:
-        if rnd >= roll:
-            t.pop += grouth
-            number -= grouth
-      except:
-        logging.debug(f'error')
-            
+      for t in tiles:
+        rnd = 3
+        if t.surf and t.surf.name == swamp_t: rnd -= 2
+        if t.surf and t.surf.name == forest_t: rnd -= 1
+        if t.hill: rnd -= 1
+        if t.is_city: rnd += 3
+        rnd += ceil((t.food - t.pop) / 50)
+        rnd -= t.unrest // 10
+        if rnd < 1:
+          rnd = 1
+          if t.soil.name == grassland_t and t.surf.name == none_t and t.hill == 0: 
+            rnd += 4 
+            if t.buildings: rnd += 2
+            if t.is_city: rnd += 2
+            rnd -= t.unrest // 10
+            if rnd < 1: rnd = 0
+        roll = randint(1, 12)
+        if info:  logging.debug(f'{t}. {rnd=:}, {roll=:}. {ceil((t.food-t.pop)/50)}.')
+        
+        try:
+          if rnd >= roll:
+              t.pop += grouth
+              number -= grouth
+        except:
+          logging.debug(f'error')
+
   def can_build(self):
     logging.debug(f'requicitos de {self}.')
     if self.check_tile_req(self.pos) == 0:
@@ -280,7 +307,7 @@ class City:
           if bu.pos.city: msg = f'{bu} {complete_t} en {bu.pos.city}, {bu.pos} {bu.pos.cords}.'
           else: msg = f'. ({bu}) {complete_t} en {bu.pos} {bu.pos.cords}.'
           self.nation.log[-1].append(msg)
-          if self.nation.show_info: sleep(loadsound('notify6', channel=ch2) * 0.2)
+          if self.nation.show_info: sleep(loadsound('notify6', channel = ch2) * 0.2)
 
   def check_events(self):
     [event.run() for event in self.events]
@@ -311,7 +338,7 @@ class City:
         self.nation.log[-1].append(msg)
         self.pos.units.append(self.production.pop(0))
         self.nation.unit_number += 1
-        if self.nation.show_info: sleep(loadsound('notify24', channel=ch4) * 0.5)
+        if self.nation.show_info: sleep(loadsound('notify24', channel = ch4) * 0.5)
         if self.production: self.prod_progress = self.production[0].resource_cost
 
   def get_defense_info(self):
@@ -385,7 +412,7 @@ class City:
 
   def income_change(self):
     self.update()
-    income = self.income_total-self.upkeep
+    income = self.income_total - self.upkeep
     logging.debug(f'ingreso previo {income}.')
     income -= self.raid_outcome
     logging.debug(f'perdida por saqueo {self.raid_outcome}.')
@@ -396,12 +423,11 @@ class City:
 
   def launch_event(self):
     pass
+
   def population_change(self):
     self.update()
     grouth = round(self.grouth_total * self.pop / 100)
-    logging.debug(f'en población {grouth}.')
-    grouth += round(randint(-25, 25) * grouth / 100)
-    if grouth < 1: grouth = 1
+    logging.debug(f'{self.grouth_total}. extra population {grouth}.')
     self.add_pop(grouth)
     
     if self.pop_back > 0: 
@@ -410,16 +436,16 @@ class City:
       self.pop_back -= pop_back
       logging.debug(f'regresan {pop_back} civiles.')
 
-  def reduce_pop(self, number):
+  def reduce_pop(self, number, info = 0):
     logging.debug(f'reduce {number} de {self} ({self.pop} pop).')
     tiles = [i for i in self.tiles if i.blocked == 0]
     reduce = number / 20
     shuffle(tiles)
-    logging.warning(f'reducirá {number}.')
+    if info: logging.debug(f'reducirá {number}.')
     while number > 0:
       for t in tiles:
         if t.pop >= reduce and number > 0:
-          logging.debug(f'{t.pop} en {t} {t.cords}.')
+          if info: logging.debug(f'{t.pop} en {t} {t.cords}.')
           t.pop -= reduce
           number -= reduce
 
@@ -445,16 +471,15 @@ class City:
   def set_defense(self):
     self.popdef = self.get_popdef()
     self.defense_pred = round(self.popdef * self.pop / 100) // 2
-    self.set_seen_units(info=0)
+    self.set_seen_units(info = 0)
     units = []
     for l in self.seen_units[-5:]:
       for uni in l: 
         if uni not in units and self.pos.get_distance(uni.pos, self.pos) <= 3: units.append(uni)
     self.seen_threat = sum([i.ranking for i in units])
     
-    if self.seen_threat: self.defense_pred = self.seen_threat // 2
-    if self.seen_threat > self.defense_pred: self.defense_pred = self.seen_threat
-    if self.defense_pred < self.defense_base/2: self.defense_pred = self.defense_base/2
+    if self.pos.around_threat > self.defense: self.defense_pred = self.seen_threat // 2
+    if self.defense_pred < self.defense_base / 2: self.defense_pred = self.defense_base / 2
 
   def set_downgrade(self):
     pass
@@ -471,9 +496,10 @@ class City:
     if self.nation.city_names: 
       shuffle(self.nation.city_names)
       self.nick = self.nation.city_names.pop()
-  def set_seen_units(self, new=0, info=0):
+
+  def set_seen_units(self, new = 0, info = 0):
     # logging.debug(f'set seen units {self}.')
-    tiles = [t for t in self.pos.get_near_tiles(self.pos.scenary, 6)
+    tiles = [t for t in self.pos.get_near_tiles(6)
              if t.units]
     self.pos.pos_sight(self.nation, self.nation.map)
     tiles = [t for t in tiles if t in self.nation.map and t.sight and t.units]
@@ -551,96 +577,113 @@ class City:
     self.units_undead_rnk = sum(i.ranking for i in self.units_undead)
     
   def set_train_type(self, units):
-    self.set_seen_units(0, info=1)
+    self.set_seen_units(0, info = 1)
     self.set_units_types()
     shuffle(units)
+    if roll_dice(1) >= 3:
+      logging.debug(f'sort by nation traits.')
+      units.sort(key = lambda x: any(i in x.traits for i in self.nation.traits), reverse = True)
     [i.update() for i in units]
     logging.debug(f'recividos {len(units)}.')
     _animal = [i for i in units if animal_t in i.traits]
     _anticav = [i for i in units if i.anticav]
-    _archers = [i for i in units if i.rng > 5]
+    _archers = [i for i in units if i.rng + i.rng_mod > 5]
     _fly = [i for i in units if i.can_fly]
     _mounted = [i for i in units if mounted_t in i.traits]
-    _sacred = [i for i in units if i.damage_sacred + i.damage_sacred_mod]
+    _sacred = [i for i in units if sacred_t in i.traits]
     _undead = [i for i in units if undead_t in i.traits]
     if self.defense_total_percent < 200 and self.nation.score < self.nation.attack_factor * 3:
       logging.debug(f'defensivo.')
-      if roll_dice(1) >= 4: units.sort(key=lambda x: x.rng, reverse=True)
-      units.sort(key=lambda x: x.resource_cost <= self.resource_total, reverse=True)
+      units.sort(key = lambda x: x.ranking, reverse = True)
+      if roll_dice(1) >= 3: units.sort(key = lambda x: x.rng + x.rng_mod, reverse = True)
+      if self.around_threat >= self.defense / 2: units.sort(key = lambda x: x.resource_cost <= self.resource_total, reverse = True)
       return units
     
-    if self.seen_ranged_rnk > (self.units_mounted_rnk + self.units_fly_rnk) * 0.5:
+    if self.seen_ranged_rnk > (self.units_ranged_rnk + self.units_fly_rnk) * 0.5:
       logging.debug(f'contra ranged.')
-      _units = [i for i in units if i.moves >= 8
-                or any(i >= 5 for i in [i.dfs + i.dfs_mod, i.res + i.res_mod])] 
-      if roll_dice(1) >= 5: _units.sort(key=lambda x: x.ranking, reverse=True)
+      _units = [i for i in units if i.rng + i.rng_mod >= 5
+                or i.armor
+                or i.shield] 
+      _units.sort(key = lambda x: x.rng + x.rng_mod, reverse = True)
+      if roll_dice(1) >= 5: _units.sort(key = lambda x: x.ranking, reverse = True)
       if _units: return _units
     if self.seen_mounted_rnk > self.units_piercing_rnk + self.units_mounted_rnk:
       logging.debug(f'pn.')
       _units = [i for i in units if i.pn
                 or mounted_t in i.traits]
-      if roll_dice(1) >= 3: _units.sort(key=lambda x: x.ranking, reverse=True)
+      if roll_dice(1) >= 3: _units.sort(key = lambda x: x.ranking, reverse = True)
       if _units: return _units
     if self.seen_undead_rnk > self.units_sacred_rnk // 2:
       logging.debug(f'sacred.')
       _units = [i for i in units if i.damage_sacred + i.damage_sacred_mod]
-      if roll_dice(1) >= 3: _units.sort(key=lambda x: x.ranking, reverse=True)
+      if roll_dice(1) >= 3: _units.sort(key = lambda x: x.ranking, reverse = True)
       if _units: return _units
     if self.seen_sacred_rnk * 1.5 > self.units_undead_rnk:
       logging.debug(f'human')
-      units.sort(key=lambda x: any(i in x.traits for i in [human_t]), reverse=True)
+      units.sort(key = lambda x: any(i in x.traits for i in [human_t]), reverse = True)
       return units
-    
-    logging.debug(f'_anticav {len(_anticav)} limit {self.units_piercing_rnk*100//self.defense_total}.')
+    logging.debug(f'av anticav {len(_anticav)}.')
+    logging.debug(f'total rnk {self.units_piercing_rnk*100//self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_piercing_limit}.')
     if (_anticav and roll_dice(1) >= 3 
-        and self.units_piercing_rnk * 100 // self.defense_total < self.nation.units_sacred_limit):
+        and self.units_piercing_rnk * 100 // self.defense_total < self.nation.units_piercing_limit):
       logging.debug(f'piercing.')
-      if roll_dice(1) >= 3: _anticav.sort(key=lambda x: x.ranking, reverse=True)
+      if roll_dice(1) >= 3: _anticav.sort(key = lambda x: x.ranking, reverse = True)
       if _anticav: return _anticav
-    logging.debug(f'_sacred {len(_sacred)} limit {self.units_sacred_rnk*100//self.defense_total}.')
+    logging.debug(f'av sacred {len(_sacred)}.')
+    logging.debug(f'total rnk {self.units_sacred_rnk*100//self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_sacred_limit}.')
     if (_sacred and roll_dice(1) >= 3 
         and self.units_sacred_rnk * 100 // self.defense_total < self.nation.units_sacred_limit):
       logging.debug(f'sacred.')
-      if roll_dice(1) >= 3: _sacred.sort(key=lambda x: x.ranking, reverse=True)
+      if roll_dice(1) >= 3: _sacred.sort(key = lambda x: x.ranking, reverse = True)
       if _sacred: return _sacred
     
     if self.pos.around_forest + self.pos.around_hill >= 3 and roll_dice(1) >= 5:
       _units = [i for i in units if i.can_fly or i.forest_survival or i.mountain_survival]
       logging.debug(f'forest and hills.')
-      _units.sort(key=lambda x: x.rng >= 6, reverse=True)
+      _units.sort(key = lambda x: x.rng >= 6, reverse = True)
       if _units: return _units
-    logging.debug(f'_archers {len(_archers)} limit {self.units_ranged_rnk*100//self.defense_total}.')
+    logging.debug(f'av archers {len(_archers)}.')
+    logging.debug(f'total rnk {self.units_ranged_rnk*100//self.defense_total}')
+    logging.debug(f'limit {self.nation.units_ranged_limit}.')
     if (_archers and roll_dice(1) >= 3 
         and self.units_ranged_rnk * 100 // self.defense_total < self.nation.units_ranged_limit):
       logging.debug(f'ranged.')
-      if roll_dice(1) >= 3: _archers.sort(key=lambda x: x.ranking, reverse=True)
-      _archers.sort(key=lambda x: x.rng >= 6, reverse=True)
+      if roll_dice(1) >= 2: _archers.sort(key = lambda x: x.ranking, reverse = True)
+      _archers.sort(key = lambda x: x.rng >= 6, reverse = True)
       if _archers: return _archers
-    logging.debug(f'_mounted {len(_mounted)} limit {self.units_mounted_rnk*100/self.defense_total}.')
+    logging.debug(f'av mounted {len(_mounted)}.')
+    logging.debug(f'total rnk {self.units_mounted_rnk*100/self.defense_total}.')
+    logging.debug(f'limit {self.nation.units_mounted_limit}.')
     if (_mounted and roll_dice(1) >= 4
         and self.units_mounted_rnk * 100 / self.defense_total < self.nation.units_mounted_limit):
       logging.debug(f'mounted.')
       _units = [i for i in units if mounted_t in i.traits]
       if _units: return _units
     
-    if self.defense_total_percent > 300:
+    if self.defense_total_percent > 200:
       logging.debug(f'expensive.')
-      units.sort(key=lambda x: x.ranking, reverse=True)
+      _units = [i for i in units if levy_t not in i.traits]
+      if _units: units = _units
+      units.sort(key = lambda x: x.ranking, reverse = True)
       units = [i for i in units[:3]]
+      
       shuffle(units)
       return units    
     
     return units
 
-  def status(self, info=0):
+  def status(self, info = 0):
+    logging.info(f'city status {self}.')
     self.defensive_tiles = self.get_tiles_defense(self.tiles)
-    self.defensive_tiles.sort(key=lambda x: x.hill, reverse=True)
+    self.defensive_tiles.sort(key = lambda x: x.hill, reverse = True)
     self.for_food_tiles = self.get_tiles_food(self.tiles)
     self.for_food_tiles = [i for i in self.for_food_tiles if i.size >= 4]
-    self.for_food_tiles.sort(key=lambda x: x.food, reverse=True)
+    self.for_food_tiles.sort(key = lambda x: x.food, reverse = True)
     self.for_res_tiles = self.get_tiles_res(self.tiles)
     self.for_res_tiles = [i for i in self.for_res_tiles if i.size >= 4]
-    self.for_res_tiles.sort(key=lambda x: x.resource, reverse=True)
+    self.for_res_tiles.sort(key = lambda x: x.resource, reverse = True)
     
     self.buildings_food = [i for i in self.buildings if food_t in i.tags]
     self.buildings_food_complete = [i for i in self.buildings_food if i.is_complete]
@@ -710,13 +753,13 @@ class City:
     self.units = []
     for t in self.tiles:
       for bu in t.buildings:
-        bu.pos = t
+        if bu.type == building_t:bu.update()
         bu.poss = t
         self.buildings.append(bu)
       for uni in t.units: 
         if uni.nation == self.nation: self.units.append(uni)
     
-    self.buildings.sort(key=lambda x: x.resource_cost[0])
+    self.buildings.sort(key = lambda x: x.resource_cost[0])
     self.food_total = round(self.food_total)
     self.pop_total = self.pop + self.pop_military
     self.pop_percent = round(self.pop * 100 / self.pop_total, 1)
@@ -726,7 +769,6 @@ class City:
     self.military_percent = round(self.pop_military * 100 / self.pop_total, 1)
     
     # datos económicos.
-    self.corruption = self.nation.corruption    
     self.income_total = 0
     self.public_order_total = 0
     for t in self.tiles:
@@ -736,48 +778,36 @@ class City:
     # mejorar ciudad.
     self.set_downgrade()
     self.set_upgrade()
-    # datos de edificios.
-    self.grouth_total = round(self.food_total * 100 / self.pop - 100)
-    #print(f'{self.grouth_total = }')
-    self.grouth_total += round(self.grouth * self.grouth_total / 100)
-    #print(f'{self.grouth_total = }')
-    self.buildings = [b for b in self.buildings if b.type == building_t]
-    for b in self.buildings:
-      b.update()
-      if b.is_complete == 0:
-        self.corruption += b.corruption_pre * self.corruption / 100
-        self.grouth_total += b.grouth_pre * self.grouth_total / 100
-      if (b.is_complete and b.pos.blocked == 0): 
-        self.corruption += b.corruption * self.corruption / 100
-        self.grouth_total += b.grouth * self.grouth_total / 100
-    #print(f'{self.grouth_total = }')
-    self.grouth_total = round(self.grouth_total / self.nation.grouth_rate)
-    #print(f'{self.grouth_total = }')
-    
+    # data buildings.
+    self.grouth_total = self.nation.grouth_base
+    # print(f'{self.grouth_total = }')
+    self.grouth_total += (self.food_total * 100 / self.pop - 100) / self.nation.grouth_rate
+    # print(f'{self.grouth_total = }')
+    self.grouth_total += self.grouth
+    # print(f'from city {self.grouth_total = }')
     tiles = [i for i in self.tiles if i.pop > 0]
     self.public_order_total /= len(tiles)
+    self.grouth_total -= round(abs(self.public_order_total - 100) * self.grouth_total / 100)
+    # print(f'{round(abs(self.public_order_total-100)*self.grouth_total/100)}, {self.grouth_total = }.')
+    if self.grouth_total < 0: self.grouth_total = 0.1
     self.status()
     self.set_av_units()
     
-    #expanding.
+    # expanding.
     self.expanding = 0
     if self.production and self.production[0].settler: self.expanding = 1
+
   def set_upgrade(self):
     pass
-
-
-class Empty:
-  pass
 
 
 class Nation:
   name = 'unnamed'
   nick = ''
   gold = 1000
-  corruption = 50
   food_limit_builds = 200
   food_limit_upgrades = 800
-  grouth_rate = 100
+  grouth_rate = 1
   public_order = 0
   upkeep_base = 50
   upkeep_change = 100
@@ -805,7 +835,7 @@ class Nation:
   raid_outcome = 0
   show_info = 0
   stalk = 0
-  tile_cost = 600
+  tile_cost = 1200
   tile_power = 1
   tile_area_limit = 3
   type = nation_t
@@ -883,17 +913,18 @@ class Nation:
   def __str__(self):
     return self.name
 
-  def add_city(self, itm, pos, scenary, unit):
-    itm.nation = self
-    pop = unit.units*10
+  def add_city(self, itm, unit):
+    itm = itm(unit.nation, unit.pos)
+    scenary = unit.pos.scenary
+    pop = unit.units * 3
+    pos = unit.pos
     itm.pop = pop
-    itm.pos = pos
     pos.buildings.append(itm)
-    unit.pos.units.remove(unit)
+    if unit in unit.pos.units: unit.pos.units.remove(unit)
     itm.set_name()
     if len(self.cities) == 0: itm.capital = 1
     if itm.capital: itm.set_capital_bonus()
-    tiles = pos.get_near_tiles(scenary, 1)
+    tiles = pos.get_near_tiles(1)
     for t in tiles:
       if t.nation == None:
         t.city = itm
@@ -908,8 +939,138 @@ class Nation:
     itm.status()
     self.update(scenary)
     logging.debug(f'{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.')
-
   
+  def build(self, city):
+    if self.income < self.upkeep:
+      logging.debug(f'not enogh gold.')
+      return
+    city.status()
+    # Build food buildings.
+    logging.debug(f'build food.')
+    shuffle(city.tiles)
+    city.tiles.sort(key = lambda x: x.is_city, reverse = True)
+    buildings = [b for b in self.av_buildings if food_t in b.tags and b.gold < self.gold]
+    count = 1
+    po_factor = 50
+    if city.buildings_food_complete == []: 
+      count = randint(3, 6)
+      po_factor = 100
+    for b in buildings:
+      city.tiles.sort(key = lambda x: x.po)
+      for t in city.tiles:
+        t.update(self)
+        if t.around_threat or t.threat: continue
+        if t.po > po_factor:
+          logging.debug(f'tu much po. {t.po=:}, {po_factor=:}.') 
+          continue
+        building = b(self, t)
+        if building.can_build():
+          city.add_building(building, t)
+          logging.debug(f'{building} added at {t} {t.cords}.')
+          count -= 1
+          if count < 1: break
+    
+    # build military buildings.
+    city.status()
+    if city.buildings_food:
+      logging.debug(f'build military.')
+      buildings = [b for b in self.av_buildings if military_t in b.tags and b.gold < self.gold]
+      buildings.sort(key = lambda x: x(self, self.pos).resource_cost[1])
+      if roll_dice(1) >= 5: shuffle(buildings)
+      count = 1
+      for b in buildings:
+        if count == 0: break
+        city.tiles.sort(key = lambda x: len(x.around_snations), reverse = True)
+        for t in city.tiles:
+          t.update(self)
+          if t.around_threat or t.threat: continue
+          building = b(self, t)
+          if building.can_build():
+            city.add_building(building, t)
+            logging.debug(f'{building} added at {t} {t.cords}.')
+            count = 0
+            break
+    
+    # build misc buildings.
+    city.status()
+    if city.buildings_food:
+      logging.debug(f'build misc.')
+      buildings = [b for b in self.av_buildings if any(i in b.tags for i in [unrest_t, resource_t]) and b.gold < self.gold]
+      cost_mean = sum([b.gold for b in buildings])
+      completed = len(city.buildings_res_complete)
+      if completed == 0: completed = 1
+      shuffle(buildings)
+      count = 1
+      if len(city.buildings_res_complete) > len(city.tiles) // 5: count = 0
+      if self.gold > cost_mean * completed: count = 1
+      for b in buildings:
+        if count == 0: break
+        if unrest_t in b.tags: city.tiles.sort(key = lambda x: x.po)
+        if resource_t in b.tags: 
+          if roll_dice(1) >= 4:
+            logging.debug(f'roll set to not build.')
+            continue
+          city.tiles.sort(key = lambda x: x.hill, reverse = True)
+
+        for t in city.tiles:
+          t.update(self)
+          if t.around_threat or t.threat: continue
+          if unrest_t in b.tags and t.po > 20: continue
+          building = b(self, t)
+          if building.can_build():
+            city.add_building(building, t)
+            logging.debug(f'{building} added at {t} {t.cords}.')
+            count = 0
+            break
+    
+  def improve_food(self, city):
+    logging.info(f'build_food_upgrade.')
+    # food upgrades.
+    buildings = [b for b in city.buildings_food_complete if b.upgrade]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    factor = city.nation.food_limit_upgrades
+    if city.grouth_total >= 5: factor *= 4
+    if city.grouth_total >= 4: factor *= 3
+    if city.grouth_total >= 3: factor *= 2
+    for b in buildings:
+      count = 1
+      if b.pos.food < b.pos.pop or b.pos.po >= 10:
+        logging.debug(f'food not need.')
+        count = 0
+      if city.nation.gold - factor >= factor:
+        logging.debug(f'factor True.')
+        count = 1
+      
+      if count == 0: continue
+      upg = choice(b.upgrade)(self, self.pos)
+      
+      if upg.gold < self.gold:
+        b.improve(upg)
+
+  def improve_military(self, city):
+    logging.info(f'build_military_upgrade.')
+    # military upgrades.
+    buildings = [b for b in city.buildings_military_complete if b.upgrade]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    for b in buildings:
+      logging.debug(f'{b.name}')
+      upg = choice(b.upgrade)(self, self.pos)
+      
+      if upg.gold + self.military_limit_upgrades < self.gold:
+        b.improve(upg)
+
+  def improve_misc(self, city):
+    logging.info(f'build_misc_upgrade.')
+    # misc upgrades.
+    buildings = [b for b in city.buildings if b.upgrade and b.is_complete
+                 and any(i in b.tags for i in [resource_t, unrest_t])]
+    logging.debug(f'upgradables {len(buildings)=:}.')
+    for b in buildings:
+      upg = choice(b.upgrades)(self, self.pos)
+      
+      if upg.gold < self.gold:
+        b.improve(upg)
+
   def check_events(self):
     pass
 
@@ -983,13 +1144,14 @@ class Nation:
   
   def launch_event(self):
     pass
+
   def set_income(self):
     [ct.income_change() for ct in self.cities]
     self.gold += self.raid_income
     logging.debug(f'gana {self.raid_income} por saqueos.')
     self.raid_income = 0
 
-  def set_seen_nations(self, info=0):
+  def set_seen_nations(self, info = 0):
     for nt in self.seen_nations:
       nt.seen_tiles = [t for t in nt.seen_tiles if str(t.nation) == str(nt)]
     self.seen_nations = [nt for nt in self.seen_nations if nt.seen_tiles]
@@ -1036,7 +1198,7 @@ class Nation:
     cities = len([i for i in self.cities])
     self.city_req_pop = self.city_req_pop_base * (cities)
   
-  def status(self, info=0):
+  def status(self, info = 0):
     self.defense_need = 0
     self.income = sum(i.income_total for i in self.cities)
     self.pop_military = 0
@@ -1132,10 +1294,10 @@ class Nation:
     self.upkeep_limit += round(self.pop / self.upkeep_change)
     if self.upkeep_limit > 100: self.upkeep_limit = 100
     self.upkeep_limit = round(self.upkeep_limit * self.income // 100)
-    self.cities.sort(key=lambda x: x.capital, reverse=True)
+    self.cities.sort(key = lambda x: x.capital, reverse = True)
     self.set_new_city_req()
-    self.units.sort(key=lambda x: len(x.group))
-    #expanding.
+    self.units.sort(key = lambda x: len(x.group))
+    # expanding.
     self.expanding = 0
     if any(i for i in [ct.expanding for ct in self.cities]): self.expanding = 1
 
@@ -1144,13 +1306,14 @@ class Unit:
   name = str()
   nick = str()
   units = 0
+  sts = 0
   type = str()
   traits = []
   comm = 0
   unique = 0
   gold = 0
   upkeep = 0
-  resource = 0
+  resource_cost = 0
   pop = 0
   food = 0
   sk = []
@@ -1160,8 +1323,9 @@ class Unit:
   mp = []
   moves = 0
   resolve = 0
+  po = 0
   global_skills = []
-  
+
   dfs = 0
   res = 0
   arm = 0
@@ -1172,6 +1336,7 @@ class Unit:
   att = 0
   damage = 0
   rng = 1
+  mrng = 0
   off = 0
   str = 0
   pn = 0
@@ -1183,7 +1348,7 @@ class Unit:
   power_max = 0
   power_res = 0
   unique = 0
-  
+
   armor_ign = 0
   damage_critical = 0
   damage_charge = 0
@@ -1195,7 +1360,6 @@ class Unit:
   hp_res = 1
   hp_res_mod = 0
   other_skills = []
-  units_min = 5
 
   ai = 1
   align = None
@@ -1218,7 +1382,7 @@ class Unit:
   desert_survival = 0
   dist = 0
   fled = 0
-  fear = 8
+  fear = 4
   food = 0
   forest_survival = 0
   garrison = 0
@@ -1243,7 +1407,8 @@ class Unit:
   settler = 0
   show_info = 0
   sight = 1
-  sort_chance = 66
+  sort_chance = 50
+  squads = 1
   stopped = 0
   swamp_survival = 0
   units_min = 0
@@ -1252,6 +1417,8 @@ class Unit:
 
   def __init__(self, nation):
     self.hp_total = self.hp * self.units
+    self.history = Empty()
+    self.history.turns = 1
     self.initial_units = self.units
     self.nation = nation
     self.defensive_skills = [i(self) for i in self.defensive_skills]
@@ -1292,12 +1459,10 @@ class Unit:
     return name
 
   def autokill(self):
-    if (self.pos and (self.pos.soil.name not in self.favsoil 
-                      or self.pos.surf.name not in self.favsurf
-                      or self.pos.hill not in self.favhill)
-                      and self in self.pos.world.units and roll_dice(2) > round(self.ranking/7)):
+    if self.pos.get_nearest_nation() > 3 and self in self.pos.world.units:
       self.hp_total = 0
       loadsound('set9')
+
   def break_group(self):
     logging.debug(f'{self} rompe grupo.')
     self.group_base = 0
@@ -1309,7 +1474,7 @@ class Unit:
     self.goto = []
     self.group = []
 
-  def burn(self, cost=0):
+  def burn(self, cost = 0):
     if (self.pos.buildings
         and self.mp[0] >= cost and self.can_burn and self.pos.nation != self.nation): 
       if [i for i in self.pos.units
@@ -1335,7 +1500,7 @@ class Unit:
         self.pos.nation.log[-1].append(msg)
         logging.debug(msg)
       if any(i for i in [self.nation.show_info, self.pos.nation.show_info]): 
-        sleep(loadsound('build_burn01', channel=ch3) * 0.5)
+        sleep(loadsound('build_burn01', channel = ch3) * 0.5)
 
   def can_pass(self, pos):
     if pos.soil.name in self.soil and pos.surf.name in self.surf: return True
@@ -1354,7 +1519,7 @@ class Unit:
     if self.group and go == 0: logging.debug(f'go {go}.')
     return go
 
-  def combat_retreat(self, info=0):
+  def combat_retreat(self, info = 0):
     if info: logging.debug(f' combat retreat.')
     self.update()
     if info: logging.debug(f'{self} retreat units {self.units} hp {self.hp_total}.')
@@ -1379,7 +1544,7 @@ class Unit:
       self.update()
       if info: logging.debug(f'total huídos {self.fled}.')
 
-  def create_group(self, score, same_mp=0):
+  def create_group(self, score, same_mp = 0):
     if score < 0: return
     logging.debug(f'{self} crea grupo de {score}')
     self.group_base = score
@@ -1390,14 +1555,16 @@ class Unit:
     units = self.nation.get_free_units()
     if same_mp: units = [i for i in units if i.mp[1] >= self.mp[1]] 
     shuffle(units)
-    units.sort(key=lambda x: x.pos == self.pos, reverse=True)
     if self.rng <= 6:
-      units.sort(key=lambda x: x.rng >= 6, reverse=True)
+      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
+      units.sort(key = lambda x: x.rng >= 6, reverse = True)
     elif self.rng >= 6:
-      units.sort(key=lambda x: x.off, reverse=True)
+      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
+      units.sort(key = lambda x: x.off, reverse = True)
     if self.settler:
-      units.sort(key=lambda x: x.mp[1] == self.mp[1], reverse=True)
-      units.sort(key=lambda x: x.ranking, reverse=True)
+      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
+      units.sort(key = lambda x: x.mp[1] == self.mp[1], reverse = True)
+      units.sort(key = lambda x: x.ranking, reverse = True)
     
     logging.debug(f'disponibles {len(units)}.')
     if len(units) == 0:
@@ -1429,17 +1596,18 @@ class Unit:
   def get_favland(self, pos):
     go = 1
     if pos.soil.name not in self.favsoil: go = 0
-    if pos.surf.name not in self.favsurf and pos.hill not in self.favhill: go = 0
+    if pos.surf.name not in self.favsurf: go = 0
+    if pos.hill not in self.favhill: go = 0
     return go
 
-  def get_skills(self):
-    #print(f'get skills {self}')
+  def get_skills(self, info = 1):
+    if info: print(f'get skills {self}')
     self.arm_mod = 0
     self.armor_ign_mod = 0
     self.att_mod = 0
     self.damage_mod = 0
     self.damage_critical_mod = 0
-    self.damage_charge = 0
+    self.damage_charge_mod = 0
     self.damage_sacred_mod = 0
     self.dfs_mod = 0
     self.hit_rolls_mod = 0
@@ -1457,6 +1625,7 @@ class Unit:
     self.resolve_mod = 0
     self.stealth_mod = 0
     self.str_mod = 0
+    self.sts_mod = 0
 
     self.skill_names = []
     self.effects = []
@@ -1468,27 +1637,27 @@ class Unit:
     [self.skill_names.append(i.name) for i in self.skills]
     tile_skills = []
     if self.pos:
-      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events+self.pos.events+self.pos.skills]
-      elif self.attacking: tile_skills += [sk for sk in self.target.pos.terrain_events+self.pos.events]
-    #print(f'{len(tile_skills)} de casillas.')
+      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events + self.pos.events + self.pos.skills]
+      elif self.attacking: tile_skills += [sk for sk in self.target.pos.terrain_events + self.pos.events]
+    if info: print(f'{len(tile_skills)} de casillas.')
     for i in tile_skills:
-      if i.type == 0:
-        #print(f'{i} added.')
+      if i.type == 'generic':
+        if info: print(f'{i} added.')
         skills.append(i)
-        # print(f'se agrega {i.name}')
+        if info: print(f'se agrega {i.name}')
     
     if self.target: skills += [s for s in self.target.skills if s.effect == 'enemy']    
-    # print(f'run')
+    if info: print(f'run')
     for sk in skills:
-      if sk.type == 0:
-        # print(sk.name)
-        # print(sk)
+      if sk.type == 'generic':
+        if info: print(sk.name)
         sk.run(self)
     
     self.skill_names.sort()
 
   def launch_event(self):
     pass
+
   def maintenanse(self):
     # logging.debug(f'mantenimiento de {self} de {self.nation}.')
     if self.upkeep > 0 and self.nation.gold >= self.upkeep:
@@ -1500,7 +1669,7 @@ class Unit:
       self.city.pop_back += self.pop
       logging.debug(f'se disuelve')
 
-  def raid(self, cost=0):
+  def raid(self, cost = 0):
     if (self.pos.city and self.pos.nation != self.nation and self.can_raid 
         and self.mp[0] >= cost):  
       self.mp[0] -= cost
@@ -1508,9 +1677,9 @@ class Unit:
       self.pos.update()
       if self.pos.raided < self.pos.income:
         logging.info(f'{self} saquea a {self.pos.city} {self.pos.nation} en {self.pos} {self.pos.cords}')
-        raided = self.hp_total
-        if mounted_t in self.traits: raided *= 3
-        raided += (self.moves+self.moves_mod)*2
+        raided = self.hp_total * 2
+        if mounted_t in self.traits: raided *= 2
+        raided *= (self.moves + self.moves_mod) / 2
         if raided > self.pos.income: raided = self.pos.income
         self.pos.raided = raided
         self.pos.city.raid_outcome += raided
@@ -1520,16 +1689,17 @@ class Unit:
         self.log[-1].append(msg)
         self.nation.log[-1].append(msg)
         if any(i for i in [self.pos.nation.show_info, self.show_info]) and raided: 
-          sleep(loadsound('gold2', channel=ch3))
+          sleep(loadsound('gold2', channel = ch3))
       if self.pos.pop:
         logging.debug(f'{self.pop=:}.')
         pop = self.pos.pop
-        dead = self.damage * randint(1, self.units)
+        dead = (self.damage + self.damage_mod) * randint(1, self.units)
         logging.debug(f'initial dead {dead}.')
-        dead = dead * randint(1, self.att + self.att_mod + 1)
+        dead *= randint(1, self.att + self.att_mod + 1)
+        if mounted_t in self.traits: dead *= 2 
         logging.debug(f'second dead {dead}.')
         defense = sum([i.units for i in self.pos.units if i.nation == self.pos.nation])
-        if defense: dead -= randint(int(defense*0.1), int(defense*0.3))
+        if defense: dead -= randint(int(defense * 0.1), int(defense * 0.3))
         logging.debug(f'end dead {dead}.')
         if dead < 0: dead = 0
         if dead > pop: dead = pop
@@ -1540,18 +1710,18 @@ class Unit:
           self.log[-1].append(msg)
           self.nation.log[-1].append(msg)
           self.pos.nation.log[-1].append(msg)
-          sq = self.pos.get_near_tiles(self.pos.scenary , 1)
+          sq = self.pos.get_near_tiles(1)
           sq = [s for s in sq if s.nation == self.pos.nation]
           for s in sq: s.unrest += randint(15, 30)
           if any(i for i in [self.pos.nation.show_info, self.show_info]): 
-            sleep(loadsound('spell36', channel=ch3)*0.2)
+            sleep(loadsound('spell36', channel = ch3) * 0.2)
         if dead:
           msg = f'{dead} población perdida.'
           self.pos.nation.log[-1].append(msg)
           self.log[-1].append(msg)
           self.nation.log[-1].append(msg)
           if any(i for i in [self.show_info, self.pos.nation.show_info]): 
-            sleep(loadsound('notify23')*0.5)
+            sleep(loadsound('notify23') * 0.5)
       logging.info(f'raid_income {round(self.pos.nation.raid_income)}.')      
       self.pos.city.update()
 
@@ -1564,7 +1734,7 @@ class Unit:
       weakest = roll_dice(1)
       if self.hidden: 
         weakest += 2
-      if weakest >= 5: enemies.sort(key=lambda x: x.ranking)
+      if weakest >= 5: enemies.sort(key = lambda x: x.ranking)
       return enemies[0]
 
   def set_auto_explore(self):
@@ -1587,7 +1757,8 @@ class Unit:
     if self.pos:
       for nt in self.pos.world.random_nations: 
         if nt.name == self.align.name: self.nation = nt
-  def set_hidden(self, pos, info=1):
+
+  def set_hidden(self, pos, info = 1):
     if info: logging.info(f'set hidden {self} a {pos} {pos.cords}.')
     visible = self.units
     if info: logging.debug(f'visible {visible}')
@@ -1596,7 +1767,8 @@ class Unit:
       if info: logging.debug(f'visible {visible} pop')
     visible += sum([it.units for it in pos.units if it.nation != self.nation])
     if info: logging.debug(f'visible {visible} units')
-    visible = round(visible / 20)
+    visible = floor(visible / 300)
+    if visible > 7: visible = 7
     if info: logging.debug(f'visible {visible} rond 20')
     stealth = self.stealth + self.stealth_mod
     if info: logging.debug(f'stealth {stealth}')
@@ -1612,7 +1784,7 @@ class Unit:
   def set_id(self):
     num = self.id
     # logging.debug(f'id base {self} {num}.')
-    self.nation.units.sort(key=lambda x: x.id)
+    self.nation.units.sort(key = lambda x: x.id)
     for i in self.nation.units:
       # logging.debug(f'{i} id {i.id}.')
       if i.id == num: num += 1
@@ -1630,53 +1802,97 @@ class Unit:
 
   def set_ranking(self):
     self.ranking_off = 0
+    self.ranking_off_l = []
     self.ranking_off += self.damage + self.damage_mod
+    self.ranking_off_l += ['damage', self.ranking_off]
     self.ranking_off += self.damage_sacred + self.damage_sacred_mod
+    self.ranking_off_l += ['sacred', self.ranking_off]
     self.ranking_off *= self.att + self.att_mod
+    self.ranking_off_l += ['att', self.ranking_off]
     self.ranking_off *= self.units
-    self.ranking_off += self.damage_charge*10
-    self.ranking_off += (self.moves+self.moves_mod)*2
-    self.ranking_off *= (self.off+self.off_mod)/2
-    self.ranking_off *= (self.str+self.str_mod)/3
+    self.ranking_off_l += ['units', self.ranking_off]
+    self.ranking_off += (self.damage_charge + self.damage_charge_mod) * 10
+    self.ranking_off_l += ['charge', self.ranking_off]
+    self.ranking_off *= 1 + (self.off + self.off_mod) / 10
+    self.ranking_off_l += ['off', self.ranking_off]
+    self.ranking_off *= 1 + (self.str + self.str_mod) / 10
+    self.ranking_off_l += ['str', self.ranking_off]
     self.ranking_off += (self.pn + self.pn_mod) * 5
+    self.ranking_off_l += ['pn', self.ranking_off]
+    self.ranking_off *= 1 + ((self.moves + self.moves_mod) / 2) / 10
+    self.ranking_off_l += ['moves', self.ranking_off]
   
     self.ranking_dfs = self.hp_total
-    self.ranking_dfs *= (self.dfs + self.dfs_mod)/3
-    self.ranking_dfs *= (self.res + self.res_mod)/2
-    self.ranking_dfs += (self.arm + self.arm_mod)*15
-    if self.armor: self.ranking_dfs += self.armor.arm * 5
-    if self.shield: self.ranking_dfs += self.shield.dfs * 5
+    self.ranking_dfs_l = ['hp', self.ranking_dfs]
+    self.ranking_dfs *= 1 + (self.dfs + self.dfs_mod) / 10
+    self.ranking_dfs_l += ['dfs', self.ranking_dfs]
+    self.ranking_dfs *= 1 + (self.res + self.res_mod) / 10
+    self.ranking_dfs_l += ['res', self.ranking_dfs]
+    self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 5
+    self.ranking_dfs_l += ['arm', self.ranking_dfs]
+    if self.armor: 
+      self.ranking_dfs *= 1 + (self.armor.arm) / 10 * 5
+      self.ranking_dfs_l += ['armor', self.ranking_dfs]
+    if self.shield: 
+      self.ranking_dfs += 1 + (self.shield.dfs) / 10
+      self.ranking_dfs_l += ['shield', self.ranking_dfs]
+    self.ranking = self.ranking_dfs + self.ranking_off
+    self.ranking += (self.rng + self.rng_mod) * 5
   
-    self.ranking = self.ranking_dfs+self.ranking_off
-    self.ranking += (self.rng+self.rng_mod)*5
-  
-    if self.can_fly: self.ranking += 5 
+    self.ranking = round(self.ranking / 4)
+    if self.can_fly: self.ranking *= 1.2
+    if self.resolve + self.resolve_mod >= 6: self.ranking *= 1.3
+    if self.resolve + self.resolve_mod < 6: self.ranking *= 0.7
     self.ranking += sum(s.ranking for s in self.skills + self.spells)
-    self.ranking = round(self.ranking/3)
-  def set_tile_attr(self):
-    info = 1
-    tiles = self.pos.get_near_tiles(self.pos.scenary, 1)
+
+  def set_tile_attr(self, info = 0):
+    tiles = self.pos.get_near_tiles(1)
     tiles = [t for t in tiles if t.nation 
            and t.nation != self.nation and t.pop]
     if info and tiles: print(f'set_tile_attr {self} en {self.pos} {self.pos.cords}')
     for t in tiles:
       t.update(self.nation)
-      defense = t.pop + t.defense
-      if info: print(f'defense en {t} {t.cords} {defense}')
-      defense += t.around_defense * 0.1
-      if info: print(f'around defense {defense}')
       unrest = self.ranking * 0.1
       if info: print(f'unrest {unrest}')
-      if t != self.pos: unrest = unrest / 2
+      if t == self.pos: unrest *= 2
       if info: print(f'diferente que. unrest {unrest}')
-      unrest = unrest * 100 / defense
       if info: print(f'unrest final {unrest}')
       if unrest < 0: unrest = 0
       t.unrest += unrest
 
+  def split(self, times = 1):
+    if self.squads <= 1: return
+    logging.info(f'divide {self}.')
+    for i in range(times):
+      self.update()
+      logging.debug(f'{self} hp {self.hp_total} units {self.units} mínimo {self.initial_units}.')
+      if self.units <= self.initial_units:
+        logging.debug(f'mínimo alcansado.')
+        return
+  
+      unit = self.__class__(self.nation)
+      self.hp_total -= self.initial_units * self.hp
+      self.pop -= unit.pop
+      unit.city = self.city
+      unit.day_night = self.day_night
+      unit.garrison = self.garrison
+      unit.pos = self.pos
+      unit.revealed = self.revealed
+      unit.global_skills = self.global_skills
+      unit.offensive_skills = self.offensive_skills
+      unit.other_skills = self.other_skills
+      unit.log = [[f'{turn_t} {self.pos.world.turn}.']]
+      msg = f'{unit} detached from {self}.'
+      unit.log[-1] += [msg]
+      self.log[-1] += [msg]
+      self.update()
+      self.pos.units.append(unit)
+      if self.show_info: sp.speak(f'{self}.')
+
   def start_turn(self):
     self.burn()
     self.raid()
+
   def update(self):
     self.day_night = self.ambient.day_night
     self.month = self.ambient.month[0]
@@ -1709,6 +1925,7 @@ class Unit:
     if self.can_hide: self.hidden = 1
     if self.can_charge and self.target == None: self.charge = 1
     if self.revealed: self.hidden = 0
+    self.squads = ceil(self.units / self.initial_units)
     
     # ranking.
     self.skills = [i for i in self.global_skills + self.terrain_skills + 
@@ -1724,12 +1941,14 @@ class Unit:
 
 
 class Amphibian:
+
   def __init__(self):
     self.soil = [coast_t, glacier_t, grassland_t, plains_t, ocean_t, tundra_t]
     self.surf = [forest_t, none_t, river_t, swamp_t]
 
 
 class Elf(Unit):
+
   def __init__(self, nation):
     super().__init__(nation)
     self.favhill = [0, 1]
@@ -1741,6 +1960,7 @@ class Elf(Unit):
 
 
 class Ground:
+
   def __init__(self):
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [forest_t, none_t, river_t, swamp_t]
@@ -1749,6 +1969,7 @@ class Ground:
 
 
 class Human(Unit):
+
   def __init__(self, nation):
     super().__init__(nation)
     Ground.__init__(self)
@@ -1764,6 +1985,7 @@ class Ship(Unit):
 
 
 class Undead(Unit):
+
   def __init__(self, nation):
     super().__init__(nation)
     Ground.__init__(self)
@@ -1775,12 +1997,10 @@ class Undead(Unit):
 class Hall(City):
   name = 'salón'
   events = [Unrest]
-  food = 100
-  grouth = 10
-  income = 100
-  public_order = 50
-  resource = 0
-  upkeep = 300
+  food = 2
+  public_order = 20
+  resource = 1
+  upkeep = 1500
 
   free_terrain = 1
   own_terrain = 0
@@ -1788,10 +2008,9 @@ class Hall(City):
   military_base = 45
   military_change = 100
   military_max = 70
-  popdef_base = 70
-  popdef_change = 60
+  popdef_base = 35
+  popdef_change = 300
   popdef_min = 5
-
   tags = [city_t]
 
   def __init__(self, nation, pos):
@@ -1805,34 +2024,36 @@ class Hall(City):
     self.hill = [0]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//100
-    self.grouth += 300*self.grouth//100
-    self.income += 100*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.food += 1
+    self.income += 1.5
+    self.public_order += 50
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 1000:
+    if self.level == 1 and self.pop <= 1500:
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 2
+      self.grouth -= 1
+      self.income -= 1.5
       self.public_order -= 50
     if self.level == 2 and self.pop <= 2400:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 2
+      self.grouth -= 1
+      self.income -= 1.5
       self.public_order -= 50
     if self.level == 3 and self.pop <= 7000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 1
       self.name = town_t
-      self.food -= 100
-      self.income -= 10
+      self.food -= 2
+      self.grouth -= 1
+      self.income -= 1.5
       self.public_order -= 50
     if msg:
       self.nation.log[-1].append(msg)
@@ -1843,26 +2064,29 @@ class Hall(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 1200:
+    if self.level == 0 and self.pop >= 3000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food += 100
-      self.income += 10
+      self.food += 1.5
+      self.grouth += 1
+      self.income += 1.5
       self.public_order += 50
-    if self.level == 1 and self.pop >= 2500:
+    if self.level == 1 and self.pop >= 8000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food += 100
-      self.income += 10
+      self.food += 1.5
+      self.grouth += 1
+      self.income += 1.5
       self.public_order += 50
-    if self.level == 2 and self.pop >= 8000:
+    if self.level == 2 and self.pop >= 20000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
-      self.food += 100
-      self.income += 10
+      self.food += 2
+      self.grouth += 1
+      self.income += 1.5
       self.public_order += 50
     if msg:
       logging.debug(msg)
@@ -1873,9 +2097,9 @@ class Hall(City):
 
 class GlisteningPastures(Building):
   name = 'Pasturas radiantes'
-  gold = 5000
+  gold = 20000
   food = 100
-  income = 10
+  income = 1.2
 
   own_terrain = 1
   size = 6
@@ -1895,7 +2119,8 @@ class GlisteningPastures(Building):
 class WindsStables(GlisteningPastures, Building):
   name = 'Establos del viento'
   base = GlisteningPastures
-  gold = 12000
+  gold = 30000
+  income = 1.5
 
   own_terrain = 1
   tags = [military_t]
@@ -1908,35 +2133,16 @@ class WindsStables(GlisteningPastures, Building):
     self.size = 0
 
 
-class ForestLookout(Building):
-  name = 'Observatorio forestal'
-  unique = 1
-  gold = 2000
-
+class FalconRefuge(Building):
+  name = 'refugio del alcón'
+  gold = 7000
   own_terrain = 1
-  size = 4
-  tags = [military_t]
   unique = 1
+  tags = [military_t]
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [Falcons, SilvanArcher]
-    self.resource_cost = [0, 80]
-    self.soil = [grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t]
-    self.hill = [0, 1]
-    self.upgrade = [EagleRefuge]
-
-
-class EagleRefuge(ForestLookout, Building):
-  name = 'refugio del alcón'
-  base = ForestLookout
-  gold = 5000
-  own_terrain = 1
-  tags = [military_t]
-  def __init__(self, nation, pos):
-    super().__init__(nation, pos)
-    self.av_units = [Falcons, HighSilvanArcher]
     self.resource_cost = [0, 80]
     self.size = 0
     self.soil = [grassland_t, plains_t, tundra_t]
@@ -1945,11 +2151,32 @@ class EagleRefuge(ForestLookout, Building):
     self.upgrade = []
 
 
-class Santuary(Building):
+class ForestLookout(FalconRefuge, Building):
+  name = 'Observatorio forestal'
+  base = FalconRefuge
+  unique = 1
+  gold = 15000
+
+  own_terrain = 1
+  size = 4
+  tags = [military_t]
+  unique = 1
+
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [ForestEagle, HighSilvanArcher]
+    self.resource_cost = [0, 80]
+    self.soil = [grassland_t, plains_t, tundra_t]
+    self.surf = [forest_t]
+    self.hill = [0, 1]
+    self.upgrade = [FalconRefuge]
+
+
+class Sanctuary(Building):
   name = 'santuario'
-  gold = 3000
-  food = 100
-  income = 100
+  gold = 15000
+  food = 2
+  income = 1.5
   unique = 1
 
   own_terrain = 1
@@ -1965,13 +2192,14 @@ class Santuary(Building):
     self.upgrade = [HauntedForest]
 
 
-class HauntedForest(Santuary, Building):
+class HauntedForest(Sanctuary, Building):
   name = 'Bosque embrujado'
-  base = Santuary
-  gold = 7000
+  base = Sanctuary
+  gold = 25000
   own_terrain = 1
   size = 5
   tags = [military_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [EternalGuard, ForestBears]
@@ -1984,9 +2212,10 @@ class HauntedForest(Santuary, Building):
 
 class MoonsFountain(HauntedForest, Building):
   name = 'Fuente de la luna'
-  base = Santuary
-  gold = 16000
+  base = Sanctuary
+  gold = 40000
   tags = [military_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.av_units = [AwakenTree, Driad]
@@ -1997,14 +2226,13 @@ class MoonsFountain(HauntedForest, Building):
 
 class Grove(Building):
   name = 'Huerto'
-  gold = 1000
-  food = 70
-  grouth = 10
-  income = 50
+  gold = 2000
+  food = 1.5
 
   own_terrain = 1
   size = 6
   tags = [food_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 40]
@@ -2017,12 +2245,12 @@ class Grove(Building):
 class GrapeVines(Grove, Building):
   name = 'racimos de uva'
   base = Grove
-  gold = 2000
-  food = 140
-  grouth = 20
-  income = 100
+  gold = 7500
+  food = 2.0
+  income = 1.5
   own_terrain = 1
   tags = [food_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 80]
@@ -2036,12 +2264,12 @@ class GrapeVines(Grove, Building):
 class Vineyard(GrapeVines, Building):
   name = 'Viñedo'
   base = GrapeVines
-  gold = 5000
-  food = 210
-  grouth = 40
-  income = 200
+  gold = 14000
+  food = 2.5
+  income = 2
   own_terrain = 1
   tags = [food_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 150]
@@ -2054,13 +2282,14 @@ class Vineyard(GrapeVines, Building):
 
 class CraftmensTree(Building):
   name = 'Artesanos de los árboles'
-  gold = 2000
-  food = 50
-  income = 100
+  gold = 6000
+  food = 1.2
+  income = 2
   resource = 100
   own_terrain = 1
   size = 6
   tags = [resource_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 70]
@@ -2072,13 +2301,15 @@ class CraftmensTree(Building):
 
 class stoneCarvers(Building):
   name = 'Talladores de la piedra'
-  gold = 3000
-  income = 50
-  food = 50
-  resource = 100
+  gold = 10000
+  food = 1.2
+  income = 1.5
+  resource = 2
+  
   own_terrain = 1
   size = 6
   tags = [resource_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
     self.resource_cost = [0, 120]
@@ -2093,9 +2324,9 @@ class AwakenTree(Elf):
   name = 'árbol despertado'
   units = 1
   type = 'infantry'
-  traits = [elf_t]
-  gold = 600
-  upkeep = 80
+  traits = [elf_t, poisonres_t]
+  gold = 1200
+  upkeep = 140
   resource_cost = 40
   food = 4
   pop = 30
@@ -2112,9 +2343,10 @@ class AwakenTree(Elf):
   arm = 4
   armor = None
 
-  att = 4
-  damage = 3
-  rng = 1
+  att = 3
+  damage = 4
+  rng = 5
+  mrng = 20
   off = 6
   str = 7
   pn = 3
@@ -2131,11 +2363,11 @@ class AwakenTree(Elf):
 
 class BladeDancers(Elf):
   name = 'danzantes de la espada'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 220
-  upkeep = 15
+  gold = 320
+  upkeep = 20
   resource_cost = 24
   food = 3
   pop = 25
@@ -2145,10 +2377,10 @@ class BladeDancers(Elf):
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Regroup]
 
   dfs = 5
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
@@ -2172,9 +2404,9 @@ class Driad(Elf):
   name = 'driades'
   units = 5
   type = 'infantry'
-  traits = [elf_t]
-  gold = 380
-  upkeep = 25
+  traits = [elf_t, poisonres_t]
+  gold = 580
+  upkeep = 45
   resource_cost = 30
   food = 3
   pop = 10
@@ -2207,11 +2439,11 @@ class Driad(Elf):
 
 class EternalGuard(Elf):
   name = 'guardia eterna'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 350
-  upkeep = 20
+  gold = 550
+  upkeep = 25
   resource_cost = 25
   food = 4
   pop = 30
@@ -2221,14 +2453,14 @@ class EternalGuard(Elf):
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Refit, Regroup]
 
   dfs = 5
-  res = 4
+  res = 2
   arm = 0
   armor = HeavyArmor()
 
-  att = 1
+  att = 2
   damage = 2
   rng = 1
   off = 4
@@ -2264,7 +2496,7 @@ class Falcons(Elf):
   global_skills = [Fly, ForestWalker]
 
   dfs = 4
-  res = 2
+  res = 1
   arm = 0
   armor = None
 
@@ -2282,11 +2514,11 @@ class Falcons(Elf):
 
 class ForestBears(Elf):
   name = 'Osos del bosque'
-  units = 4
+  units = 5
   type = 'beast'
   traits = [animal_t]
-  gold = 300
-  upkeep = 20
+  gold = 400
+  upkeep = 30
   resource_cost = 26
   food = 6
   pop = 20
@@ -2299,12 +2531,12 @@ class ForestBears(Elf):
   global_skills = [ForestWalker]
 
   dfs = 5
-  res = 5
+  res = 6
   arm = 2
   armor = None
 
-  att = 2
-  damage = 3
+  att = 3
+  damage = 2
   rng = 1
   off = 4
   str = 5
@@ -2324,7 +2556,7 @@ class ForestEagle(Elf):
   units = 1
   type = 'beast'
   traits = [animal_t]
-  gold = 100
+  gold = 300
   upkeep = 50
   resource_cost = 25
   food = 6
@@ -2338,11 +2570,11 @@ class ForestEagle(Elf):
   global_skills = [Fly, ForestWalker]
 
   dfs = 5
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
-  att = 3
+  att = 2
   damage = 2
   rng = 1
   off = 5
@@ -2356,11 +2588,11 @@ class ForestEagle(Elf):
 
 class ForestGuard(Elf):
   name = 'guardia forestal'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 80
-  upkeep = 3
+  gold = 150
+  upkeep = 8
   resource_cost = 14
   food = 2
   pop = 20
@@ -2373,12 +2605,12 @@ class ForestGuard(Elf):
   global_skills = [ForestWalker]
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   rng = 1
   off = 3
   str = 3
@@ -2395,11 +2627,11 @@ class ForestGuard(Elf):
 
 class ForestRider(Elf):
   name = 'arquero silvano'
-  units = 5
+  units = 10
   type = 'cavalry'
   traits = [elf_t]
-  gold = 450
-  upkeep = 30
+  gold = 850
+  upkeep = 40
   resource_cost = 30
   food = 5
   pop = 30
@@ -2409,20 +2641,21 @@ class ForestRider(Elf):
   mp = [4, 4]
   moves = 8
   resolve = 8
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Refit, Regroup]
 
   dfs = 4
   res = 3
   arm = 1
-  armor = LightArmor()
+  armor = HeavyArmor
+  shield = Shield()
 
-  att = 1
+  att = 2
   damage = 2
-  rng = 1
+  rng = 3
   off = 5
-  str = 3
-  pn = 0
-  offensive_skills = [Charge]
+  str = 5
+  pn = 1
+  offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -2436,31 +2669,31 @@ class ForestRider(Elf):
 
 class ElvesSettler(Human):
   name = 'Silvan settler'
-  units = 20
+  units = 200
   type = 'civil'
   traits = [elf_t, settler_t]
-  gold = 1000
+  gold = 1500
   upkeep = 10
   resource_cost = 60
-  food = 5
-  pop = 200
+  food = 1
+  pop = 700
   terrain_skills = [ForestSurvival]
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
-  resolve = 4
+  resolve = 3
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
   rng = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):
@@ -2472,11 +2705,11 @@ class ElvesSettler(Human):
 
 class SilvanArcher(Elf):
   name = 'arquero silvano'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [elf_t]
-  gold = 120
-  upkeep = 4
+  gold = 250
+  upkeep = 12
   resource_cost = 20
   food = 2
   pop = 20
@@ -2489,11 +2722,11 @@ class SilvanArcher(Elf):
   global_skills = [ForestWalker]
 
   dfs = 4
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
-  att = 1
+  att = 2
   damage = 1
   rng = 15
   off = 4
@@ -2512,11 +2745,11 @@ class SilvanArcher(Elf):
 
 class HighSilvanArcher(Elf):
   name = 'alto arquero silvano'
-  units = 10
+  units = 15
   type = 'infantry'
   traits = [elf_t]
-  gold = 250
-  upkeep = 15
+  gold = 450
+  upkeep = 20
   resource_cost = 28
   food = 2
   pop = 30
@@ -2526,14 +2759,14 @@ class HighSilvanArcher(Elf):
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [ForestWalker, LongBow]
+  global_skills = [ForestWalker, LongBow, Refit, Regroup]
 
   dfs = 4
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
-  att = 1
+  att = 2
   damage = 2
   rng = 15
   off = 5
@@ -2552,12 +2785,12 @@ class HighSilvanArcher(Elf):
 
 class WildHuntsmen(Elf):
   name = 'Cazadores salvajes'
-  units = 5
+  units = 10
   type = 'cavalry'
   traits = [elf_t]
-  gold = 250
-  upkeep = 20
-  resource_cost = 26
+  gold = 650
+  upkeep = 30
+  resource_cost = 18
   food = 5
   pop = 30
   terrain_skills = [Burn, ForestSurvival, Raid]
@@ -2565,18 +2798,18 @@ class WildHuntsmen(Elf):
   hp = 3
   mp = [3, 3]
   moves = 6
-  resolve = 7
+  resolve = 6
   global_skills = [ForestWalker]
 
   dfs = 4
-  res = 3
+  res = 4
   arm = 2
-  armor = LightArmor()
+  armor = None
 
-  att = 2
-  damage = 2
+  att = 3
+  damage = 1
   rng = 1
-  off = 3
+  off = 4
   str = 4
   pn = 0
   offensive_skills = [BattleFocus, HeavyCharge]
@@ -2595,12 +2828,11 @@ class WildHuntsmen(Elf):
 class Hamlet(City):
   name = hamlet_t
   events = [Unrest]
-  food = 150
-  grouth = 10
-  income = 40
-  public_order = 20
-  resource = 0
-  upkeep = 1000
+  food = 1.5
+  grouth = 0
+  public_order = 0
+  resource = 1
+  upkeep = 3000
 
   free_terrain = 1
   own_terrain = 0
@@ -2608,8 +2840,8 @@ class Hamlet(City):
   military_base = 40
   military_change = 100
   military_max = 60
-  popdef_base = 50
-  popdef_change = 60
+  popdef_base = 25
+  popdef_change = 200
   popdef_min = 5
   tags = [city_t]
 
@@ -2625,35 +2857,36 @@ class Hamlet(City):
     self.events = [Unrest(self)]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//100
-    self.grouth += 200*self.grouth//100
-    self.income += 100*self.income//100
-    self.public_order += 50*self.public_order//100
+    self.food += 0.5
+    self.public_order += 30
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 1000:
+    if self.level == 1 and self.pop <= 2500:
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
-      self.food -= 100
-      self.income -= 10
-      self.public_order -= 20
-    if self.level == 2 and self.pop <= 2400:
+      self.food -= 1.5
+      self.grouth -= 1
+      # self.income -= 10
+      self.public_order -= 30
+    if self.level == 2 and self.pop <= 8000:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food -= 100
-      self.income -= 10
-      self.public_order -= 20
-    if self.level == 3 and self.pop <= 7000:
+      self.food -= 1.5
+      self.grouth -= 1
+      # self.income -= 10
+      self.public_order -= 30
+    if self.level == 3 and self.pop <= 20000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food -= 100
-      self.income -= 10
-      self.public_order -= 20
+      self.food -= 1.5
+      self.grouth -= 1
+      # self.income -= 10
+      self.public_order -= 30
     if msg:
       self.nation.log[-1].append(msg)
       logging.debug(msg)
@@ -2663,27 +2896,28 @@ class Hamlet(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 1200:
+    if self.level == 0 and self.pop >= 4000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food += 100
-      self.income += 10
-      self.public_order += 20
-    if self.level == 1 and self.pop >= 2500:
+      self.food += 1.5
+      self.grouth += 1
+      self.public_order += 30
+    if self.level == 1 and self.pop >= 10000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
-      self.food += 100
-      self.income += 10
-      self.public_order += 20
-    if self.level == 2 and self.pop >= 8000:
+      self.food += 1.5
+      self.grouth += 1
+      # self.income += 10
+      self.public_order += 30
+    if self.level == 2 and self.pop >= 30000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
-      self.food += 100
-      self.income += 10
-      self.public_order += 20
+      self.food += 1.5
+      self.grouth += 1
+      self.public_order += 30
     if msg:
       logging.debug(msg)
       if self.nation.show_info:
@@ -2694,7 +2928,7 @@ class Hamlet(City):
 # edificios.
 class TrainingCamp(Building):
   name = 'campo de entrenamiento'
-  gold = 4000
+  gold = 10000
   own_terrain = 1
   size = 4
   tags = [military_t]
@@ -2712,7 +2946,7 @@ class TrainingCamp(Building):
 
 class ImprovedTrainingCamp(TrainingCamp, Building):
   base = TrainingCamp
-  gold = 7000
+  gold = 20000
   name = 'campo de entrenamiento mejorado'
   public_order = 10
   size = 4
@@ -2728,7 +2962,7 @@ class ImprovedTrainingCamp(TrainingCamp, Building):
 
 class Barracks(ImprovedTrainingCamp, Building):
   base = TrainingCamp
-  gold = 12000
+  gold = 30000
   name = 'cuartel'
   public_order = 10
   tags = [military_t, unrest_t]
@@ -2745,7 +2979,7 @@ class Barracks(ImprovedTrainingCamp, Building):
 
 class ImprovedBarracks(Barracks, Building):
   base = TrainingCamp
-  gold = 20000
+  gold = 40000
   name = 'cuartel mejorado'
   public_order = 15
   tags = [military_t, unrest_t]
@@ -2761,9 +2995,9 @@ class ImprovedBarracks(Barracks, Building):
 
 class Pastures(Building):
   name = 'pasturas'
-  gold = 5000
-  food = 25
-  income = 20
+  gold = 14000
+  food = 1.5
+  income = 1.5
 
   own_terrain = 1
   size = 6
@@ -2783,9 +3017,9 @@ class Pastures(Building):
 class Stables(Pastures, Building):
   name = 'establos'
   base = Pastures
-  gold = 12500
-  food = 50
-  income = 50
+  gold = 25000
+  food = 2
+  income = 3
   unique = 1
 
   def __init__(self, nation, pos):
@@ -2799,7 +3033,7 @@ class Stables(Pastures, Building):
 
 class MeetingCamp(Building):
   name = 'campo de reunión'
-  gold = 3000
+  gold = 7000
   own_terrain = 1
   public_order = 10
   size = 4
@@ -2808,7 +3042,7 @@ class MeetingCamp(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Flagellants]
+    self.av_units = [Flagellants, SwordsMen]
     self.resource_cost = [0, 50]
     self.soil = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
@@ -2818,15 +3052,15 @@ class MeetingCamp(Building):
 
 class CultOfLight(MeetingCamp, Building):
   base = MeetingCamp
-  gold = 6500
+  gold = 15500
   name = 'culto de la luz'
   public_order = 25
-  upkeep = 100
+  upkeep = 1000
   unique = 1
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Inquisitors, PriestWarriors]
+    self.av_units = [Inquisitors, SacredWarriors, Priest]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [TempleOfLight]
@@ -2834,15 +3068,15 @@ class CultOfLight(MeetingCamp, Building):
 
 class TempleOfLight(CultOfLight, Building):
   base = MeetingCamp
-  gold = 10000
+  gold = 25000
   name = 'templo de la luz'
   public_order = 50
-  upkeep = 400
+  upkeep = 2500
   unique = 1
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Priest]
+    self.av_units = [KnightsTemplar ]
     self.resource_cost = [0, 160]
     self.size = 0
     self.upgrade = []
@@ -2852,14 +3086,14 @@ class TempleOfLight(CultOfLight, Building):
 # comandantes.
 class Commander(Human):
   name = 'commander'
-  units = 5
+  units = 10
   type = 'infantry'
   comm = 1
-  gold = 400
-  upkeep = 100
+  gold = 1500
+  upkeep = 50
   resource_cost = 25
   food = 5
-  pop = 30
+  pop = 40
   terrain_skills = []
   tags = ['commander']
 
@@ -2870,9 +3104,9 @@ class Commander(Human):
   global_skills = [Organization]
 
   dfs = 4
-  res = 4
+  res = 2
   arm = 0
-  armor = LightArmor()
+  armor = MediumArmor()
   shield = Shield()
   defensive_skills = []
 
@@ -2891,14 +3125,14 @@ class Commander(Human):
 
 class Aquilifer(Human):
   name = 'aquilifer'
-  units = 10
+  units = 30
   type = 'infantry'
   traits = [human_t, leader_t]
-  gold = 700
-  upkeep = 250
+  gold = 4000
+  upkeep = 70
   resource_cost = 30
   food = 5
-  pop = 40
+  pop = 100
   unique = 1
   tags = ['commander']
 
@@ -2909,7 +3143,7 @@ class Aquilifer(Human):
   global_skills = [Inspiration, Regroup]
 
   dfs = 5
-  res = 4
+  res = 2
   arm = 0
   armor = HeavyArmor()
   shield = Shield()
@@ -2927,14 +3161,14 @@ class Aquilifer(Human):
 
 class Priest(Human):
   name = 'sacerdote'
-  units = 5
+  units = 10
   type = 'infantry'
-  traits = [human_t, commander_t]
-  gold = 200
+  traits = [human_t, commander_t, sacred_t]
+  gold = 1000
   upkeep = 40
   resource_cost = 30
   food = 3
-  pop = 20
+  pop = 40
   tags = ['commander']
 
   hp = 2
@@ -2944,7 +3178,7 @@ class Priest(Human):
   global_skills = [SermonOfCourage]
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
 
@@ -2962,29 +3196,29 @@ class Priest(Human):
 # unidades
 class Settler(Human):
   name = settler_t
-  units = 30
+  units = 300
   type = 'civil'
   traits = [human_t, settler_t]
-  gold = 1000
-  upkeep = 0
+  gold = 2000
+  upkeep = 1
   resource_cost = 50
-  food = 5
-  pop = 300
+  food = 1
+  pop = 1000
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
   resolve = 3
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):
@@ -2996,32 +3230,33 @@ class Settler(Human):
 
 class Flagellants(Human):
   name = flagellants_t
-  units = 10
+  units = 20
   type = 'infantry'
-  traits = [human_t]
-  gold = 95
-  upkeep = 5
+  traits = [human_t, sacred_t]
+  gold = 140
+  upkeep = 10
   resource_cost = 11
   food = 2
-  pop = 12
+  pop = 40
   terrain_skills = [Burn]
 
   hp = 2
   mp = [2, 2]
   moves = 5
-  resolve = 5
+  resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 4
   str = 4
   pn = 0
   offensive_skills = [Fanatism]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -3029,14 +3264,14 @@ class Flagellants(Human):
 
 class SwordsMen(Human):
   name = swordsmen_t
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 120
-  upkeep = 15
+  gold = 250
+  upkeep = 18
   resource_cost = 12
   food = 3
-  pop = 20
+  pop = 30
   terrain_skills = [Burn, Raid]
 
   hp = 2
@@ -3046,7 +3281,7 @@ class SwordsMen(Human):
   global_skills = [Regroup]
 
   dfs = 4
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
   shield = Shield()
@@ -3064,28 +3299,28 @@ class SwordsMen(Human):
 
 class GreatSwordsMen(Human):
   name = 'grandes espaderos'
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 380
-  upkeep = 35
+  gold = 720
+  upkeep = 32
   resource_cost = 16
   food = 4
-  pop = 25
+  pop = 30
   terrain_skills = [Burn, Raid]
 
   hp = 2
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
-  res = 4
+  res = 2
   arm = 0
   armor = None
 
-  att = 3
+  att = 2
   damage = 2
   off = 6
   str = 4
@@ -3098,14 +3333,14 @@ class GreatSwordsMen(Human):
 
 class SpearMen(Human):
   name = spearmen_t
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 150
-  upkeep = 25
+  gold = 620
+  upkeep = 30
   resource_cost = 15
   food = 3
-  pop = 35
+  pop = 50
   terrain_skills = [Burn, Raid]
 
   hp = 2
@@ -3115,16 +3350,18 @@ class SpearMen(Human):
   global_skills = [BattleBrothers, Regroup]
 
   dfs = 4
-  res = 3
+  res = 2
   arm = 0
   armor = HeavyArmor()
 
   att = 1
+  rng = 3
   damage = 3
   off = 4
   str = 5
   pn = 1
-  offensive_skills = [HoldPositions,PikeSquare]
+  offensive_skills = [HoldPositions, PikeSquare]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -3135,30 +3372,31 @@ class Halberdier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 440
-  upkeep = 40
+  gold = 450
+  upkeep = 50
   resource_cost = 18
   food = 4
-  pop = 28
+  pop = 23
   terrain_skills = [Burn, Raid]
 
   hp = 2
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [BattleBrothers, Regroup, Reinforce, ]
+  global_skills = [BattleBrothers, Regroup, Refit, ]
 
   dfs = 4
-  res = 4
+  res = 2
   arm = 0
-  armor = HeavyArmor()
+  armor = MediumArmor()
 
   att = 2
-  damage = 2
-  off = 5
+  damage = 3
+  off = 4
   str = 4
   pn = 2
   offensive_skills = [MassSpears, PikeSquare]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -3166,46 +3404,84 @@ class Halberdier(Human):
 
 class Inquisitors(Human):
   name = inquisitors_t
-  units = 5
+  units = 10
   type = 'infantry'
-  traits = [human_t]
-  gold = 200
-  upkeep = 30
+  traits = [human_t, sacred_t]
+  gold = 600
+  upkeep = 60
   resource_cost = 25
   food = 4
-  pop = 20
+  pop = 40
 
   hp = 2
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [Regroup]
+  global_skills = [Exaltation, Furtive, Regroup]
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
 
   att = 2
-  damage = 3
+  damage = 1
   off = 3
   str = 3
   pn = 0
   offensive_skills = [ShadowHunter]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     self.corpses = [Zombies]
 
 
-class PriestWarriors(Human):
-  name = priest_warriors_t
+class SacredWarriors(Human):
+  name = sacred_warriors_t
   units = 10
   type = 'infantry'
-  traits = [human_t]
-  gold = 350
+  traits = [human_t, sacred_t]
+  gold = 400
   upkeep = 40
-  resource_cost = 25
+  resource_cost = 16
+  food = 4
+  pop = 25
+  global_skills = [Burn, Raid]
+
+  hp = 2
+  mp = [2, 2]
+  moves = 6
+  resolve = 8
+  global_skills = [Regroup, Refit]
+
+  dfs = 5
+  res = 2
+  arm = 0
+  armor = None
+  shield = Shield()
+
+  att = 1
+  damage = 2
+  off = 5
+  str = 4
+  pn = 0
+  offensive_skills = [ShadowHunter]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Zombies]
+
+
+class KnightsTemplar (Human):
+  name = knights_templar_t
+  units = 10
+  type = 'infantry'
+  traits = [human_t, sacred_t]
+  gold = 550
+  upkeep = 60
+  resource_cost = 20
   food = 4
   pop = 35
   global_skills = [Burn, Raid]
@@ -3213,37 +3489,38 @@ class PriestWarriors(Human):
   hp = 2
   mp = [2, 2]
   moves = 7
-  resolve = 8
-  global_skills = [Regroup, Reinforce]
+  resolve = 9
+  global_skills = [Regroup, Refit]
 
   dfs = 5
-  res = 4
+  res = 2
   arm = 0
-  armor = None
-  shield = Shield()
+  armor = HeavyArmor()
+  shield = Shield
 
   att = 2
-  damage = 2
-  off = 5
+  damage = 3
+  off = 6
   str = 4
   pn = 0
   offensive_skills = [ShadowHunter]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
-    self.corpses = [Zombies]
+    self.corpses = [Zombies]  
 
 
 class Sagittarii(Human):
   name = 'sagittarii'
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [human_t]
-  gold = 120
-  upkeep = 10
+  gold = 320
+  upkeep = 15
   resource_cost = 15
   food = 3
-  pop = 20
+  pop = 40
   terrain_skills = [Burn, Raid]
 
   hp = 2
@@ -3252,17 +3529,18 @@ class Sagittarii(Human):
   resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
   att = 1
   damage = 1
   rng = 15
-  off = 4
+  off = 5
   str = 3
   pn = 0
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -3270,11 +3548,11 @@ class Sagittarii(Human):
 
 class CrossBowMen(Human):
   name = 'CrossBowMen'
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 120
-  upkeep = 20
+  gold = 420
+  upkeep = 30
   resource_cost = 18
   food = 3
   pop = 30
@@ -3285,7 +3563,7 @@ class CrossBowMen(Human):
   resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
@@ -3307,8 +3585,8 @@ class Arquebusier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 300
-  upkeep = 16
+  gold = 520
+  upkeep = 40
   resource_cost = 25
   food = 3
   pop = 30
@@ -3319,7 +3597,7 @@ class Arquebusier(Human):
   resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
@@ -3341,8 +3619,8 @@ class Musket(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 350
-  upkeep = 20
+  gold = 550
+  upkeep = 50
   resource_cost = 25
   food = 3
   pop = 30
@@ -3353,7 +3631,7 @@ class Musket(Human):
   resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
@@ -3375,16 +3653,16 @@ class Equites(Human):
   units = 10
   type = 'cavalry'
   traits = [human_t]
-  gold = 380
-  upkeep = 30
+  gold = 1500
+  upkeep = 50
   resource_cost = 18
   food = 5
-  pop = 30
+  pop = 60
   terrain_skills = [Burn, Raid]
 
   hp = 3
   mp = [4, 4]
-  moves = 9
+  moves = 8
   resolve = 6
   global_skills = [BattleBrothers]
 
@@ -3392,9 +3670,10 @@ class Equites(Human):
   res = 3
   arm = 1
   armor = None
+  shield = Shield()
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 4
   str = 4
   pn = 0
@@ -3415,22 +3694,22 @@ class Equites2(Human):
   units = 10
   type = 'cavalry'
   traits = [human_t]
-  gold = 505
-  upkeep = 50
-  resource_cost = 30
-  food = 8
-  pop = 40
+  gold = 1700
+  upkeep = 80
+  resource_cost = 22
+  food = 6
+  pop = 70
   terrain_skills = [Burn, Raid]
 
   hp = 3
   mp = [3, 3]
   moves = 7
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
-  dfs = 4
-  res = 4
-  arm = 1
+  dfs = 5
+  res = 3
+  arm = 2
   armor = HeavyArmor()
 
   att = 1
@@ -3452,13 +3731,11 @@ class Equites2(Human):
 class CursedHamlet(City):
   name = cursed_hamlet_t
   events = [Unrest]
-  food = 150
-  grouth = 10
-  income = 200
-  public_order = 50
-  resource = 0
-  size = 6
-  upkeep = 200
+  food = 1.5
+  grouth = 0
+  public_order = 30
+  resource = 1
+  upkeep = 1000
 
   free_terrain = 1
   own_terrain = 0
@@ -3466,10 +3743,9 @@ class CursedHamlet(City):
   military_base = 40
   military_change = 50
   military_max = 70
-  popdef_base = 60
-  popdef_change = 80
+  popdef_base = 30
+  popdef_change = 250
   popdef_min = 5
-  
   tags = [city_t]
 
   def __init__(self, nation, pos):
@@ -3478,25 +3754,38 @@ class CursedHamlet(City):
     self.pos = pos
     self.resource_cost = [100, 100]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [none_t]
-    self.hill = [0]
+    self.surf = [forest_t, none_t]
+    self.hill = [0, 1]
     self.av_units = [Levy, Settler2]
 
   def set_capital_bonus(self):
-    self.food += 100*self.food//100
-    self.grouth += 300*self.grouth//100
-    self.income += 300*self.income//100
-    self.public_order += 100*self.public_order//100
+    self.food += 2
+    self.public_order += 50
     self.upkeep = 0
 
   def set_downgrade(self):
     msg = ''
-    if self.level == 1 and self.pop <= 900:
-      logging.debug(f'{self} se degrada a {hamlet_t}.')
+    if self.level == 1 and self.pop <= 1500:
+      logging.debug(f'{self} se degrada a {cursed_hamlet_t}.')
       self.level = 0
       self.name = cursed_hamlet_t
-      self.income -= 50
-      self.public_order -= 100
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
+    if self.level == 2 and self.pop <= 6000:
+      logging.debug(f'{self} se degrada a {village_t}.')
+      self.level = 1
+      self.name = village_t
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
+    if self.level == 3 and self.pop <= 6000:
+      logging.debug(f'{self} se degrada a {town_t}.')
+      self.level = 2
+      self.name = town_t
+      self.food -= 0.5
+      self.grouth -= 0.5
+      self.public_order -= 50
     if msg:
       logging.debug(msg)
       if self.nation.show_info:
@@ -3505,12 +3794,27 @@ class CursedHamlet(City):
 
   def set_upgrade(self):
     msg = ''
-    if self.level == 0 and self.pop >= 1000:
+    if self.level == 0 and self.pop >= 3000:
       msg = f'{self} mejor a {village_t}.'
       self.level = 1
       self.name = cursed_village_t
-      self.income += 50
-      self.public_order += 100
+      self.food += 1
+      self.grouth += 0.5
+      self.public_order += 50
+    if self.level == 1 and self.pop >= 8000:
+      msg = f'{self} mejor a {village_t}.'
+      self.level = 1
+      self.name = town_t
+      self.food += 1
+      self.grouth += 0.5
+      self.public_order += 50
+    if self.level == 2 and self.pop >= 18000:
+      msg = f'{self} mejor a {city_t}.'
+      self.level = 3
+      self.name = city_t
+      self.food += 0.5
+      self.grouth += 0.5
+      self.public_order += 50
     if msg:
       logging.debug(msg)
       if self.nation.show_info:
@@ -3518,118 +3822,141 @@ class CursedHamlet(City):
         sleep(loadsound('notify14'))
 
 
-class Cemetery(Building):
-  gold = 2500
-  name = cemetery_t
+class Barrow(Building):
+  name = barrow_t
+  gold = 12000
   own_terrain = 1
   size = 4
   tags = [military_t]
   unique = 1
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghouls, Skeletons]
+    self.av_units = [Ghouls, Zombies]
     self.resource_cost = [0, 30]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [none_t]
     self.hill = [0]
-    self.upgrade = [Barrow]
+    self.upgrade = [Cemetery]
 
 
-class Barrow(Cemetery, Building):
-  name = 'túmulos'
-  base = Cemetery
-  gold = 5000
+class Cemetery(Barrow, Building):
+  name = cemetery_t
+  base = Barrow
+  gold = 18000
   tags = [military_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Vampire, Vargheist]
+    self.av_units = [Draugr, VarGhul, Vampire]
     self.resource_cost = [0, 70]
     self.size = 0
     self.upgrade = [Mausoleum]
 
 
-class Mausoleum(Barrow, Building):
+class Mausoleum(Cemetery, Building):
   name = 'mausoleo'
-  base = Cemetery
-  gold = 15000
+  base = Barrow
+  gold = 25000
   public_order = 20
   upkeep = 100
+  tags = [military_t]
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [GraveGuards, VampireLord, VladDracul]
-    self.resource_cost = [0, 150]
+    self.av_units = [GraveGuards, VampireLord]
+    self.resource_cost = [0, 120]
+    self.size = 0
+    self.upgrade = [CourtOfBlood]
+
+
+class CourtOfBlood(Mausoleum, Building):
+  name = 'corte oscura'
+  base = Barrow
+  gold = 45000
+  public_order = 50
+
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [black_knights_t, blood_knights_t, VladDracul]
+    self.resource_cost = [0, 159]
     self.size = 0
     self.upgrade = []
 
 
 class DesecratedRuins (Building):
   name = 'ruinas profanadas'
-  gold = 3500
+  gold = 9000
   own_terrain = 1
   size = 4
   tags = [military_t]
   unique = 1
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghouls, Zombies]
+    self.av_units = [Ghouls, FellBats]
     self.resource_cost = [0, 50]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
     self.hill = [0, 1]
-    self.upgrade = [CircleOfBlood]
+    self.upgrade = [SummoningField]
 
 
-class CircleOfBlood(DesecratedRuins, Building):
-  name = 'circulo de sangre'
+class SummoningField(DesecratedRuins, Building):
+  name = summoning_field_t
   base = DesecratedRuins
-  gold = 6000
+  gold = 14000
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [CryptHorrors, Necromancer, VarGhul]
+    self.av_units = [CryptHorrors, Necromancer, Skeletons]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = [DarkMonolit]
 
 
-class DarkMonolit(CircleOfBlood, Building):
+class DarkMonolit(SummoningField, Building):
   name = 'monolito oscuro'
   base = DesecratedRuins
-  gold = 14000
+  gold = 25000
   own_terrain = 1
   size = 4
   public_order = 50
   upkeep = 200
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Banshee, BloodKnights, Vargheist]
+    self.av_units = [Banshee, Vargheist]
     self.resource_cost = [0, 250]
     self.size = 0
     self.upgrade = []
 
 
-class SmallWood(Building):
-  name = 'Bosquecillo'
-  gold = 3000
+class HuntingGround(Building):
+  name = hunting_ground_t
+  gold = 10000
   own_terrain = 1
   size = 4
   tags = [military_t]
   unique = 1
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Bats]
+    self.av_units = [Bats, Wolves]
     self.resource_cost = [0, 60]
     self.surf = [forest_t]
     self.hill = [0]
     self.upgrade = [SinisterForest]
 
 
-class SinisterForest(SmallWood, Building):
+class SinisterForest(HuntingGround, Building):
   name = 'bosque abyssal'
-  base = SmallWood
-  gold = 6000
+  base = HuntingGround
+  gold = 20000
+
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [DireWolves, FellBats, Vargheist]
+    self.av_units = [DireWolves]
     self.resource_cost = [0, 100]
     self.size = 0
     self.upgrade = []
@@ -3637,7 +3964,7 @@ class SinisterForest(SmallWood, Building):
 
 class Gallows(Building):
   name = 'Gallows'
-  gold = 1200
+  gold = 5200
   public_order = 30
   own_terrain = 1
   size = 6
@@ -3655,7 +3982,7 @@ class Gallows(Building):
 class ImpaledField(Gallows, Building):
   name = 'campo de empalados'
   base = Gallows
-  gold = 2500
+  gold = 8500
   public_order = 66
   tags = [unrest_t]
 
@@ -3668,11 +3995,9 @@ class ImpaledField(Gallows, Building):
 
 class Pit(Building):
   name = 'fosa'
-  gold = 600
-  food = 100
-  grouth = 10
+  gold = 1500
+  food = 1.5
   own_terrain = 1
-  resource = 0
   size = 6
   tags = [food_t]
 
@@ -3688,11 +4013,9 @@ class Pit(Building):
 class FuneraryDungeon(Pit, Building):
   name = 'mazmorra funeraria'
   base = Pit
-  gold = 1800
-  food = 250
-  grouth = 40
-  income = 30
-  resource = 1
+  gold = 6000
+  food = 2
+  resource = 2
   tags = [food_t, resource_t]
 
   def __init__(self, nation, pos):
@@ -3707,17 +4030,17 @@ class Adjule(Unit):
   name = 'adjule'
   units = 10
   type = 'beast'
-  traits = [animal_t]
-  gold = 30
-  upkeep = 6
-  resource_cost = 13
-  food = 2
-  pop = 15
+  traits = [death_t]
+  gold = 330
+  upkeep = 32
+  resource_cost = 18
+  food = 0
+  pop = 25
 
-  hp = 2
-  mp = [4, 4]
+  hp = 3
+  mp = [3, 3]
   moves = 7
-  resolve = 4
+  resolve = 10
   global_skills = [DesertSurvival, NightFerocity, NightSurvival, Regroup]
 
   dfs = 3
@@ -3725,8 +4048,8 @@ class Adjule(Unit):
   arm = 0
   armor = None
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 4
   str = 4
   pn = 0
@@ -3747,31 +4070,35 @@ class Adjule(Unit):
 
 
 class Banshee(Undead):
+  # Pendiente: resolver el tema etéreo.
   name = 'banshee'
   units = 1
   type = 'infantry'
-  traits = [death_t, malignant_t]
-  gold = 320
-  upkeep = 55
+  traits = [death_t, malignant_t, ethereal_t]
+  gold = 666
+  upkeep = 333
   resource_cost = 30
   food = 0
   pop = 30
+  terrain_skills = []
 
-  hp = 6
+  hp = 4
   mp = [2, 2]
-  moves = 9
-  resolve = 8
+  moves = 8
+  resolve = 10
   global_skills = [Ethereal, FearAura, Fly, NightFerocity]
 
-  dfs = 3
-  res = 3
+  dfs = 5
+  res = 6
   arm = 0
   armor = None
 
   att = 2
-  damage = 2
-  off = 3
-  str = 3
+  rng = 1
+  mrng = 10
+  damage = 3
+  off = 5
+  str = 6
   pn = 3
   offensive_skills = [Scream]
   
@@ -3784,30 +4111,30 @@ class Banshee(Undead):
 
 class Bats(Unit):
   name = bats_t
-  units = 10
+  units = 20
   type = 'beast'
-  traits = [animal_t]
-  gold = 55
-  upkeep = 3
-  resource_cost = 11
-  food = 3
-  pop = 8
+  traits = [animal_t, poisonres_t]
+  gold = 135
+  upkeep = 5
+  resource_cost = 12
+  food = 2
+  pop = 30
   terrain_skills = [ForestSurvival]
 
   hp = 1
   mp = [4, 4]
-  moves = 8
+  moves = 7
   resolve = 3
-  global_skills = [Fly, NightFerocity, NightSurvival]
+  global_skills = [Fly, NightSurvival]
 
-  dfs = 3
-  res = 2
+  dfs = 4
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
-  off = 3
+  off = 4
   str = 2
   pn = 0
 
@@ -3824,9 +4151,9 @@ class BlackKnights(Undead):
   units = 5
   type = 'cavalry'
   traits = [death_t, malignant_t]
-  gold = 320
-  upkeep = 25
-  resource_cost = 22
+  gold = 800
+  upkeep = 70
+  resource_cost = 26
   food = 0
   pop = 25
   terrain_skills = [Burn]
@@ -3837,15 +4164,15 @@ class BlackKnights(Undead):
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
-  dfs = 4
-  res = 4
-  arm = 2
+  dfs = 5
+  res = 5
+  arm = 1
   armor = HeavyArmor()
 
-  att = 3
-  damage = 4
-  off = 5
-  str = 4
+  att = 2
+  damage = 3
+  off = 6
+  str = 5
   pn = 2
   offensive_skills = [HeavyCharge]
 
@@ -3861,31 +4188,31 @@ class BlackKnights(Undead):
 
 class BloodKnights(Undead):
   name = blood_knights_t
-  units = 5
+  units = 1
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 500
-  upkeep = 30
-  resource_cost = 26
+  gold = 1200
+  upkeep = 150
+  resource_cost = 22
   food = 0
-  pop = 20
+  pop = 40
 
-  hp = 3
+  hp = 4
   mp = [2, 2]
   moves = 7
   resolve = 10
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
-  dfs = 5
-  res = 4
-  arm = 0
+  dfs = 7
+  res = 5
+  arm = 1
   armor = HeavyArmor()
   shield = Shield()
 
   att = 3
-  damage = 3
-  off = 5
-  str = 5
+  damage = 4
+  off = 7
+  str = 6
   pn = 2
 
   def __init__(self, nation):
@@ -3898,29 +4225,29 @@ class BloodKnights(Undead):
 
 class CryptHorrors (Undead):
   name = crypt_horror_t
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 120
-  upkeep = 28
+  gold = 460
+  upkeep = 40
   resource_cost = 16
   food = 0
-  pop = 15
+  pop = 0
 
   hp = 3
   mp = [2, 2]
   moves = 5
   resolve = 10
-  global_skills = [FearAura, NightFerocity, NightSurvival]
+  global_skills = [FearAura, Fly, NightFerocity, NightSurvival]
 
-  dfs = 3
-  res = 4
+  dfs = 5
+  res = 5
   arm = 2
   armor = None
 
-  att = 2
-  damage = 2
-  off = 4
+  att = 3
+  damage = 3
+  off = 5
   str = 4
   pn = 1
   offensive_skills = [ToxicClaws]
@@ -3936,8 +4263,8 @@ class DireWolves(Undead):
   units = 5
   type = 'beast'
   traits = [death_t, malignant_t]
-  gold = 150
-  upkeep = 12
+  gold = 350
+  upkeep = 60
   resource_cost = 22
   food = 0
   pop = 15
@@ -3950,7 +4277,7 @@ class DireWolves(Undead):
   global_skills = [NightFerocity, NightSurvival]
 
   dfs = 3
-  res = 5
+  res = 4
   arm = 2
 
   att = 2
@@ -3958,6 +4285,7 @@ class DireWolves(Undead):
   off = 5
   str = 5
   pn = 1
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -3967,33 +4295,78 @@ class DireWolves(Undead):
     self.favsurf = [forest_t]
 
 
+class Draugr(Unit):
+  name = 'Draugr'
+  units = 5
+  type = 'infantry'
+  traits = [death_t, malignant_t]
+  gold = 220
+  upkeep = 40
+  resource_cost = 18
+  food = 2
+  pop = 30
+  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+
+  hp = 3
+  mp = [2, 2]
+  moves = 6
+  resolve = 7
+  global_skills = [Scavenger, NightFerocity, Regroup]
+
+  dfs = 5
+  res = 4
+  arm = 2
+
+  att = 2
+  damage = 1
+  off = 5
+  str = 4
+  pn = 0
+  offensive_skills = [ToxicClaws]
+  
+  stealth = 4
+
+  fear = 4
+  pref_corpses = 1
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [tundra_t]
+    self.favsurf = [none_t, forest_t, swamp_t]
+
+
 class FellBats(Undead):
   name = fell_bats_t
   units = 5
   type = 'beast'
   traits = [death_t, malignant_t]
-  gold = 220
-  upkeep = 10
+  gold = 320
+  upkeep = 20
   resource_cost = 18
   food = 0
-  pop = 12
+  pop = 15
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 2
-  mp = [2, 2]
-  moves = 7
+  mp = [4, 4]
+  moves = 8
   resolve = 10
-  global_skills = [FearAura, Fly, NightFerocity, NightSurvival]
+  global_skills = [ElusiveShadow, Fly, NightFerocity, NightSurvival]
 
-  dfs = 3
+  dfs = 5
   res = 3
   arm = 0
 
-  att = 3
+  att = 2
   damage = 1
   off = 3
-  str = 3
+  str = 4
   pn = 0
+  offensive_skills = [ToxicClaws]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4003,41 +4376,41 @@ class FellBats(Undead):
 
 class Ghouls(Human):
   name = ghouls_t
-  units = 10
+  units = 15
   type = 'infantry'
-  traits = [human_t, malignant_t]
-  traits = [human_t, malignant_t]
-  gold = 80
-  upkeep = 5
+  traits = [human_t, malignant_t, poisonres_t]
+  gold = 200
+  upkeep = 15
   resource_cost = 13
   food = 2
   pop = 20
-  terrain_skills = [Burn, Raid]
+  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 2
   mp = [2, 2]
-  moves = 6
-  resolve = 6
-  global_skills = [Carrion]
+  moves = 5
+  resolve = 5
+  global_skills = [Scavenger]
 
-  dfs = 3
-  res = 3
+  dfs = 4
+  res = 2
   arm = 0
   armor = None
 
-  att = 1
-  damage = 2
-  off = 3
+  att = 2
+  damage = 1
+  off = 4
   str = 3
   pn = 0
   offensive_skills = [ToxicClaws]
 
+  populated_land = 1
   pref_corpses = 1
 
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
-    self.corpses = [Zombies]
+    self.corpses = [Draugr]
 
 
 class Necromancer(Human):
@@ -4045,9 +4418,9 @@ class Necromancer(Human):
   units = 1
   type = 'infantry'
   traits = [human_t, malignant_t, commander_t, wizard_t]
-  gold = 400
-  upkeep = 60
-  resource_cost = 25
+  gold = 800
+  upkeep = 400
+  resource_cost = 20
   food = 4
   pop = 30
   terrain_skills = []
@@ -4069,14 +4442,15 @@ class Necromancer(Human):
   shield = Shield()
 
   att = 1
-  damage = 2
+  damage = 1
   off = 3
   str = 3
   pn = 0
   
-  fear = 12
+  fear = 6
   pref_corpses = 1
   stealth = 6
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4085,12 +4459,12 @@ class Necromancer(Human):
 
 class GraveGuards(Undead):
   name = grave_guards_t
-  units = 6
+  units = 10
   type = 'infantry'
   traits = [death_t, malignant_t]
-  gold = 350
-  upkeep = 35
-  resource_cost = 16
+  gold = 550
+  upkeep = 50
+  resource_cost = 18
   food = 0
   pop = 30
   terrain_skills = [Burn]
@@ -4102,15 +4476,15 @@ class GraveGuards(Undead):
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
   dfs = 5
-  res = 4
+  res = 5
   arm = 2
   armor = HeavyArmor()
   shield = Shield()
 
-  att = 1
+  att = 2
   damage = 4
   off = 4
-  str = 4
+  str = 5
   pn = 1
 
   def __init__(self, nation):
@@ -4123,29 +4497,29 @@ class GraveGuards(Undead):
 
 class Settler2(Human):
   name = settler_t
-  units = 20
+  units = 200
   type = 'civil'
   traits = [human_t, settler_t]
   gold = 1000
   upkeep = 0
   resource_cost = 50
-  food = 5
-  pop = 200
+  food = 1
+  pop = 800
 
-  hp = 2
+  hp = 1
   mp = [2, 2]
   moves = 3
   resolve = 4
 
-  dfs = 2
-  res = 2
+  dfs = 1
+  res = 1
   arm = 0
   armor = None
 
   att = 1
   damage = 1
-  off = 2
-  str = 2
+  off = 1
+  str = 1
   pn = 0
 
   def __init__(self, nation):
@@ -4157,11 +4531,11 @@ class Settler2(Human):
 
 class Skeletons(Undead):
   name = skeletons_t
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [death_t]
   traits = [death_t]
-  gold = 50
+  gold = 200
   upkeep = 0
   resource_cost = 10
   food = 0
@@ -4178,13 +4552,14 @@ class Skeletons(Undead):
   res = 4
   arm = 2
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 3
   str = 3
   pn = 0
 
   fear = 0
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4196,8 +4571,8 @@ class Vampire(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
-  gold = 400
-  upkeep = 70
+  gold = 500
+  upkeep = 80
   resource_cost = 25
   food = 0
   pop = 15
@@ -4217,15 +4592,16 @@ class Vampire(Undead):
   att = 4
   damage = 3
   off = 5
-  str = 6
+  str = 5
   pn = 2
+
+  populated_land = 1
 
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = []
-    self.favhill = [1]
-    self.favsurf = [forest_t, swamp_t]
-    self.soil += [coast_t]
+    self.favhill = [0, 1]
+    self.favsurf = [forest_t, none_t, swamp_t]
 
 
 class VampireLord(Undead):
@@ -4235,7 +4611,7 @@ class VampireLord(Undead):
   traits = [death_t, commander_t, malignant_t, vampire_t]
   gold = 700
   upkeep = 200
-  resource_cost = 40
+  resource_cost = 25
   food = 0
   pop = 35
   terrain_skills = [ForestSurvival, MountainSurvival]
@@ -4251,17 +4627,17 @@ class VampireLord(Undead):
   arm = 0
   armor = MediumArmor()
 
-  att = 4
+  att = 5
   damage = 4
   off = 6
   str = 6
   pn = 2
+
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = []
-    self.favhill = [1]
-    self.favsurf = [forest_t, swamp_t]
-    self.soil += [coast_t]
+    self.favhill = [0, 1]
+    self.favsurf = [forest_t, none_t, swamp_t]
 
 
 class Vargheist(Undead):
@@ -4269,11 +4645,11 @@ class Vargheist(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
-  gold = 220
-  upkeep = 50
-  resource_cost = 30
+  gold = 420
+  upkeep = 120
+  resource_cost = 20
   food = 0
-  pop = 30
+  pop = 60
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 10
@@ -4282,21 +4658,24 @@ class Vargheist(Undead):
   resolve = 10
   global_skills = [ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival, TheBeast]
 
-  dfs = 5
+  dfs = 4
   res = 5
   arm = 0
 
-  att = 6
-  damage = 3
-  off = 6
+  att = 4
+  damage = 4
+  off = 7
   str = 7
   pn = 2
 
   fear = 6
+  populated_land = 1
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
     self.corpses = []
+    self.favsurf = [forest_t, swamp_t]
 
 
 class VladDracul(Undead):
@@ -4305,11 +4684,11 @@ class VladDracul(Undead):
   unique = 1
   type = 'beast'
   traits = [death_t, malignant_t, leader_t, vampire_t, wizard_t]
-  gold = 1200
-  upkeep = 320
+  gold = 3200
+  upkeep = 1620
   resource_cost = 50
   food = 0
-  pop = 15
+  pop = 100
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 18
@@ -4317,30 +4696,32 @@ class VladDracul(Undead):
   moves = 12
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
-  spells = [CastBloodRain, RaiseDead]#, BloodStorm, DarkMantle, SummonBloodKnight]
+  spells = [CastBloodRain, RaiseDead]  # , BloodStorm, DarkMantle, SummonBloodKnight]
   power = 0
   power_max = 60
   power_res = 4
 
   dfs = 8
-  res = 5
+  res = 7
   arm = 0
   armor = LightArmor()
 
   att = 6
-  damage = 5
+  damage = 6
   off = 8
   str = 8
   pn = 3
 
-  stealth = 8
+  stealth = 5
 
   pref_corpses = 1
 
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = []
-    self.favsurf = [forest_t, swamp_t]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t, none_t, swamp_t]
+    self.favhill = 0, 1
 
 
 class VarGhul(Undead):
@@ -4348,31 +4729,35 @@ class VarGhul(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, commander_t, vampire_t]
-  gold = 170
-  upkeep = 50
+  gold = 370
+  upkeep = 80
   resource_cost = 20
   food = 5
-  pop = 15
+  pop = 25
 
   hp = 5
   mp = [2, 2]
   moves = 6
-  resolve = 5
-  global_skills = [LordOfBlodd, NightFerocity, NightSurvival]
+  resolve = 6
+  global_skills = [Scavenger, LordOfBlodd, NightFerocity, NightSurvival]
 
   dfs = 4
   res = 5
   arm = 2
 
-  att = 4
+  att = 3
   damage = 2
   off = 4
   str = 5
+  offensive_skills = [ToxicClaws]
 
   fear = 2
+  populated_land = 1
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
+    self.corpses = [CryptHorrors]
     self.favhill = [0, 1]
     self.favsoil = [waste_t]
     self.favsurf = [forest_t, none_t, swamp_t]
@@ -4380,18 +4765,18 @@ class VarGhul(Undead):
 
 class Zombies(Undead, Ground):
   name = zombies_t
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [death_t]
-  gold = 100
-  upkeep = 1
+  gold = 220
+  upkeep = 0
   resource_cost = 10
   food = 0
-  pop = 15
+  pop = 20
 
   hp = 2
   mp = [2, 2]
-  moves = 4
+  moves = 3
   resolve = 10
   global_skills = [Spread]
 
@@ -4400,14 +4785,16 @@ class Zombies(Undead, Ground):
   arm = 0
 
   att = 1
-  damage = 2
+  damage = 1
   off = 2
   str = 2
   pn = 0
   offensive_skills = [Surrounded]
 
-  sort_chance = 0
   fear = 0
+  populated_land = 1
+  sort_chance = 70
+
   def __init__(self, nation):
     super().__init__(nation)
 
@@ -4437,10 +4824,8 @@ class Dock(Building):
 
 class Fields(Building):
   name = fields_t
-  gold = 800
-  food = 50
-  grouth = 10
-  income = 20
+  gold = 2000
+  food = 1.5
   own_terrain = 1
   size = 6
   tags = [food_t]
@@ -4457,10 +4842,8 @@ class Fields(Building):
 class SmallFarm(Fields, Building):
   name = small_farm_t
   base = Fields
-  gold = 2300
-  food = 150
-  grouth = 25
-  income = 50
+  gold = 6000
+  food = 3
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -4472,10 +4855,10 @@ class SmallFarm(Fields, Building):
 class Farm(SmallFarm, Building):
   name = farm_t
   base = SmallFarm
-  gold = 5000
-  food = 300
-  grouth = 50
-  income = 50
+  gold = 15000
+  food = 5
+  # grouth = 50
+  # income = 50
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -4520,10 +4903,10 @@ class Market(Building):
 
 class Quarry(Building):
   name = 'cantera'
-  gold = 3000
-  food = 50
-  income = 20
-  resource = 100
+  gold = 10000
+  food = 1.4
+  income = 1.2
+  resource = 2
   own_terrain = 1
   size = 6
   tags = [resource_t]
@@ -4538,10 +4921,10 @@ class Quarry(Building):
 
 class SawMill(Building):
   name = 'aserradero'
-  gold = 2500
-  income = 10
-  food = 50
-  resource = 50
+  gold = 8000
+  food = 1.3
+  income = 2
+  resource = 1.5
   own_terrain = 1
   size = 6
   tags = [resource_t]
@@ -4559,23 +4942,25 @@ class HolyEmpire(Nation):
   name = holy_empire_t
   nick = nation_phrase1_t
   traits = [human_t, order_t]
-  gold = 10000
-  corruption = 0
-  food_limit_builds = 1000
-  food_limit_upgrades = 1100
-  grouth_rate = 100
+  gold = 30000
+  food_limit_builds = 3000
+  food_limit_upgrades = 5000
+  military_limit_upgrades = 3000
+  grouth_base = 5
+  grouth_rate = 60
+  expansion = 5000
   public_order = 0
   upkeep_base = 60
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 250
-  capture_rate = 200
+  attack_factor = 500
+  capture_rate = 400
   commander_rate = 7
   explore_range = 3
   scout_factor = 8
-  stalk_rate = 100
+  stalk_rate = 200
 
-  city_req_pop_base = 1200
+  city_req_pop_base = 4500
   commander_rate = 10
   pop_limit = 60
   units_animal_limit = 20
@@ -4583,7 +4968,7 @@ class HolyEmpire(Nation):
   units_human_limit = 100
   units_melee_limit = 100
   units_mounted_limit = 20
-  units_piercing_limit = 30
+  units_piercing_limit = 50
   units_ranged_limit = 30
   units_sacred_limit = 20
   units_undead_limit = 30
@@ -4595,11 +4980,11 @@ class HolyEmpire(Nation):
     self.soil = [plains_t, grassland_t]
     self.surf = [none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_grassland = 3
+    self.allow_around_grassland = 4
     self.allow_around_plains = 0
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 2 
-    self.unallow_around_swamp = 2
+    self.unallow_around_swamp = 1
     self.unallow_around_tundra = 0
     self.unallow_around_glacier = 0
 
@@ -4619,31 +5004,37 @@ class HolyEmpire(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
+    # initial placement.
+    self.initial_placement = Hamlet
+    # initial settler.
+    self.initial_settler = Settler 
     # Unidades iniciales.
-    self.start_units = [PeasantLevies, PeasantLevies, Settler]
+    self.start_units = [PeasantLevies, PeasantLevies]
 
 
 class WoodElves(Nation):
   name = wood_elves_t
   nick = ''
   traits = [elf_t, animal_t]
-  gold = 10000
-  corruption = 0
-  food_limit_builds = 900
-  food_limit_upgrades = 1000
-  grouth_rate = 130
+  gold = 30000
+  food_limit_builds = 3000
+  food_limit_upgrades = 5000
+  military_limit_upgrades = 3000
+  grouth_base = 2
+  grouth_rate = 100
   public_order = 0
+  expansion = 6000
   upkeep_base = 70
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 300
-  capture_rate = 300
+  attack_factor = 600
+  capture_rate = 600
   commander_rate = 8
   explore_range = 3
   scout_factor = 5
-  stalk_rate = 200
+  stalk_rate = 400
 
-  city_req_pop_base = 1000
+  city_req_pop_base = 3000
   commander_rate = 7
   pop_limit = 30
   units_animal_limit = 100
@@ -4669,7 +5060,7 @@ class WoodElves(Nation):
     self.unallow_around_swamp = 2
 
     # edificios iniciales disponibles.
-    self.av_buildings = [CraftmensTree, ForestLookout, GlisteningPastures, Grove, Santuary, stoneCarvers]
+    self.av_buildings = [CraftmensTree, FalconRefuge, GlisteningPastures, Grove, Sanctuary, stoneCarvers]
     self.av_cities = [Hall]
     self.city_names = elven_citynames
     
@@ -4684,31 +5075,37 @@ class WoodElves(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
-    # Unidades iniciales.
-    self.start_units = [ForestGuard, ForestGuard, ElvesSettler]
+    # initial placement.
+    self.initial_placement = Hall
+    # initial settler.
+    self.initial_settler = ElvesSettler
+    # initial units.
+    self.start_units = [ForestGuard, ForestGuard]
 
 
 class Walachia(Nation):
   name = wallachia_t
   nick = nation_phrase2_t
   traits = [death_t, malignant_t, vampire_t]
-  gold = 10000
-  corruption = 0
-  food_limit_builds = 620
-  food_limit_upgrades = 600
-  grouth_rate = 110
+  gold = 30000
+  food_limit_builds = 3000
+  food_limit_upgrades = 4000
+  military_limit_upgrades = 3000
+  grouth_base = 4
+  grouth_rate = 80
+  expansion = 5000
   public_order = 0
   upkeep_base = 70
-  upkeep_change = 100
+  upkeep_change = 200
 
-  attack_factor = 180
-  capture_rate = 150
+  attack_factor = 360
+  capture_rate = 300
   commander_rate = 6
   explore_range = 5
   scout_factor = 15
-  stalk_rate = 80
+  stalk_rate = 160
 
-  city_req_pop_base = 500
+  city_req_pop_base = 2000
   commander_rate = 10
   pop_limit = 50
   units_animal_limit = 100
@@ -4724,17 +5121,17 @@ class Walachia(Nation):
   def __init__(self):
     super().__init__()
     # Casilla inicial permitida.
-    self.hill = [0]
+    self.hill = [0, 1]
     self.soil = [plains_t, waste_t]
-    self.surf = [none_t]
+    self.surf = [forest_t, none_t]
     # Terrenos adyacentes permitidos
-    self.allow_around_desert = 6
-    self.allow_around_hill = 3
+    self.allow_around_desert = 5
+    self.allow_around_hill = 4
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 1
   
     # edificios iniciales disponibles.
-    self.av_buildings = [Cemetery, DesecratedRuins, SmallWood, Gallows, Pit, Quarry, SawMill]
+    self.av_buildings = [Barrow, DesecratedRuins, HuntingGround, Gallows, Pit, Quarry, SawMill]
     self.av_cities = [CursedHamlet]
     self.city_names = death_citynames
     # terrenos de comida.
@@ -4748,21 +5145,25 @@ class Walachia(Nation):
     
     # rebeldes.
     self.units_rebels = [Archers, Raiders, Riders, Ghouls, VarGhul]
+    # initial placement.
+    self.initial_placement = CursedHamlet
+    # initial settler.
+    self.initial_settler = Settler2
     # Unidades iniciales.
-    self.start_units = [Settler2, Zombies, Zombies, VampireLord]
+    self.start_units = [Zombies, Zombies, Zombies, VampireLord]
 
 
 # unidades random.
 class Archers(Human):
   name = archers_t
-  units = 10
+  units = 15
   type = 'infantry'
   traits = [human_t]
-  gold = 90
-  upkeep = 6
+  gold = 160
+  upkeep = 10
   resource_cost = 12
   food = 3
-  pop = 15
+  pop = 25
   terrain_skills = [Burn, Raid]
 
   hp = 2
@@ -4777,13 +5178,16 @@ class Archers(Human):
 
   att = 1
   damage = 1
-  rng = 12
+  rng = 15
   off = 3
   str = 3
   pn = 0
   offensive_skills = [Skirmisher]
   
-  fear = 10
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -4797,8 +5201,8 @@ class Akhlut(Unit):
   name = 'akhlut'
   units = 1
   type = 'beast'
-  gold = 120
-  upkeep = 20
+  gold = 320
+  upkeep = 60
   resource_cost = 28
   food = 12
   pop = 25
@@ -4816,7 +5220,7 @@ class Akhlut(Unit):
   armor = None
 
   att = 3
-  damage = 4
+  damage = 3
   off = 5
   str = 5
   pn = 0
@@ -4824,24 +5228,25 @@ class Akhlut(Unit):
   stealth = 6
 
   fear = 2
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     Amphibian.__init__(self)
     self.corpses = [Skeletons]
     self.favhill = [0, 1]
-    self.favsoil = [grassland_t, plains_t, tundra_t]
-    self.favsurf = [forest_t, swamp_t]
+    self.favsoil = [tundra_t]
+    self.favsurf = [forest_t, none_t, swamp_t]
     self.traits += [animal_t, ]
 
 
 class BlackOrcs(Unit):
   name = 'orcos negros'
-  units = 5
+  units = 10
   type = 'infantry'
   traits = [orc_t, malignant_t]
-  gold = 80
-  upkeep = 25
+  gold = 360
+  upkeep = 35
   resource_cost = 20
   food = 6
   pop = 30
@@ -4858,13 +5263,16 @@ class BlackOrcs(Unit):
   arm = 2
   armor = HeavyArmor
 
-  att = 2
-  damage = 4
+  att = 3
+  damage = 2
   off = 5
   str = 5
   pn = 1
 
   fear = 2
+  populated_land = 1
+  sort_chance = 70
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -4895,16 +5303,17 @@ class Children_Of_The_Wind(Human):
   global_skills = [DesertSurvival, MountainSurvival]
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
   shield = Shield()
 
-  att = 1
+  att = 2
   damage = 2
   off = 5
   str = 3
   pn = 0
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -4912,12 +5321,55 @@ class Children_Of_The_Wind(Human):
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
 
 
+class Crocodile(Unit):
+  name = crocodile_t
+  units = 1
+  type = animal_t
+  gold = 220
+  upkeep = 30
+  resource_cost = 20
+  food = 2
+  pop = 10
+  terrain_skills = [SwampSurvival]
+
+  hp = 4
+  mp = [2, 2]
+  moves = 6
+  resolve = 3
+  global_skills = []
+
+  dfs = 3
+  res = 5
+  arm = 3
+  armor = None
+
+  att = 2
+  damage = 3
+  off = 5
+  str = 5
+  pn = 1
+
+  stealth = 8
+
+  fear = 2
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    Amphibian.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [tundra_t]
+    self.favsurf = [forest_t, none_t, swamp_t]
+    self.traits += [animal_t, ]
+
+
 class DesertNomads(Human):
   name = 'ginetes a camello'
   units = 10
   type = 'cavalry'
   traits = [human_t]
-  gold = 70
+  gold = 240
   upkeep = 20
   resource_cost = 18
   food = 4
@@ -4931,7 +5383,7 @@ class DesertNomads(Human):
 
   dfs = 3
   res = 3
-  arm = 0
+  arm = 1
   armor = None
   shield = None
 
@@ -4940,9 +5392,12 @@ class DesertNomads(Human):
   off = 4
   str = 3
   pn = 0
-  offensive_skills = [Charge]
+  offensive_skills = []
   
-  fear = 8
+  fear = 3
+  populated_land = 1
+  sort_chance = 80
+
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -4951,48 +5406,6 @@ class DesertNomads(Human):
     self.favhill = [0]
     self.favsoil = [waste_t]
     self.favsurf = [none_t]
-
-
-class Draugr(Unit):
-  name = 'Draugr'
-  units = 5
-  type = 'infantry'
-  traits = [death_t, malignant_t]
-  gold = 70
-  upkeep = 12
-  resource_cost = 18
-  food = 3
-  pop = 20
-  terrain_skills = [Burn, Raid] 
-
-  hp = 4
-  mp = [2, 2]
-  moves = 6
-  resolve = 10
-  global_skills = [NightFerocity, Regroup]
-
-  dfs = 3
-  res = 4
-  arm = 0
-
-  att = 2
-  damage = 2
-  off = 4
-  str = 4
-  pn = 0
-  
-  stealth = 4
-
-  fear = 4
-  pref_corpses = 1
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.align = Hell
-    Ground.__init__(self)
-    self.corpses = [Skeletons]
-    self.favhill = [0, 1]
-    self.favsoil = [tundra_t]
-    self.favsurf = [none_t, forest_t, swamp_t]
 
 
 class Galley(Ship):
@@ -5033,7 +5446,7 @@ class Galley(Ship):
 
 class GiantWolves(Unit):
   name = giant_wolves_t
-  units = 5
+  units = 10
   type = 'beast'
   traits = [animal_t]
   gold = 60
@@ -5060,8 +5473,11 @@ class GiantWolves(Unit):
   str = 5
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 4
-  fear = 5
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5075,10 +5491,10 @@ class GiantWolves(Unit):
 
 class Goblins(Unit):
   name = goblins_t
-  units = 15
+  units = 30
   type = 'infantry'
   traits = [goblin_t, malignant_t]
-  gold = 30
+  gold = 50
   upkeep = 3
   resource_cost = 8
   food = 2
@@ -5087,7 +5503,7 @@ class Goblins(Unit):
 
   hp = 1
   mp = [3, 3]
-  moves = 6
+  moves = 7
   resolve = 4
   global_skills = [BloodyBeast]
 
@@ -5104,8 +5520,11 @@ class Goblins(Unit):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher] 
   
+  fear = 3
+  populated_land = 1
+  sort_chance = 90
   stealth = 6
-  fear = 10
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5119,9 +5538,9 @@ class Goblins(Unit):
 
 class Harpy(Unit):
   name = harpy_t
-  units = 5
+  units = 10
   type = 'beast'
-  traits = [malignant_t]
+  traits = [malignant_t, poisonres_t]
   gold = 40
   upkeep = 10
   resource_cost = 16
@@ -5146,8 +5565,11 @@ class Harpy(Unit):
   str = 3
   pn = 0
   
+  fear = 1
+  populated_land = 1
+  sort_chance = 90
   stealth = 7
-  fear = 10
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5187,13 +5609,14 @@ class HellHounds(Undead):
   str = 5
   pn = 0
   
-  stealth = 8
   fear = 2
+  stealth = 8
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
     self.corpses = [Skeletons]
-    self.favhill = [0]
+    self.favhill = [0, 1]
     self.favsoil = [plains_t, tundra_t, waste_t]
 
 
@@ -5202,7 +5625,7 @@ class Hyaenas(Unit):
   units = 10
   type = 'beast'
   traits = [animal_t]
-  gold = 40
+  gold = 50
   upkeep = 8
   resource_cost = 15
   food = 4
@@ -5225,16 +5648,19 @@ class Hyaenas(Unit):
   str = 4
   pn = 1
   
+  fear = 5
+  populated_land = 1
+  sort_chance = 90
   stealth = 5
-  fear = 8
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     Ground.__init__(self)
     self.corpses = [HellHounds]
     self.favhill = [0]
-    self.favsoil = [plains_t]
-    self.favsurf = [none_t, swamp_t]
+    self.favsoil = [plains_t, waste_t]
+    self.favsurf = [forest_t, none_t]
     self.traits += [animal_t]
 
 
@@ -5243,8 +5669,8 @@ class Hunters(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
-  gold = 20
-  upkeep = 3
+  gold = 90
+  upkeep = 6
   resource_cost = 12
   food = 3
   pop = 12
@@ -5268,19 +5694,22 @@ class Hunters(Human):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
 
-  fear = 10
+  fear = 6
+  populated_land = 1
+  sort_chance = 90
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     self.corpses = [Zombies]
-    self.favhill = [1]
+    self.favhill = [0, 1]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t]
 
 
 class NomadsRiders(Human):
   name = nomads_riders_t
-  units = 10
+  units = 20
   type = 'cavalry'
   traits = [human_t]
   gold = 60
@@ -5308,8 +5737,11 @@ class NomadsRiders(Human):
   pn = 0
   offensive_skills = [Skirmisher]
 
-  fear = 8
+  fear = 3
+  populated_land = 1
+  sort_chance = 90
   stealth = 4
+
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5323,11 +5755,11 @@ class NomadsRiders(Human):
 
 class Orc_Archers(Unit):
   name = orc_archers_t
-  units = 15
+  units = 20
   type = 'infantry'
   traits = [orc_t, malignant_t]
-  gold = 20
-  upkeep = 3
+  gold = 140
+  upkeep = 12
   resource_cost = 12
   food = 3
   pop = 20
@@ -5352,8 +5784,11 @@ class Orc_Archers(Unit):
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
   
-  fear = 8
+  fear = 4
+  populated_land = 1
+  sort_chance = 80
   stealth = 4
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5367,11 +5802,11 @@ class Orc_Archers(Unit):
 
 class Orcs(Unit):
   name = 'orcos'
-  units = 15
+  units = 20
   type = 'infantry'
   traits = [orc_t, malignant_t]
   gold = 30
-  upkeep = 8
+  upkeep = 5
   resource_cost = 10
   food = 3
   pop = 20
@@ -5380,7 +5815,7 @@ class Orcs(Unit):
   hp = 3
   mp = [2, 2]
   moves = 6
-  resolve = 5
+  resolve = 4
   global_skills = [BloodyBeast]
 
   dfs = 3
@@ -5389,13 +5824,16 @@ class Orcs(Unit):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 1
   off = 3
   str = 4
   pn = 0
   
-  fear = 6
+  fear = 4
+  populated_land = 1
+  sort_chance = 80
   stealth = 4
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5408,11 +5846,11 @@ class Orcs(Unit):
 
 class Levy(Human):
   name = levy_t
-  units = 15
+  units = 20
   type = 'infantry'
-  traits = [human_t]
+  traits = [human_t, levy_t]
   gold = 50
-  upkeep = 6
+  upkeep = 9
   resource_cost = 10
   food = 3
   pop = 20
@@ -5421,12 +5859,13 @@ class Levy(Human):
   hp = 2
   mp = [2, 2]
   moves = 5
-  resolve = 4
+  resolve = 5
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
+  shield = Shield()
 
   att = 1
   damage = 2
@@ -5437,18 +5876,21 @@ class Levy(Human):
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t]
+    self.favhill = [0]
 
 
 class PeasantLevies(Human):
   name = peasant_levies_t
-  units = 15
+  units = 20
   type = 'infantry'
-  traits = [human_t]
-  gold = 30
-  upkeep = 4
+  traits = [human_t, levy_t]
+  gold = 90
+  upkeep = 6
   resource_cost = 8
   food = 3
-  pop = 20
+  pop = 40
   terrain_skills = [DesertSurvival]
 
   hp = 2
@@ -5461,20 +5903,21 @@ class PeasantLevies(Human):
   arm = 0
   armor = None
 
-  att = 1
+  att = 2
   damage = 1
   off = 2
   str = 2
   pn = 0
 
   fear = 5
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     self.corpses = [Zombies]
-    self.favhill = [0, 1]    
-    self.favsoil = [grassland_t, plains_t, tundra_t]
-    self.favsurf = [forest_t, none_t]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t]
+    self.favhill = [0]
 
 
 class Raiders(Human):
@@ -5495,7 +5938,7 @@ class Raiders(Human):
   resolve = 4
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = LightArmor()
 
@@ -5506,18 +5949,21 @@ class Raiders(Human):
   pn = 0
   
   fear = 4
+  populated_land = 1
+  sort_chance = 80
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     self.corpses = [Zombies]
-    self.favhill = [1]
+    self.favhill = [0, 1]
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
-    self.favsurf = [forest_t]
+    self.favsurf = [forest_t, none_t, swamp_t]
 
 
 class Riders(Human):
   name = riders_t
-  units = 5
+  units = 20
   type = 'cavalry'
   traits = [human_t]
   gold = 80
@@ -5534,7 +5980,7 @@ class Riders(Human):
   global_skills = []
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 1
   armor = None
 
@@ -5546,6 +5992,9 @@ class Riders(Human):
   offensive_skills = [Charge]
 
   fear = 4
+  populated_land = 1
+  sort_chance = 80
+
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5558,11 +6007,11 @@ class Riders(Human):
 
 class TheKnightsTemplar(Human):
   name = the_knights_templar_t
-  units = 5
+  units = 20
   type = 'cavalry'
   traits = [human_t]
-  gold = 150
-  upkeep = 60
+  gold = 550
+  upkeep = 40
   resource_cost = 30
   food = 8
   pop = 30
@@ -5572,10 +6021,10 @@ class TheKnightsTemplar(Human):
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Reinforce]
+  global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 5
-  res = 4
+  res = 3
   arm = 2
   armor = HeavyArmor()
 
@@ -5586,6 +6035,7 @@ class TheKnightsTemplar(Human):
   str = 5
   pn = 2
   offensive_skills = [HeavyCharge]
+
   def __init__(self, nation):
     super().__init__(nation)
     self.traits += [mounted_t]
@@ -5598,7 +6048,7 @@ class TheKnightsTemplar(Human):
 
 class Wargs(Unit):
   name = 'huargos'
-  units = 10
+  units = 20
   type = 'beast'
   traits = [malignant_t]
   gold = 60
@@ -5625,8 +6075,11 @@ class Wargs(Unit):
   str = 4
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 5
-  fear = 6
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -5640,7 +6093,7 @@ class Wargs(Unit):
 
 class Warriors(Human):
   name = warriors_t
-  units = 10
+  units = 20
   type = 'infantry'
   traits = [human_t]
   gold = 30
@@ -5656,17 +6109,20 @@ class Warriors(Human):
   resolve = 6
 
   dfs = 3
-  res = 3
+  res = 2
   arm = 0
   armor = None
 
-  att = 1
-  damage = 2
+  att = 2
+  damage = 1
   off = 4
   str = 3
   pn = 0
 
-  fear = 8
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5686,12 +6142,12 @@ class Wolves(Unit):
   food = 4
   pop = 20
   terrain_skills = [ForestSurvival]
-  
+
   hp = 2
   mp = [2, 2]
   moves = 7
   resolve = 4
-  global_skills = [BloodyBeast, NightFerocity, Regroup]
+  global_skills = [NightFerocity, Regroup]
 
   dfs = 4
   res = 3
@@ -5699,13 +6155,16 @@ class Wolves(Unit):
   armor = None
 
   att = 1
-  damage = 2
+  damage = 1
   off = 3
   str = 4
   pn = 0
   
+  fear = 4
+  populated_land = 1
+  sort_chance = 70
   stealth = 4
-  fear = 8
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5714,7 +6173,6 @@ class Wolves(Unit):
     self.favhill = [0]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [none_t, forest_t]
-    self.traits = [animal_t, ]
 
 
 class Hell(Nation):
@@ -5725,7 +6183,8 @@ class Hell(Nation):
     super().__init__()
     self.log = [[hell_t]]
     self.av_units = [Ghouls, Goblins, Harpy, HellHounds, Hyaenas, Orcs,
-                     Orc_Archers, Skeletons, VarGhul, Wargs, Zombies, Necromancer]
+                     Orc_Archers, Skeletons, Vargheist, VarGhul, Wargs,
+                     Zombies, Necromancer]
 
 
 class Wild(Nation):
@@ -5735,6 +6194,6 @@ class Wild(Nation):
   def __init__(self):
     super().__init__()
     self.log = [[wild_t]]
-    self.av_units = [Akhlut, DesertNomads, Hunters, NomadsRiders, Raiders,
-                     Warriors, Wolves]
+    self.av_units = [Akhlut, Crocodile, DesertNomads, Hunters, NomadsRiders,
+                     Raiders, Warriors, Wolves]
 
