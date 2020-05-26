@@ -1,8 +1,8 @@
 from math import ceil
 from random import randint
 
-from log_module import *
-from screen_reader import *
+from log_module import logging
+from screen_reader import sp
 from sound import *
 from data.lang.es import building_t
 

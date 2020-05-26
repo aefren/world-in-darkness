@@ -14,20 +14,20 @@ from pygame.time import get_ticks as ticks
 import natsort
 
 dev_mode = 1
-# if dev_mode:
-exec('from basics import *')
-exec('from data.lang.es import *')
-from log_module import *
-exec('from data.skills import *')
-from screen_reader import *
-from sound import *
-# else:
-# from basics import *
-# from data.lang.es import *
-# from data.skills import *
-# from log_module import *
-# from screen_reader import *
-# from sound import *
+if dev_mode == 0:
+  exec('from basics import *')
+  exec('from data.lang.es import *')
+  exec('from log_module import *')
+  exec('from data.skills import *')
+  exec('from screen_reader import *')
+  exec('from sound import *')
+if dev_mode:
+  from basics import *
+  from data.lang.es import *
+  from data.skills import *
+  from log_module import logging
+  from screen_reader import sp
+  from sound import *
 
 # Some colors.
 BLACK = (0, 0, 0)
@@ -4401,6 +4401,7 @@ def set_settler(itm, scenary):
 
 
 def game():
+  # Pendiente: convertir el método game a clase. 
   global city, city_name, nation_name, terrain_name, rng, time
   global Belongs, Evt, Group, move, Name, pos, sayland, scenary, starting, xy
   global nation, num, unit, world, x, y, z

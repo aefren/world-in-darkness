@@ -1,24 +1,20 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
-import copy
-from math import ceil, floor
-from pdb import Pdb
-from random import randint, shuffle, choice, uniform
-from time import sleep, process_time
+#from math import ceil, floor
+#from pdb import Pdb
+#from random import randint, shuffle, choice, uniform
+#from time import sleep, process_time
 
-from numpy import mean
+#from numpy import mean
 
-from basics import *
+#from basics import *
 from data.events import *
 from data.lang.es import *
 from data.names import *
 from data.skills import *
-from log_module import *
-from screen_reader import *
-from sound import *
-from lang.es import death_t, malignant_t
-from skills import Burn, ForestSurvival, MountainSurvival
-
+#from log_module import *
+#from screen_reader import *
+#from sound import *
 
 class Empty:
   pass
@@ -4074,7 +4070,7 @@ class Adjule(Unit):
 
 
 class Banshee(Undead):
-  # resolver el tema etéreo.
+  # Pendiente: resolver el tema etéreo.
   name = 'banshee'
   units = 1
   type = 'infantry'
