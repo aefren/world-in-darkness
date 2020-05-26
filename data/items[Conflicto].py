@@ -3968,7 +3968,7 @@ class Ghouls(Human):
   mp = [2, 2]
   moves = 5
   resolve = 6
-  global_skills = [Carrion]
+  global_skills = [Scavenger]
 
   dfs = 3
   res = 3
