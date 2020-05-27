@@ -1,18 +1,8 @@
 
-<<<<<<< HEAD
-__pycache__/basics.cpython-38.pyc
-*.pyc
-*.game
-=======
+log/
 *.game
 *.pyc
 .project
 .pydevproject
-.project
 .settings/org.eclipse.core.resources.prefs
->>>>>>> testing
-*.prefs
-.pydevproject
-.project
-*.prefs
 *.log

@@ -9,9 +9,10 @@ from random import choice, randint, uniform, shuffle
 import sys
 from time import sleep, time
 
+import natsort
 from numpy import mean
 from pygame.time import get_ticks as ticks
-import natsort
+
 
 dev_mode = 1
 if dev_mode == 0:
@@ -1169,58 +1170,87 @@ def ai_free_units(nation, scenary, info = 0):
   banned_tiles = []
   for uni in nation.units_free:
     logging.debug(f'{uni}. ranking {uni.ranking} en {uni.pos} {uni.pos.cords}.')
+    msg = f'free moves in {uni.pos} {uni.pos.cords}.'
+    uni.log[-1] += [msg]
     move = 1
-    uni.pos.update(uni.nation)
-    if uni.auto_attack:
-      auto_attack(uni)
-      uni.auto_attack = 0
-      if uni.mp[0] < 1 or uni.hp_total < 1: continue
-    if uni.pos.nation == uni.nation:
-      oportunist_attack(uni)
-      if any(i < 1 for i in [uni.mp[0], uni.hp_total]): continue
     num = 1
-    
-    if uni.pos.nation != uni.nation:
-      skip = 0
-      logging.debug(f'out of nation.')
-    elif uni.pos.food_need > uni.pos.food:
-      skip = 1
-      logging.debug(f'lack of food ({uni.pos.food_need}, {uni.pos.food}).')
-    elif uni.pos.public_order < 60:
-      skip = 6
-      logging.debug(f'low public order {uni.pos.public_order}.')
-    elif uni.pos.is_city:
-      skip = 1
-      logging.debug(f'own city.')
-    elif uni.pos.nation == uni.nation and uni.pos.buildings:
-      skip = 6
-      logging.debug(f'have buildings.')
-    elif uni.pos.nation == nation and uni.pos.bu == 0:
-      skip = 2
-      logging.debug(f'not buildings.')
-      if ((uni.forest_survival or uni.rng > 5) 
-          and uni.pos.surf.name == forest_t):
-        skip += 3
-        logging.debug(f'forest survival.')
-      if uni.pos.hill: 
-        skip += 3
-        logging.debug(f'with hills.')
-      if uni.pos.around_hill or uni.pos.around_forest:
-        skip += 3
-        logging.debug(f'around hills or forests..')
     while uni.goto == [] and move and uni.mp[0] > 0:
+      uni.pos.update(uni.nation)
+      if uni.auto_attack:
+        auto_attack(uni)
+        uni.auto_attack = 0
+        if uni.mp[0] < 1 or uni.hp_total < 1: continue
+      if uni.pos.nation == uni.nation:
+        oportunist_attack(uni)
+        if any(i < 1 for i in [uni.mp[0], uni.hp_total]): continue
+      
+      
+      if uni.pos.nation != uni.nation:
+        skip = 0
+        msg = f'out of nation.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+      elif uni.pos.food_need > uni.pos.food:
+        skip = 1
+        msg = f'lack of food ({uni.pos.food_need}, {uni.pos.food}).'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+      elif uni.pos.public_order < 60:
+        skip = 6
+        msg = f'low public order {uni.pos.public_order}.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+      elif uni.pos.is_city:
+        skip = 1
+        msg = f'own city.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+      elif uni.pos.nation == uni.nation and uni.pos.buildings:
+        skip = 6
+        msg = f'have buildings.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+      elif uni.pos.nation == nation and uni.pos.bu == 0:
+        skip = 2
+        msg = f'not buildings.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
+        if ((uni.forest_survival or uni.rng > 5) 
+            and uni.pos.surf.name == forest_t):
+          skip += 3
+          msg = f'forest survival.'
+          logging.debug(msg)
+          uni.log[-1] += [msg]
+        if uni.pos.hill: 
+          skip += 3
+          msg = f'with hills.'
+          logging.debug(msg)
+          uni.log[-1] += [msg]
+        if uni.pos.around_hill or uni.pos.around_forest:
+          skip += 3
+          msg = f'around hills or forests..'
+          logging.debug(msg)
+          uni.log[-1] += [msg]
+      
+      #while:
       roll = roll_dice(1)
       logging.debug(f'roll {roll}, skip {skip}.')
       if skip >= roll:
-        logging.debug(f'salta.')
+        msg = f'salta.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
         break
       sq = uni.pos.get_near_tiles(num)
       sq = [it for it in sq if it.soil.name in uni.soil and it.surf.name in uni.surf
             and it != uni.pos and it.nation == uni.nation and it not in banned_tiles]
-      logging.debug(f'num {num} tiles {len(sq)}.')
+      msg = f'num {num} tiles {len(sq)}.'
+      logging.debug(msg)
+      uni.log[-1] += [msg]
       num += 1
       if num == 5:
-        logging.debug(f'no tiles found.')
+        msg = f'no tiles found.'
+        logging.debug(msg)
+        uni.log[-1] += [msg]
         move_set(uni, uni.city)
         return
       [it.set_around(nation, scenary) for it in sq]
@@ -1248,6 +1278,7 @@ def ai_free_units(nation, scenary, info = 0):
         if rnd > s.threat:
           logging.debug(f'se moverá.')
           move_set(uni, s)
+          num -= 1
           banned_tiles += [s]
           break
 
@@ -1742,6 +1773,8 @@ def ai_protect_tiles(nation):
           logging.debug(f'{uni} defenderá {t} {t.cords}.')
           logging.debug(f'defensa {defense}.')
           if uni.pos != t:
+            msg = f'{uni} defenderá {t} {t.cords}.'
+            uni.log[-1] += [msg]
             move_set(uni, t)
             move_set(uni, 'gar')
             if t.around_threat == 0: break
@@ -4336,15 +4369,20 @@ def set_near_tiles(nation, scenary):
 
 
 def set_defend_pos(defense_need, itm, pos):
+  '''sent unit to defend a position.'''
   logging.debug(f'set_defend {itm}.')
   itm.update()
   if itm.goto == [] and itm.pos == pos:
     move_set(itm, 'gar')
     defense_need -= itm.ranking
-    logging.debug(f'{itm} será guarnición.')
+    msg = f'{itm} será guarnición.'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
     logging.debug(f'necesita {round(defense_need,2)} defensa.')
     return defense_need
   elif itm.goto == [] and itm.pos != pos:
+    msg = f'{itm} defenderá {pos} {pos.cords}.'
+    itm.log[-1] += [msg]
     move_set(itm, pos)
     move_set(itm, 'gar')
     defense_need -= itm.ranking

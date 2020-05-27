@@ -1085,7 +1085,7 @@ class Nation:
            and it.scout == 0 and it.settler == 0 
            and it.goto == [] and it.group == []
            and it.leader == None and it.goal == None
-           and it.comm == 0]
+           and it.comm == 0 and it.mp[0] > 0]
     
     return self.units_free
 
