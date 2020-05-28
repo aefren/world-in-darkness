@@ -276,7 +276,7 @@ class City:
             rnd -= t.unrest // 10
             if rnd < 1: rnd = 0
         roll = randint(1, 12)
-        if info:  logging.debug(f'{t}. {rnd=:}, {roll=:}. {ceil((t.food-t.pop)/50)}.')
+        if info:  logging.debug(f'{t}. {rnd= }, {roll=:}. {ceil((t.food-t.pop)/50)}.')
         
         try:
           if rnd >= roll:
@@ -896,6 +896,7 @@ class Nation:
     self.for_res.surf = [forest_t]
     self.for_res.hill = [0, 1]
     
+    self.devlog = []
     self.log = []
     self.map = []
     self.resources = []
@@ -1198,6 +1199,13 @@ class Nation:
     cities = len([i for i in self.cities])
     self.city_req_pop = self.city_req_pop_base * (cities)
   
+  def start_turn(self):
+    msg = f'{turn_t} {self.world.turn}.'
+    self.log += [[msg]]
+    self.devlog += [[msg]]
+    msg = f'{self.world.ambient.stime}, {self.world.ambient.smonth}, \
+    {self.world.ambient.syear}.'
+    self.log[-1] += [msg]
   def status(self, info = 0):
     self.defense_need = 0
     self.income = sum(i.income_total for i in self.cities)
@@ -1890,6 +1898,8 @@ class Unit:
       if self.show_info: sp.speak(f'{self}.')
 
   def start_turn(self):
+    self.update()
+    self.log += [[f'{turn_t} {self.pos.world.turn}.']]
     self.burn()
     self.raid()
 

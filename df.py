@@ -53,6 +53,14 @@ class Ambient:
     self.time = [0, [morning_t, noon_t , afternoon_t, evening_t, night_t, midnight_t, dawn_t]]
     self.week = 1
     self.year = 1
+  def update(self):
+    self.sseason = f'{self.season[1][self.season[0]]}'
+    self.stime = f'{self.time[1][self.time[0]]}'
+    if self.week == 1: self.smonth = f'{early_t} {of_t} '
+    elif self.week == 2: self.smonth = f'{late_t} {of_t} '
+    self.smonth += f' {self.month[1][self.month[0]]}'
+    self.syear = f'{year_t} {self.year}'
+    self.sday_night = f'{self.day_night[1][self.day_night[0]]}'
 
 
 ambient = Ambient()
@@ -1577,13 +1585,12 @@ def ai_play(nation):
     ct.set_seen_units(new = 1)
     
   # unidades.
-  for uni in nation.units:
-    uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'movimiento de unidades.')
   nation.update(scenary)
   for uni in nation.units: ai_join_units(uni)
   ai_divide_units(nation)
   for uni in nation.units:
+    uni.start_turn()
     unit_new_turn(uni)
   
   # actualizar vista.
@@ -1649,14 +1656,18 @@ def ai_protect_cities(nation):
   for ct in nation.cities:
     garrison = [i for i in ct.pos.units if i.garrison]
     logging.debug(f'quedan {len(garrison)}')
+    nation.devlog[-1] += [f'quedan {len(garrison)}']
     if len(garrison) == 1:
       logging.debug(f'splited.')
+      nation.devlog[-1] += [f'splited.']
       ct.pos.units[0].split()
     ct.set_seen_units()
     ct.get_defense_info()
     defense_need = ct.defense_need
     logging.debug(f'defense_pred {ct.defense_pred}, defense {ct.defense}.')
+    nation.devlog[-1] += [f'defense_pred {ct.defense_pred}, defense {ct.defense}.']
     logging.debug(f'{ct} defense_need {defense_need}')
+    nation.devlog[-1] += [f'{ct} defense_need {defense_need}']
     if defense_need < 0 and roll_dice(1) >= 6 and ct.around_threat == 0: 
       ct.units.sort(key = lambda x: x.squads, reverse = True)
       if ct.pos.units[0].squads >= 4: 
@@ -1666,6 +1677,7 @@ def ai_protect_cities(nation):
         defense_need = ct.defense_need
     if ct.defense_need < -30:
       logging.debug(f'sobra defensa {defense_need}. {ct.defense}, {ct.defense_pred}.')
+      nation.devlog[-1] += [f'sobra defensa {defense_need}. {ct.defense}, {ct.defense_pred}.']
       units = [i for i in ct.pos.units if i.garrison]
       times = round(abs(ct.defense_need) / 20)
       for r in range(times):
@@ -1687,8 +1699,10 @@ def ai_protect_cities(nation):
                and it.goal == None and it.goto == []]
                
       logging.debug(f'{len(units)} unidades disponibles.')
+      nation.devlog[-1] += [f'{len(units)} unidades disponibles.']
       if units:
         logging.debug(f'busca en sus propias unidades.')
+        nation.devlog[-1] += [f'busca en sus propias unidades.']
         units.sort(key = lambda x: x.pos.get_distance(x.pos, ct.pos))
         units.sort(key = lambda x: x.pos.po, reverse = True)
         units.sort(key = lambda x: x.pos.income)
@@ -1698,6 +1712,8 @@ def ai_protect_cities(nation):
           units.sort(key = lambda x: x.comm == 0, reverse = True)
         units.sort(key = lambda x: x.rng + x.rng_mod >= 6 and x.units, reverse = True)
         units.sort(key = lambda x: x.pos.around_threat)
+        logging.debug(f'unit list {[str(i) for i in units]}.')
+        nation.devlog[-1] += [f'unit list {[str(i) for i in units]}.']
         for uni in units:
             defense_need = set_defend_pos(defense_need, uni, ct.pos)
             if defense_need == None:
@@ -1706,13 +1722,16 @@ def ai_protect_cities(nation):
       
       if units == [] or defense_need > 0:
         logging.debug(f'buscará entre todas las unidades.')
+        nation.devlog[-1] += [f'buscará entre todas las unidades.']
         units = [it for it in nation.units  if it.garrison == 0
                  and it.settler == 0 and it.scout == 0
                  and it.group == [] and it.leader == None
                  and it.goal == None and it.comm == 0 and it.goto == []]
         logging.debug(f'{len(units)} unidades disponibles.')
+        nation.devlog[-1] += [f'{len(units)} unidades disponibles.']
         if units == []:
           logging.debug(f'no hay unidades.')
+          nation.devlog[-1] += [f'no hay unidades.']
         units.sort(key = lambda x: x.rng >= 6, reverse = True)
         units.sort(key = lambda x: x.units, reverse = True)
         units.sort(key = lambda x: x.mp[0], reverse = True)
@@ -1721,6 +1740,8 @@ def ai_protect_cities(nation):
         units.sort(key = lambda x: x.comm)
         units.sort(key = lambda x: x.pos.around_threat)
         if ct.defense_total > ct.seen_threat: units.sort(key = lambda x: mounted_t in x.traits)
+        logging.debug(f'unit list {[str(i) for i in units]}.')
+        nation.devlog[-1] += [f'unit list {[str(i) for i in units]}.']
         for uni in units:
           defense_need = set_defend_pos(defense_need, uni, ct.pos)
           if defense_need < 1: break
@@ -2357,11 +2378,13 @@ def control_basic(event):
   global nation
   if event.type == pygame.KEYDOWN:
     if event.key == pygame.K_F1:
-      sp.speak(spf1, 1)
+      sp.speak(f'{world.ambient.stime} ({world.ambient.sday_night}).', 1)
     if event.key == pygame.K_F2:
-      sp.speak(spf2, 1)
+      msg = f'{world.ambient.sseason}, {world.ambient.smonth}, \
+        {world.ambient.syear}.'
+      sp.speak(msg, 1)
     if event.key == pygame.K_F3:
-      sp.speak(spf3, 1)
+      sp.speak(f'{turn_t} {world.turn}.', 1)
     if event.key == pygame.K_F4:
       sp.speak(f'{gold_t} {round(nation.gold)}.')
       sp.speak(f'{income_t} {nation.income}, {upkeep_t} {nation.upkeep}.')
@@ -2372,13 +2395,7 @@ def control_basic(event):
 
 def control_game(event):
   global east, filter_expand, inside, move, nation, pos, rng, sayland, scenary, tiers, unit, west, world, width
-  global spf1, spf2, spf3, x, y
-  spf1 = f'{world.ambient.time[1][world.ambient.time[0]]}, {world.ambient.season[1][world.ambient.season[0]]}.'
-  if world.ambient.week == 1: spf2 = f'{early_t} {of_t} '
-  elif world.ambient.week == 2: spf2 = f'{late_t} {of_t} '
-  spf2 += f' {world.ambient.month[1][world.ambient.month[0]]}, '
-  spf2 += f'{year_t} {world.ambient.year}.' 
-  spf3 = f'{turn_t} {world.turn}.'
+  global x, y
 
   if event.type == pygame.KEYDOWN:
     if event.key == pygame.K_7:
@@ -3965,10 +3982,7 @@ def new_turn():
   global turns, sayland, ambient
   ambient = world.ambient
   last_day_night = ambient.day_night[0]
-  if world.ambient.week == 1: spf2 = f'{early_t} {of_t} '
-  elif world.ambient.week == 2: spf2 = f'{late_t} {of_t} '
-  spf2 += f' {world.ambient.month[1][world.ambient.month[0]]}, '
-  spf2 += f'{year_t} {world.ambient.year}.'
+  
   [i.update(scenary) for i in world.nations]
   logging.debug(f'nuevo turno.')
   if world.turn > 0:
@@ -4000,18 +4014,15 @@ def new_turn():
       ambient.day_night[0] = 0
       if ambient.time[0] >= 4: ambient.day_night[0] = 1
   world.turn += 1
-  sp.speak(f'{turn_t}  {world.turn}.', 1)
-  sleep(loadsound('notify14') * 0.2)
+  world.ambient.update()
   [i.start_turn() for i in world.map]
   msg = f'{turn_t} {world.turn}.'
   logging.info(msg)
+  logging.info(f'{ambient.stime}, {ambient.smonth}, {ambient.syear}.')
+  sp.speak(msg, 1)
+  sleep(loadsound('notify14') * 0.2)
   for n in world.nations:
-    n.log.append([msg])
-  msg = f'''{ambient.time[1][ambient.time[0]]},
-  {spf2}'''
-  logging.info(msg)
-  for n in world.nations:
-    n.log[-1].append(msg)
+    n.start_turn()
   if ambient.day_night[0] != last_day_night:
     if ambient.day_night[0] == 0: sleep(loadsound('dawn01', channel = ch4) * 0.9)
     if ambient.day_night[0]: sleep(loadsound('night01', channel = ch4) * 0.9)
@@ -4475,6 +4486,7 @@ def game():
     world.random_nations = RANDOM_FACTIONS
     scenary = world.map
     Unit.ambient = world.ambient
+    Nation.world = world
     # choose_nation():
     world.nations = NATIONS
     shuffle(world.nations)
@@ -4805,6 +4817,7 @@ def unit_join_group(itm):
 def unit_new_turn(itm):
   logging.info(f'new turn {world.turn=:} {to_t} {itm} {in_t} {itm.pos.cords}.')
   if itm.hp_total < 1: return
+  itm.start_turn()
   unit_restoring(itm)
   itm.set_hidden(itm.pos)
   if (itm.goal and itm.goal[0] == 'stalking'
@@ -4813,7 +4826,6 @@ def unit_new_turn(itm):
       and itm.ai == 1):
     if itm.comm == 0: oportunist_attack(itm)
   unit_join_group(itm)
-  itm.start_turn()
   if itm.goto: 
     move_unit(itm)
   unit_attrition(itm)
@@ -4881,6 +4893,9 @@ def view_log(log, sound = 'book_open01', x = None):
       say = 0
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
+        if  event.key == pygame.K_TAB:
+          say = 1
+          view_log(nation.devlog)
         if  event.key == pygame.K_LEFT:
           x = selector(log, x, 'up', sound = 'itm_book_pageturn_03')
           y = 0
