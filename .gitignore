@@ -6,3 +6,4 @@ log/
 .pydevproject
 .settings/org.eclipse.core.resources.prefs
 *.log
+.settings/org.eclipse.core.resources.prefs

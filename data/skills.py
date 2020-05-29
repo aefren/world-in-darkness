@@ -9,7 +9,6 @@ from log_module import *
 from basics import *
 from data.lang.es import *
 
-
 class Skill:
   effect = 'self'  # all, friend, enemy, self.
   desc = str()
@@ -18,6 +17,7 @@ class Skill:
   name = 'skill'
   nation = None
   show = 1
+  sound = None
   ranking = 0
   tags = []
   type = 'generic' 
@@ -31,6 +31,28 @@ class Skill:
   def ai_run(self, itm):
     pass
 
+  def cast(self, itm):
+    check = self.check_cost(itm)
+    if check != 1: return check
+    cast = self.check_cast()
+    if cast != 1: return cast
+    self.run(itm)
+  def check_cast(self,itm):
+    if roll_dice(2) >= self.cast: return 1
+    else: 
+      msg = f'{self} {failed_t}.'
+      if itm.show_info: sp.speak(msg,1)
+      return msg
+  def check_cost(self, itm):
+    if itm.power < self.cost:
+      msg = f'{self}. {needs_t} {power_t}.'
+      logging.debug(msg)
+      itm.log[-1] += [msg]
+      if itm.show_info: sp.speak(msg,1)
+      return msg
+    else: 
+      itm.power -= self.cost
+      return 1
   def run(self):
     pass
 
@@ -76,6 +98,11 @@ class BattleFocus(Skill):
     if itm.mp[0] == itm.mp[1]: itm.hit_rolls_mod += 1
 
 
+
+class BloodHeal(Skill):
+  desc = 'sacrifica un número aleatoreo de población para curarse.'
+
+
 class BloodRaining(Skill):
   name = 'blood raining'
   desc = ''
@@ -89,8 +116,8 @@ class BloodRaining(Skill):
     if malignant_t in itm.tags:
       itm.resolve_mod += 1
       itm.moves_mod += 1
-      itm.off_mod += 1
       itm.res_mod += 2
+      itm.str += 2
     else:
       itm.resolve_mod -= 1
       itm.dfs_mod -= 1
@@ -105,8 +132,31 @@ class BloodRaining(Skill):
         itm.range_mod -= 5
 
 
+
+class BloodyBeast(Skill):
+  effect = 'self'
+  desc = 'randomly kill population if tile has population.'
+  name = 'bestia sangrienta'
+  turns = 0
+  type = 2
+
+  def run(self, itm):
+    if itm.pos and itm.pos.pop:
+      if roll_dice(1) > 4:
+        deads = randint(1, itm.units)
+        deads *= itm.att + itm.att_mod
+        deads *= itm.damage + itm.damage_mod
+        if deads > itm.pos.pop: deads = itm.pos.pop
+        itm.pos.pop -= deads
+        if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
+        if itm.pos.nation.show_info : sleep(loadsound('spell33') * 0.5)
+        msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
+        itm.pos.nation.log[-1].append(msg)
+
+
+
 class BloodyFeast(Skill):
-  name = 'festín nocturno'
+  name = 'fest�n nocturno'
   desc = '+2 hp restoration in night.'
   effect = 'self'
   ranking = 3
@@ -115,6 +165,10 @@ class BloodyFeast(Skill):
   def run(self, itm):
     if itm.day_night[0]:
       itm.hp_res_mod += 5
+
+
+class BreathOfTheDesert(Skill):
+  desc = 'Envía aires del desierto a una casilla elegida. esto subirá la temperatura y dañara la producción de alimentos.'
 
 
 class Burn(Skill):
@@ -131,28 +185,20 @@ class Burn(Skill):
 class CastBloodRain(Skill):
   name = 'blood rain'
   cost = 40
-  cast = 8
-  ranking = 10
-  type = 'generic'
+  cast = 10
+  ranking = 5
+  type = spell_t
 
+  def ai_run(self, itm):
+    self.cast(itm)
   def run(self, itm):
-    if itm.power < 1:
-      if itm.show_info:
-        sp.speak(f'{not_magic_t}.') 
-        sleep(loadsound('errn1'))
-      return
-    if roll_dice(2) >= self.cast:
-      sleep(loadsound('spell27', channel = ch5, vol = 0.7) / 2)
-      itm.power -= self.cost
-      dist = randint(3, 6)
-      pos = itm.pos
-      sq = pos.get_near_tiles(itm.pos.scenary, dist)
-      for s in sq:
-        if self.name not in [ev.name for ev in s.events]:
-          s.events += [BloodRaining(s)]
-    else:
-      if itm.show_info:
-        sleep(loadsound('spell33', channel = ch5,) / 2)
+    sleep(loadsound('spell27', channel = ch5, vol = 0.7) / 2)
+    dist = randint(3, 6)
+    pos = itm.pos
+    sq = pos.get_near_tiles(itm.pos.scenary, dist)
+    for s in sq:
+      if self.name not in [ev.name for ev in s.events]:
+        s.events += [BloodRaining(s)]
 
 
 class Charge(Skill):
@@ -164,6 +210,31 @@ class Charge(Skill):
 
   def run(self, itm):
     itm.damage_charge_mod += 1
+
+
+class DarkPresence(Skill):
+  name = 'dark presence'
+  desc = 'if death: in day: +2 res. '
+  desc += 'if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.'
+  effect = 'friend'
+  ranking = 5
+  type = 'generic'
+
+  def run(self, itm):
+    if (itm.nation == self.nation
+        and death_t in itm.traits and vampire_t not in itm.traits 
+        and self.name not in itm.effects):
+      if itm.day_night[0] == 0:
+        itm.effects.append(self.name + str(f' ({day_t})'))
+        itm.res_mod += 1
+      if itm.day_night[0]:
+        itm.effects.append(self.name + str(f' ({night_t})'))
+        itm.dfs_mod += 1
+        itm.moves_mod += 1
+        itm.off_mod += 1
+        itm.res_mod += 2
+        itm.str_mod += 2
+
 
 
 class DesertSurvival(Skill):
@@ -178,31 +249,6 @@ class DesertSurvival(Skill):
     if itm.pos and itm.pos.soil.name == waste_t: 
       itm.effects.append(self.name)
       itm.stealth_mod += 2
-
-
-class ElusiveShadow(Skill):
-  name = 'sombra elusiva'
-  desc = '+3 stealth on day, +6 stealth on night.'
-  effect = 'self'
-  ranking = 2
-  ranking = 3
-  type = 'generic'
-
-  def run(self, itm):
-    itm.effects.append(self.name) 
-    if itm.day_night[0]: itm.stealth_mod += 6
-    elif itm.day_night[0] == 0: itm.stealth_mod += 3
-
-
-class Ethereal(Skill):
-  name = 'etéreo'
-  desc = 'Ignores enemy pn.'
-  effect = 'self'
-  ranking = 10
-  type = 'generic'
-
-  def run(self, itm):
-    itm.armor_ign_mod = 1
 
 
 class Fanatism(Skill):
@@ -239,6 +285,15 @@ class FearAura(Skill):
       itm.str_mod -= 1
 
 
+
+class FeastOfFlesh(Skill):
+  desc = 'sacrifica x población para invocar ogros a su servicio.'
+
+class FireDarts(Skill):
+  pass
+
+
+
 class Fly(Skill):
   effect = 'self'
   desc = 'unit can fly. enemy can not charge.'
@@ -252,39 +307,15 @@ class Fly(Skill):
 
 
 class Furtive(Skill):
-  effect = 'self'
   name = 'furtive'
   desc = '+5 stealth.'
+  effect = 'self'
   ranking = 5
   type = 'generic'
 
   def run(self, itm):
     itm.effects.append(self.name)
     itm.stealth_mod += 5
-
-
-class DarkPresence(Skill):
-  name = 'dark presence'
-  desc = 'if death: in day: +2 res. '
-  desc += 'if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.'
-  effect = 'friend'
-  ranking = 5
-  type = 'generic'
-
-  def run(self, itm):
-    if (itm.nation == self.nation
-        and death_t in itm.traits and vampire_t not in itm.traits 
-        and self.name not in itm.effects):
-      if itm.day_night[0] == 0:
-        itm.effects.append(self.name + str(f' ({day_t})'))
-        itm.res_mod += 1
-      if itm.day_night[0]:
-        itm.effects.append(self.name + str(f' ({night_t})'))
-        itm.dfs_mod += 1
-        itm.moves_mod += 1
-        itm.off_mod += 1
-        itm.res_mod += 2
-        itm.str_mod += 2
 
 
 class ForestSurvival(Skill):
@@ -334,25 +365,66 @@ class ForestWalker(Skill):
       itm.resolve_mod += 1 
 
 
-class BloodyBeast(Skill):
-  effect = 'self'
-  desc = 'randomly kill population if tile has population.'
-  name = 'bestia sangrienta'
-  turns = 0
-  type = 2
+class HealingMists(Skill):
+  pass
+
+class HealingRoots(Skill):
+  name = 'raices curativas.'
+  cost = 10
+  cast = 4
+  ranking = 5
+  type = 'spell'
+  tags = [health_t]
+
+  def ai_run(self, itm):
+    units = [i for i in itm.pos.units if i.nation == itm.nation
+             and intoxicated_t in i.global_skills]
+    
+    if units: self.cast(itm)
 
   def run(self, itm):
-    if itm.pos and itm.pos.pop:
-      if roll_dice(1) > 4:
-        deads = randint(1, itm.units)
-        deads *= itm.att + itm.att_mod
-        deads *= itm.damage + itm.damage_mod
-        if deads > itm.pos.pop: deads = itm.pos.pop
-        itm.pos.pop -= deads
-        if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
-        if itm.pos.nation.show_info : sleep(loadsound('spell33') * 0.5)
-        msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
-        itm.pos.nation.log[-1].append(msg)
+    if roll_dice(2) >= cast:
+      units = [i for i in itm.pos.units if i.nation == itm.nation]
+      unit = choice(units)
+      unit.other_skills = [sk for sk in unit.other_skills if sk.name != intoxicated_t]
+      msg = f'{itm} has removed {intoxicated_t} {from_t} {unit}.'
+      logging.debug(msg)
+      itm.log[-1] += [msg]
+      unit.log[-1] += [msg]
+
+
+class Eartquake(Skill):
+  pass
+
+
+
+class ElusiveShadow(Skill):
+  name = 'sombra elusiva'
+  desc = '+3 stealth on day, +6 stealth on night.'
+  effect = 'self'
+  ranking = 2
+  ranking = 3
+  type = 'generic'
+
+  def run(self, itm):
+    itm.effects.append(self.name) 
+    if itm.day_night[0]: itm.stealth_mod += 6
+    elif itm.day_night[0] == 0: itm.stealth_mod += 3
+
+
+class EnchantedForests(Skill):
+  pass
+
+
+class Ethereal(Skill):
+  name = 'et�reo'
+  desc = 'Ignores enemy pn.'
+  effect = 'self'
+  ranking = 10
+  type = 'generic'
+
+  def run(self, itm):
+    itm.armor_ign_mod = 1
 
 
 class HeavyCharge(Skill):
@@ -398,9 +470,9 @@ class HoldPositions(Skill):
 
 
 class Exaltation(Skill):
-  effect = 'friend'
+  name = 'exaltaci�n.'
   desc = 'undefined.'
-  name = 'exaltación.'
+  effect = 'friend'
   ranking = 0
   type = 'generic'
 
@@ -453,7 +525,7 @@ class ImpalingRoots(Skill):
 class Inspiration(Skill):
   effect = 'friend'
   desc = '+1 moves, +1 resolve'
-  name = 'inspiración'
+  name = 'inspiraci�n'
   ranking = 5
   type = 'generic'
 
@@ -466,8 +538,8 @@ class Inspiration(Skill):
 
 class Intoxicated(Skill):
   effect = 'self'
-  desc = 'Las unidades sufren un número aleatoreo de daño por turno. durante x turnos.'
-  name = 'Intoxicado'
+  desc = 'Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos.'
+  name = intoxicated_t
   turns = randint(5, 10)
   type = 2
 
@@ -476,7 +548,7 @@ class Intoxicated(Skill):
     sk.turns = self.turns
     if sk.name not in [s.name for s in itm.global_skills]:
       itm.global_skills += [sk]
-    damage = randint(0, 6)
+    damage = randint(0, 8)
     if damage and itm.hp_total > 0:
       if damage > itm.hp_total: damage = itm.hp_total
       msg = f'{itm} loses {damage//itm.hp} by {self.name}.'
@@ -500,7 +572,7 @@ class LongBow(Skill):
 
 
 class LordOfBones(Skill):
-  name = 'señor de los huesos'
+  name = 'se�or de los huesos'
   effect = 'friend'
   desc = '+1 att, +1 dfs, +1 off.'
   ranking = 5
@@ -518,7 +590,7 @@ class LordOfBones(Skill):
 class LordOfBlodd(Skill):
   effect = 'friend'
   desc = '+1 dfs, +1 moves, +1 off, +1 resolve if unit is ghoul.'
-  name = 'señor de sangre'
+  name = 'se�or de sangre'
   ranking = 5
   type = 'generic'
 
@@ -530,6 +602,27 @@ class LordOfBlodd(Skill):
       itm.moves_mod += 1
       itm.off_mod += 1
       itm.resolve_mod += 1
+
+
+class MagicDuel(Skill):
+  pass
+
+
+class MassSpears(Skill):
+  effect = 'self'
+  desc = '+1  off por cada 20 unidades hasta 3.. Anula la carga enemiga de caballer�a.'
+  name = 'lanzas en masa'
+  ranking = 5
+  type = 'generic'
+
+  def run(self, itm):
+    if itm.units >= 30:
+      itm.effects.append(self.name + str(2)) 
+      itm.off_mod += 2
+    elif itm.units >= 20:
+      itm.effects.append(self.name + str(1)) 
+      itm.off_mod += 1
+    if itm.target: itm.target.can_charge = 0
 
 
 class MastersEye(Skill):
@@ -546,6 +639,10 @@ class MastersEye(Skill):
       itm.res_mod += 1
       itm.str_mod += 1
       itm.moves_mod += 1
+
+
+class Mist(Skill):
+  pass
 
 
 class Night(Skill):
@@ -590,27 +687,10 @@ class NightSurvival(Skill):
       itm.hp_res_mod += 3
 
 
-class MassSpears(Skill):
-  effect = 'self'
-  desc = '+1  off por cada 20 unidades hasta 3.. Anula la carga enemiga de caballería.'
-  name = 'lanzas en masa'
-  ranking = 5
-  type = 'generic'
-
-  def run(self, itm):
-    if itm.units >= 30:
-      itm.effects.append(self.name + str(2)) 
-      itm.off_mod += 2
-    elif itm.units >= 20:
-      itm.effects.append(self.name + str(1)) 
-      itm.off_mod += 1
-    if itm.target: itm.target.can_charge = 0
-
-
 class MountainSurvival(Skill):
   effect = 'self'
-  desc = 'invisible en las montañas., +2 stealth.'
-  name = 'sobreviviente de las montañas'
+  desc = 'invisible en las monta�as., +2 stealth.'
+  name = 'sobreviviente de las monta�as'
   ranking = 3
   type = 'generic'
 
@@ -625,7 +705,7 @@ class MountainSurvival(Skill):
 class Organization(Skill):
   effect = 'friend'
   desc = '+1 off, +1 dfs.'
-  name = 'organización'
+  name = 'organizaci�n'
   ranking = 3
   type = 'generic'
 
@@ -641,7 +721,7 @@ class Organization(Skill):
 class PikeSquare (Skill):
   effect = 'self'
   desc = '+1 att if 2squads, +2 att if 3 squads. Enemy can not charge.'
-  name = 'formación de picas'
+  name = 'formaci�n de picas'
   ranking = 3
   type = 'generic'
 
@@ -651,6 +731,10 @@ class PikeSquare (Skill):
       itm.att_mod += 1
     if itm.target: 
       itm.target.can_charge = 0
+
+
+class PoisonCloud(Skill):
+  pass
 
 
 class Raid(Skill):
@@ -665,9 +749,9 @@ class Raid(Skill):
 
 
 class RaiseDead(Skill):
+  name = raise_dead_t
   cost = 20
   cast = 6
-  name = raise_dead_t
   ranking = 10
   type = 'generic'
   tags = [raise_dead_t]
@@ -676,7 +760,7 @@ class RaiseDead(Skill):
     self.run(itm)
 
   def run(self, itm):
-    if itm.pos.corpses == [] or itm.power < 1:
+    if itm.pos.corpses == [] or itm.power < self.cost:
       if itm.show_info: sleep(loadsound('errn1'))
       msg = f'{itm} no puede lanzar hechiso {self.name}'
       logging.debug(msg)
@@ -713,7 +797,7 @@ class RaiseDead(Skill):
       logging.debug(msg)
       itm.log[-1].append(msg)
       if itm.show_info: 
-        sp.speak(f'{self.name} falló.')
+        sp.speak(f'{self.name} fall�.')
 
 
 class Regroup(Skill):
@@ -729,6 +813,10 @@ class Regroup(Skill):
       msg = f'{itm.name} recupera {sum(itm.fled)} unidades huidas.' 
       itm.log[-1] += [msg]
       logging.debug(msg)
+
+
+class Reinvigoration(Skill):
+  desc = 'sacrifica x población para regenerar poder.'
 
 
 class ReadyAndWaiting(Skill):
@@ -758,10 +846,14 @@ class Refit(Skill):
       itm.sts_mod += 2
 
 
+class SanguineHeritage(Skill):
+  desc = 'la unidad infectada tiene x probabilidades de volverse vampiro.'
+
+
 class SermonOfCourage(Skill):
   effect = 'friend'
   desc = '+1 resolve a las unidades humanas.'
-  name = 'sermón de coraje'
+  name = 'serm�n de coraje'
   ranking = 3
   type = 'generic'
 
@@ -769,6 +861,10 @@ class SermonOfCourage(Skill):
     if itm != self.itm and human_t in itm.traits: 
       itm.effects.append(self.name)
       itm.resolve_mod += 1
+
+
+class SecondSun(Skill):
+  desc = 'crea un segundo sol negando la noche y dañando la agricultura de los lugares afectados.'
 
 
 class ShadowHunter(Skill):
@@ -861,10 +957,121 @@ class Surrounded(Skill):
       itm.str_mod += 1
 
 
+class SummonAwakenTree(Skill):
+  name = 'summon awaken tree'
+  cost = 50
+  cast = 9
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(AwakenTree, itm.nation.name)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+class SummonDevourerOfDemons(Skill):
+  name = 'summon devourer of demons'
+  cost = 30
+  cast = 10
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    if itm.pos.around_nations and itm.pos.around_snation == []:
+      self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(DevourerOfDemons, wild_t)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+class SummonDriads(Skill):
+  name = 'summon driads'
+  cost = 40
+  cast = 7
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(Driads, itm.nation.name)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+
+class SummonForestBears(Skill):
+  name = 'summon forest bears'
+  cost = 20
+  cast = 8
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    if itm.pos.surf and itm.pos.surf == forest_t: self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(ForestBears, itm.nation.name)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+
+class SummonForestFalcons(Skill):
+  name = 'summon forest falcons'
+  cost = 10
+  cast = 6
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    if itm.pos.surf and itm.pos.surf == forest_t: self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(SummonForestFalcons, itm.nation.name)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+class SummonSpectralInfantry(Skill):
+  name = 'summon spectral infantry'
+  cost = 20
+  cast = 8
+  ranking = 5
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    self.cast(itm)
+
+  def run(self, itm):
+    itm.pos.add_unit(SpectralInfantry, itm.nation.name)
+    msg = f'{AwakenTree} has been sommoned'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
 class Scavenger(Skill):
   effect = 'self'
   desc = '+1 res, +1 str if corpses on field.'
-  name = 'carroña'
+  name = 'carro�a'
   ranking = 5
   type = 'generic'
 
@@ -969,7 +1176,7 @@ class TheBeast(Skill):
 class ToxicClaws(Skill):
   effect = 'self'
   desc = 'units loses x damage per turn during x turns.'
-  name = 'garras tóxicas.'
+  name = 'garras t�xicas.'
   ranking = 5
   type = 'after attack'
 
@@ -998,6 +1205,10 @@ class VigourMourtis(Skill):
     if itm != self.itm and death_t in itm.traits:
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
+
+
+class WailingWinds(Skill):
+  desc = 'un nigromante invoca vientos de lamentos. estos vientos reducirán la moral de las unidades enemigas.'
 
 
 class Weak(Skill):

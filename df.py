@@ -290,8 +290,8 @@ class Terrain:
       if s.sight and s != self:
         self.around_corpses += len(s.corpses)
         if nation:
-          if s.nation and s.nation != nation: self.around_nations += [s.nation]
-          if s.nation and s.nation == nation: self.around_snations += [s.nation]
+          if s.nation != nation: self.around_nations += [s.nation]
+          if s.nation == nation: self.around_snations += [s.nation]
           for uni in s.units:
             uni.update()
             if uni.nation != nation and uni.hidden == 0:
