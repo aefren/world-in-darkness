@@ -1432,7 +1432,6 @@ class Unit:
     self.global_skills = [i(self) for i in self.global_skills]
     self.offensive_skills = [i(self) for i in self.offensive_skills]
     self.other_skills = [i for i in self.other_skills]
-    self.spells = [i(self) for i in self.spells]
     self.traits = [i for i in self.traits]
     self.terrain_skills = [i(self) for i in self.terrain_skills]
     self.mp = [i for i in self.mp]
@@ -2414,7 +2413,7 @@ class Druid(Unit):
   name = 'druida'
   units = 5
   type = 'infantry'
-  traits = [elf_t_t, commander_t, wizard_t]
+  traits = [elf_t, commander_t, wizard_t]
   gold = 1000
   upkeep = 150
   resource_cost = 30
@@ -2426,10 +2425,9 @@ class Druid(Unit):
   mp = [2, 2]
   moves = 6
   resolve = 7
-  power = 0
+  power = 30
   power_max = 30
-  power_res = 3
-  spells = [SummonForestBear, ForestEagle, ]
+  power_res = 5
   global_skills = []
 
   dfs = 4
@@ -2446,6 +2444,7 @@ class Druid(Unit):
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
+    self.spells = [SummonAwakenTree, SummonFalcons, SummonDevourerOfDemons, SummonDriads, SummonSpectralInfantry]
 
 
 class Driads(Elf):
@@ -4548,8 +4547,7 @@ class Isaac(Unit):
   power = 20
   power_max = 100
   power_res = 5
-  global_skills = [LordOfBones, RaiseDead]
-  spells = [RaiseDead]
+  global_skills = [LordOfBones]
 
   dfs = 3
   res = 2
@@ -4569,6 +4567,7 @@ class Isaac(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [RaiseDead]
     self.align = Hell
     self.corpses = [Zombies]
 
@@ -4593,7 +4592,6 @@ class Necromancer(Human):
   power_max = 20
   power_res = 2
   global_skills = [LordOfBones]
-  spells = [RaiseDead]
 
   dfs = 3
   res = 2
@@ -4613,6 +4611,7 @@ class Necromancer(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [RaiseDead]
     self.align = Hell
     self.corpses = [Zombies]
 
@@ -4893,7 +4892,6 @@ class VladDracul(Undead):
   moves = 12
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
-  spells = [CastBloodRain, RaiseDead]  # , BloodStorm, DarkMantle, SummonBloodKnight]
   power = 20
   power_max = 80
   power_res = 5
@@ -4915,6 +4913,7 @@ class VladDracul(Undead):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [CastBloodRain, RaiseDead]  # , BloodStorm, DarkMantle, SummonBloodKnight]
     self.corpses = []
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [forest_t, none_t]
@@ -5277,7 +5276,7 @@ class WoodElves(Nation):
     # initial settler.
     self.initial_settler = ElvesSettler
     # initial units.
-    self.start_units = [ForestGuard, ForestGuard]
+    self.start_units = [Druid, ForestGuard, ForestGuard]
 
 
 class Walachia(Nation):
@@ -6520,3 +6519,5 @@ class Wild(Nation):
     self.av_units = [Akhlut, Crocodile, DesertNomads, Hunters, GiantBear, 
                      NomadsRiders, Raiders, Warriors, Wolves]
 
+#Spells.
+from data.spells import *

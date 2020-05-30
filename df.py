@@ -13,7 +13,6 @@ import natsort
 from numpy import mean
 from pygame.time import get_ticks as ticks
 
-
 dev_mode = 1
 if dev_mode == 0:
   exec('from basics import *')
@@ -2441,7 +2440,7 @@ def control_game(event):
         itm = local_units[x]
         cast = get_cast(itm)
         if cast:
-          cast.run(itm)
+          cast.init(itm)
           nation.update(scenary)
           map_update(nation, nation.map)
           sayland = 1
@@ -2952,7 +2951,7 @@ def get_cast(itm):
         if event.key == pygame.K_i:
           pass
         if event.key == pygame.K_RETURN:
-          if itm.spells: return itm.spells[x]
+          if itm.spells: return itm.spells[x](itm)
         if event.key == pygame.K_F12:
           sp.speak(f'on', 1)
           sp.speak(f'off', 1)
@@ -3149,7 +3148,7 @@ def info_unit(itm, nation, sound = 'in1'):
         f'global skills {global_skills}.',
         f'{defense_t} {itm.dfs+itm.dfs_mod} ({itm.dfs_mod}).',
         f'{resiliency_t} {itm.res+itm.res_mod} ({itm.res_mod}).',
-        f'{naturalarmor_t} {itm.arm+itm.arm_mod} ({itm.arm_mod}).',
+        f'{basearm_t} {itm.arm+itm.arm_mod} ({itm.arm_mod}).',
         f'{armor_t} {armor}.',
         f'{shield_t} {shield}.',
         f'defensive skills {defensive_skills}.',

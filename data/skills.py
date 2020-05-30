@@ -9,6 +9,7 @@ from log_module import *
 from basics import *
 from data.lang.es import *
 
+
 class Skill:
   effect = 'self'  # all, friend, enemy, self.
   desc = str()
@@ -31,10 +32,10 @@ class Skill:
   def ai_run(self, itm):
     pass
 
-  def cast(self, itm):
+  def init(self, itm):
     check = self.check_cost(itm)
     if check != 1: return check
-    cast = self.check_cast()
+    cast = self.check_cast(itm)
     if cast != 1: return cast
     self.run(itm)
   def check_cast(self,itm):
@@ -99,9 +100,6 @@ class BattleFocus(Skill):
 
 
 
-class BloodHeal(Skill):
-  desc = 'sacrifica un número aleatoreo de población para curarse.'
-
 
 class BloodRaining(Skill):
   name = 'blood raining'
@@ -134,9 +132,9 @@ class BloodRaining(Skill):
 
 
 class BloodyBeast(Skill):
-  effect = 'self'
-  desc = 'randomly kill population if tile has population.'
   name = 'bestia sangrienta'
+  desc = 'randomly kill population if tile has population.'
+  effect = 'self'
   turns = 0
   type = 2
 
@@ -167,10 +165,6 @@ class BloodyFeast(Skill):
       itm.hp_res_mod += 5
 
 
-class BreathOfTheDesert(Skill):
-  desc = 'Envía aires del desierto a una casilla elegida. esto subirá la temperatura y dañara la producción de alimentos.'
-
-
 class Burn(Skill):
   name = 'quemar'
   desc = 'can destroy buildings'
@@ -180,25 +174,6 @@ class Burn(Skill):
 
   def run(self, itm):
     itm.can_burn = 1
-
-
-class CastBloodRain(Skill):
-  name = 'blood rain'
-  cost = 40
-  cast = 10
-  ranking = 5
-  type = spell_t
-
-  def ai_run(self, itm):
-    self.cast(itm)
-  def run(self, itm):
-    sleep(loadsound('spell27', channel = ch5, vol = 0.7) / 2)
-    dist = randint(3, 6)
-    pos = itm.pos
-    sq = pos.get_near_tiles(itm.pos.scenary, dist)
-    for s in sq:
-      if self.name not in [ev.name for ev in s.events]:
-        s.events += [BloodRaining(s)]
 
 
 class Charge(Skill):
@@ -285,15 +260,6 @@ class FearAura(Skill):
       itm.str_mod -= 1
 
 
-
-class FeastOfFlesh(Skill):
-  desc = 'sacrifica x población para invocar ogros a su servicio.'
-
-class FireDarts(Skill):
-  pass
-
-
-
 class Fly(Skill):
   effect = 'self'
   desc = 'unit can fly. enemy can not charge.'
@@ -365,39 +331,6 @@ class ForestWalker(Skill):
       itm.resolve_mod += 1 
 
 
-class HealingMists(Skill):
-  pass
-
-class HealingRoots(Skill):
-  name = 'raices curativas.'
-  cost = 10
-  cast = 4
-  ranking = 5
-  type = 'spell'
-  tags = [health_t]
-
-  def ai_run(self, itm):
-    units = [i for i in itm.pos.units if i.nation == itm.nation
-             and intoxicated_t in i.global_skills]
-    
-    if units: self.cast(itm)
-
-  def run(self, itm):
-    if roll_dice(2) >= cast:
-      units = [i for i in itm.pos.units if i.nation == itm.nation]
-      unit = choice(units)
-      unit.other_skills = [sk for sk in unit.other_skills if sk.name != intoxicated_t]
-      msg = f'{itm} has removed {intoxicated_t} {from_t} {unit}.'
-      logging.debug(msg)
-      itm.log[-1] += [msg]
-      unit.log[-1] += [msg]
-
-
-class Eartquake(Skill):
-  pass
-
-
-
 class ElusiveShadow(Skill):
   name = 'sombra elusiva'
   desc = '+3 stealth on day, +6 stealth on night.'
@@ -411,9 +344,6 @@ class ElusiveShadow(Skill):
     if itm.day_night[0]: itm.stealth_mod += 6
     elif itm.day_night[0] == 0: itm.stealth_mod += 3
 
-
-class EnchantedForests(Skill):
-  pass
 
 
 class Ethereal(Skill):
@@ -604,9 +534,6 @@ class LordOfBlodd(Skill):
       itm.resolve_mod += 1
 
 
-class MagicDuel(Skill):
-  pass
-
 
 class MassSpears(Skill):
   effect = 'self'
@@ -639,10 +566,6 @@ class MastersEye(Skill):
       itm.res_mod += 1
       itm.str_mod += 1
       itm.moves_mod += 1
-
-
-class Mist(Skill):
-  pass
 
 
 class Night(Skill):
@@ -733,10 +656,6 @@ class PikeSquare (Skill):
       itm.target.can_charge = 0
 
 
-class PoisonCloud(Skill):
-  pass
-
-
 class Raid(Skill):
   effect = 'self'
   desc = 'can raid tiles.'
@@ -746,58 +665,6 @@ class Raid(Skill):
 
   def run(self, itm):
     itm.can_raid = 1
-
-
-class RaiseDead(Skill):
-  name = raise_dead_t
-  cost = 20
-  cast = 6
-  ranking = 10
-  type = 'generic'
-  tags = [raise_dead_t]
-
-  def ai_run(self, itm):
-    self.run(itm)
-
-  def run(self, itm):
-    if itm.pos.corpses == [] or itm.power < self.cost:
-      if itm.show_info: sleep(loadsound('errn1'))
-      msg = f'{itm} no puede lanzar hechiso {self.name}'
-      logging.debug(msg)
-      if msg not in itm.log[-1]: itm.log[-1].append(msg)
-      return
-    
-    logging.info(f'{self.name}. ({itm}).')
-    itm.power -= self.cost
-    roll1 = roll_dice(2)
-    tile = itm.pos
-    
-    dead = choice(tile.corpses)
-    raised = choice(dead.corpses)(itm.nation)
-    raised.hp_total = sum(dead.deads) * raised.hp
-    raised.update()
-    logging.debug(f'unidades totales de {dead} {sum(dead.deads)}.')
-    logging.debug(f'{raised} unidades {raised.units}. hp {raised.hp}.')
-    roll2 = roll_dice(2)
-    needs = ceil(raised.ranking / 12)
-    logging.debug(f'roll1 {roll1}. cast {self.cast}, roll2 {roll2} need {needs}.')
-    if roll2 >= needs and roll1 >= self.cast:
-      msg = f'{itm} lanza {self.name}.'
-      logging.info(msg)
-      tile.corpses.remove(dead)
-      raised.auto_attack = 1
-      raised.pos = tile
-      raised.pos.units.append(raised)
-      msg = f'reanimados {raised}.'
-      itm.log[-1].append(msg)
-      if itm.nation.show_info: sleep(loadsound('raiseundead1') / 2)
-      itm.pos.update(itm.nation)
-    else:
-      msg = f'fallo.'
-      logging.debug(msg)
-      itm.log[-1].append(msg)
-      if itm.show_info: 
-        sp.speak(f'{self.name} fall�.')
 
 
 class Regroup(Skill):
@@ -813,10 +680,6 @@ class Regroup(Skill):
       msg = f'{itm.name} recupera {sum(itm.fled)} unidades huidas.' 
       itm.log[-1] += [msg]
       logging.debug(msg)
-
-
-class Reinvigoration(Skill):
-  desc = 'sacrifica x población para regenerar poder.'
 
 
 class ReadyAndWaiting(Skill):
@@ -846,9 +709,6 @@ class Refit(Skill):
       itm.sts_mod += 2
 
 
-class SanguineHeritage(Skill):
-  desc = 'la unidad infectada tiene x probabilidades de volverse vampiro.'
-
 
 class SermonOfCourage(Skill):
   effect = 'friend'
@@ -861,10 +721,6 @@ class SermonOfCourage(Skill):
     if itm != self.itm and human_t in itm.traits: 
       itm.effects.append(self.name)
       itm.resolve_mod += 1
-
-
-class SecondSun(Skill):
-  desc = 'crea un segundo sol negando la noche y dañando la agricultura de los lugares afectados.'
 
 
 class ShadowHunter(Skill):
@@ -955,117 +811,6 @@ class Surrounded(Skill):
       itm.effects.append(self.name + str(1))
       itm.off_mod += 1
       itm.str_mod += 1
-
-
-class SummonAwakenTree(Skill):
-  name = 'summon awaken tree'
-  cost = 50
-  cast = 9
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(AwakenTree, itm.nation.name)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
-class SummonDevourerOfDemons(Skill):
-  name = 'summon devourer of demons'
-  cost = 30
-  cast = 10
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    if itm.pos.around_nations and itm.pos.around_snation == []:
-      self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(DevourerOfDemons, wild_t)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
-class SummonDriads(Skill):
-  name = 'summon driads'
-  cost = 40
-  cast = 7
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(Driads, itm.nation.name)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
-
-class SummonForestBears(Skill):
-  name = 'summon forest bears'
-  cost = 20
-  cast = 8
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    if itm.pos.surf and itm.pos.surf == forest_t: self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(ForestBears, itm.nation.name)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
-
-class SummonForestFalcons(Skill):
-  name = 'summon forest falcons'
-  cost = 10
-  cast = 6
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    if itm.pos.surf and itm.pos.surf == forest_t: self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(SummonForestFalcons, itm.nation.name)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
-class SummonSpectralInfantry(Skill):
-  name = 'summon spectral infantry'
-  cost = 20
-  cast = 8
-  ranking = 5
-  type = 'spell'
-  tags = ['summon']
-
-  def ai_run(self, itm):
-    self.cast(itm)
-
-  def run(self, itm):
-    itm.pos.add_unit(SpectralInfantry, itm.nation.name)
-    msg = f'{AwakenTree} has been sommoned'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
 
 
 class Scavenger(Skill):
@@ -1206,9 +951,6 @@ class VigourMourtis(Skill):
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
 
-
-class WailingWinds(Skill):
-  desc = 'un nigromante invoca vientos de lamentos. estos vientos reducirán la moral de las unidades enemigas.'
 
 
 class Weak(Skill):
