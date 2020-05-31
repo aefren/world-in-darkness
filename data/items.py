@@ -7,7 +7,7 @@
 
 #from numpy import mean
 
-from basics import *
+import basics
 from data.events import *
 from data.lang.es import *
 from data.names import *
@@ -99,25 +99,13 @@ class Building:
       self.public_order_pre = base.public_order
       self.res_pre = base.resource 
   
-  def improve(self, upgrade):
-    msg = f'{self} actualizará a {upgrade}. {cost_t} {upgrade.gold} en {self.pos} {self.pos.cords}.'
-    logging.info(msg)
-    if self.nation.show_info:
-      sp.speak(msg)
-      sleep(loadsound('gold1') * 0.5)
-    
-    self.nation.gold -= upgrade.gold
-    upgrade.av_units_pre = []
-    for i in self.av_units_pre + self.av_units:
-      if i not in upgrade.av_units_pre: upgrade.av_units_pre.append(i)
-    upgrade.nation = self.nation
-    upgrade.pos = self.pos
-    upgrade.size = self.size
-    if self.pos.city: msg = [f'se actualizará {self} en {self.pos.city}, {self.pos} {self.pos.cords}.']
-    else: msg = [f'se actualizará {self} en {self.pos} {self.pos.cords}.']
-    upgrade.nation.log[-1].append(msg)
-    self.pos.buildings[self.pos.buildings.index(self)] = upgrade
+  def __str__(self):
+    name = f'{self.name}.' 
+    if self.nick:
+      name += f' {self.nick}.'
+    return name
 
+  
   def can_build(self):
     logging.debug(f'requicitos de {self}.')
     if self.check_tile_req(self.pos) == 0:
@@ -141,14 +129,27 @@ class Building:
     if pos.nation != self.nation and self.own_terrain: go = 0    
     return go
 
+  def improve(self, upgrade):
+    msg = f'{self} actualizará a {upgrade}. {cost_t} {upgrade.gold} en {self.pos} {self.pos.cords}.'
+    logging.info(msg)
+    if self.nation.show_info:
+      sp.speak(msg)
+      sleep(loadsound('gold1') * 0.5)
+    
+    self.nation.gold -= upgrade.gold
+    upgrade.av_units_pre = []
+    for i in self.av_units_pre + self.av_units:
+      if i not in upgrade.av_units_pre: upgrade.av_units_pre.append(i)
+    upgrade.nation = self.nation
+    upgrade.pos = self.pos
+    upgrade.size = self.size
+    if self.pos.city: msg = [f'se actualizará {self} en {self.pos.city}, {self.pos} {self.pos.cords}.']
+    else: msg = [f'se actualizará {self} en {self.pos} {self.pos.cords}.']
+    upgrade.nation.log[-1].append(msg)
+    self.pos.buildings[self.pos.buildings.index(self)] = upgrade
+
   def launch_event(self):
     pass
-
-  def __str__(self):
-    name = f'{self.name}.' 
-    if self.nick:
-      name += f' {self.nick}.'
-    return name
 
   def update(self):
     self.is_complete = 1 if self.resource_cost[0] >= self.resource_cost[1] else 0
@@ -546,36 +547,7 @@ class City:
       logging.debug(f'rng {len(self.seen_ranged)}. ranking {self.seen_ranged_rnk}.')
       logging.debug(f'undead {len(self.seen_undead)}. ranking {self.seen_undead_rnk}.')
 
-  def set_units_types(self):
-    units = [i for i in self.units if i.leader == None and i.group == [] 
-             and i.comm == 0]
-    self.units_animal = []
-    self.units_fly = []
-    self.units_human = []
-    self.units_mounted = []
-    self.units_piercing = []
-    self.units_ranged = []
-    self.units_sacred = []
-    self.units_undead = []
-    for i in units:
-      if animal_t in i.traits: self.units_animal.append(i)
-      if i.can_fly: self.units_fly.append(i)
-      if human_t in i.traits: self.units_human.append(i)
-      if mounted_t in i.traits: self.units_mounted.append(i)
-      if i.pn: self.units_piercing.append(i) 
-      if i.rng >= 6: self.units_ranged.append(i)
-      if i.damage_sacred + i.damage_sacred_mod: self.units_sacred.append(i)
-      if undead_t in i.traits: self.units_undead.append(i)  
-    
-    self.units_animal_rnk = sum(i.ranking for i in self.units_animal)
-    self.units_fly_rnk = sum(i.ranking for i in self.units_fly)
-    self.units_human_rnk = sum(i.ranking for i in self.units_human)
-    self.units_mounted_rnk = sum(i.ranking for i in self.units_mounted)
-    self.units_piercing_rnk = sum(i.ranking for i in self.units_piercing)
-    self.units_ranged_rnk = sum(i.ranking for i in self.units_ranged)
-    self.units_sacred_rnk = sum(i.ranking for i in self.units_sacred)
-    self.units_undead_rnk = sum(i.ranking for i in self.units_undead)
-    
+  
   def set_train_type(self, units):
     self.set_seen_units(0, info = 1)
     self.set_units_types()
@@ -674,6 +646,36 @@ class City:
     
     return units
 
+  def set_units_types(self):
+    units = [i for i in self.units if i.leader == None and i.group == [] 
+             and i.comm == 0]
+    self.units_animal = []
+    self.units_fly = []
+    self.units_human = []
+    self.units_mounted = []
+    self.units_piercing = []
+    self.units_ranged = []
+    self.units_sacred = []
+    self.units_undead = []
+    for i in units:
+      if animal_t in i.traits: self.units_animal.append(i)
+      if i.can_fly: self.units_fly.append(i)
+      if human_t in i.traits: self.units_human.append(i)
+      if mounted_t in i.traits: self.units_mounted.append(i)
+      if i.pn: self.units_piercing.append(i) 
+      if i.rng >= 6: self.units_ranged.append(i)
+      if i.damage_sacred + i.damage_sacred_mod: self.units_sacred.append(i)
+      if undead_t in i.traits: self.units_undead.append(i)  
+    
+    self.units_animal_rnk = sum(i.ranking for i in self.units_animal)
+    self.units_fly_rnk = sum(i.ranking for i in self.units_fly)
+    self.units_human_rnk = sum(i.ranking for i in self.units_human)
+    self.units_mounted_rnk = sum(i.ranking for i in self.units_mounted)
+    self.units_piercing_rnk = sum(i.ranking for i in self.units_piercing)
+    self.units_ranged_rnk = sum(i.ranking for i in self.units_ranged)
+    self.units_sacred_rnk = sum(i.ranking for i in self.units_sacred)
+    self.units_undead_rnk = sum(i.ranking for i in self.units_undead)
+  
   def status(self, info = 0):
     logging.info(f'city status {self}.')
     self.defensive_tiles = self.get_tiles_defense(self.tiles)
@@ -1024,6 +1026,24 @@ class Nation:
             count = 0
             break
     
+  def check_events(self):
+    pass
+
+  def get_free_units(self):
+    self.units_free = [it for it in self.units if it.garrison == 0 
+           and it.scout == 0 and it.settler == 0 
+           and it.goto == [] and it.group == []
+           and it.leader == None and it.goal == None
+           and it.comm == 0 and it.mp[0] > 0]
+    
+    return self.units_free
+
+  def get_groups(self):
+    self.update(self.map)
+    self.groups = [i for i in self.units if i.goal and i.hp_total > 0]
+    self.groups_free = [i for i in self.groups if i.mp[0] == i.mp[1]
+                        and i.goto == []]
+
   def improve_food(self, city):
     logging.info(f'build_food_upgrade.')
     # food upgrades.
@@ -1071,24 +1091,6 @@ class Nation:
       
       if upg.gold < self.gold:
         b.improve(upg)
-
-  def check_events(self):
-    pass
-
-  def get_groups(self):
-    self.update(self.map)
-    self.groups = [i for i in self.units if i.goal and i.hp_total > 0]
-    self.groups_free = [i for i in self.groups if i.mp[0] == i.mp[1]
-                        and i.goto == []]
-
-  def get_free_units(self):
-    self.units_free = [it for it in self.units if it.garrison == 0 
-           and it.scout == 0 and it.settler == 0 
-           and it.goto == [] and it.group == []
-           and it.leader == None and it.goal == None
-           and it.comm == 0 and it.mp[0] > 0]
-    
-    return self.units_free
 
   def is_allowed_tiles(self, tile):
     info = 0
@@ -1661,6 +1663,105 @@ class Unit:
     
     self.skill_names.sort()
 
+  def info(self, nation, sound = 'in1'):
+    sleep(loadsound(sound))
+    say = 1
+    x = 0
+    self.update()
+    while True:
+      sleep(0.1)
+      if say:
+        effects = [e for e in self.effects]
+        if self.armor: armor = self.armor.name
+        else: armor = 'no'
+        if self.defensive_skills: defensive_skills = [s.name for s in self.defensive_skills]
+        else: defensive_skills = 'No'
+        if self.global_skills: global_skills = [s.name for s in self.global_skills]
+        else: global_skills = 'No'
+        if self.nation == nation: mp = f'{self.mp[0]} {of_t} {self.mp[1]}.'
+        else: mp = 'X'
+        if self.offensive_skills: offensive_skills = [s.name for s in self.offensive_skills]
+        else: offensive_skills = 'No'
+        if self.power_max: power = f'{self.power} {of_t} {self.power_max}'
+        else: power = f'x'
+        if self.shield: shield = self.shield.name
+        else: shield = 'no'
+        if self.spells: spells = [s.name for s in self.spells]
+        else: spells = 'No'
+        if self.terrain_skills: terrain_skills = [s.name for s in self.terrain_skills]
+        else: terrain_skills = 'No'
+        lista = [
+          f'{self}. total hp {self.hp_total}. {ranking_t} {self.ranking}.',
+          f'{stealth_t} {self.stealth+self.stealth_mod} ({self.stealth_mod}).',
+          f'{type_t} {self.type}.',
+          f'{traits_t} {self.traits}.',
+          f'{gold_t} {self.gold}, {upkeep_t} {self.upkeep} ({self.upkeep_total}).',
+          f'{resources_t} {self.resource_cost}.',
+          f'{food_t} {self.food}, {population_t} {self.pop}.',
+          f'effects {effects}.',
+          f'terrain skills {terrain_skills}.',
+          f'{health_t} {self.hp}. '
+          f'{restores_t} {self.hp_res+self.hp_res_mod} (+{self.hp_res_mod}).',
+          f'{magic_t} {power}.',
+          f'mp {mp}.',
+          f'{moves_t} {self.moves+self.moves_mod} ({self.moves_mod}).',
+          f'{resolve_t} {self.resolve+self.resolve_mod} ({self.resolve_mod}).',
+          f'global skills {global_skills}.',
+          f'{defense_t} {self.dfs+self.dfs_mod} ({self.dfs_mod}).',
+          f'{resiliency_t} {self.res+self.res_mod} ({self.res_mod}).',
+          f'{basearm_t} {self.arm+self.arm_mod} ({self.arm_mod}).',
+          f'{armor_t} {armor}.',
+          f'{shield_t} {shield}.',
+          f'defensive skills {defensive_skills}.',
+          f'{attacks_t} {self.att+self.att_mod} ({self.att_mod}).',
+          f'{range_t} {self.rng+self.rng_mod} ({self.rng_mod}).',
+          f'{damage_t} {self.damage+self.damage_mod} ({self.damage_mod}).',
+          f'{offensive_t} {self.off+self.off_mod} ({self.off_mod}).',
+          f'{strength_t} {self.str+self.str_mod} ({self.str_mod}).',
+          f'{piercing_t} {self.pn+self.pn_mod} ({self.pn_mod}).',
+          f'offensive skills {offensive_skills}.',
+          f'spells {spells}.' 
+          ]
+        
+        sp.speak(lista[x])
+        say = 0
+        
+      for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+          if event.key == pygame.K_UP:
+            x = selector(lista, x, go = "up")
+            say = 1
+          if event.key == pygame.K_DOWN:
+            say = 1
+            x = selector(lista, x, go = "down")
+          if event.key == pygame.K_HOME:
+            x = 0
+            say = 1
+            loadsound('s1')
+          if event.key == pygame.K_END:
+            x = len(lista) - 1
+            say = 1
+            loadsound('s1')
+          if event.key == pygame.K_PAGEUP:
+            x -= 5
+            say = 1
+            if x < 0: x = 0
+            loadsound('s1')
+          if event.key == pygame.K_PAGEDOWN:
+            x += 5
+            say = 1
+            if x >= len(lista): x = len(lista) - 1
+            loadsound('s1')
+          if event.key == pygame.K_s:
+            self.set_auto_explore()
+          if event.key == pygame.K_F12:
+            sp.speak(f'debug on.', 1)
+            sp.speak(f'debug off.', 1)
+          if event.key == pygame.K_ESCAPE:
+            sleep(loadsound('back1') / 2)
+            return
+
+
   def launch_event(self):
     pass
 
@@ -1832,12 +1933,19 @@ class Unit:
     self.ranking_dfs_l = ['hp', self.ranking_dfs]
     self.ranking_dfs *= 1 + (self.dfs + self.dfs_mod) / 10
     self.ranking_dfs_l += ['dfs', self.ranking_dfs]
-    self.ranking_dfs *= 1 + (self.res + self.res_mod) / 10
+    self.ranking_dfs *= 1 + (self.res + self.res_mod) / 5
     self.ranking_dfs_l += ['res', self.ranking_dfs]
-    self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 5
-    self.ranking_dfs_l += ['arm', self.ranking_dfs]
-    if self.armor: 
-      self.ranking_dfs *= 1 + (self.armor.arm) / 10 * 5
+    if self.arm+self.arm_mod >= 6: 
+      self.ranking_dfs *= 1 + (self.arm + self.arm_mod)
+      self.ranking_dfs_l += ['arm', self.ranking_dfs]
+    elif self.arm+self.arm_mod >= 4: 
+      self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 5
+      self.ranking_dfs_l += ['arm', self.ranking_dfs]
+    elif self.arm+self.arm_mod >= 1: 
+      self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 10
+      self.ranking_dfs_l += ['arm', self.ranking_dfs]
+    if self.armor : 
+      self.ranking_dfs *= 1 + (self.armor.arm / 10)
       self.ranking_dfs_l += ['armor', self.ranking_dfs]
     if self.shield: 
       self.ranking_dfs += 1 + (self.shield.dfs) / 10
@@ -1846,9 +1954,8 @@ class Unit:
     self.ranking += (self.rng + self.rng_mod) * 5
   
     self.ranking = round(self.ranking / 4)
-    if self.can_fly: self.ranking *= 1.2
+    if self.can_fly: self.ranking *= 1.3
     if self.resolve + self.resolve_mod >= 6: self.ranking *= 1.3
-    if self.resolve + self.resolve_mod < 6: self.ranking *= 0.7
     self.ranking += sum(s.ranking for s in self.skills + self.spells)
 
   def set_tile_attr(self, info = 0):
@@ -2342,8 +2449,8 @@ class AwakenTree(Elf):
 
   hp = 10
   mp = [2, 2]
-  moves = 5
-  resolve = 8
+  moves = 4
+  resolve = 10
   global_skills = [ForestWalker]
 
   dfs = 3
@@ -2443,8 +2550,8 @@ class Druid(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [CastBloodRain, CastWailingWinds, HealingRoots, SummonAwakenTree, SummonFalcons, SummonDevourerOfDemons, SummonDriads, SummonSpectralInfantry]
     self.align = Wild
-    self.spells = [SummonAwakenTree, SummonFalcons, SummonDevourerOfDemons, SummonDriads, SummonSpectralInfantry]
 
 
 class Driads(Elf):
@@ -2542,16 +2649,16 @@ class Falcons(Elf):
   resolve = 6
   global_skills = [Fly, ForestWalker]
 
-  dfs = 4
+  dfs = 3
   res = 1
   arm = 0
   armor = None
 
-  att = 3
+  att = 2
   damage = 1
   rng = 1
   off = 4
-  str = 4
+  str = 3
   pn = 0
 
   def __init__(self, nation):
@@ -2648,7 +2755,7 @@ class ForestGuard(Elf):
   hp = 2
   mp = [2, 2]
   moves = 6
-  resolve = 5
+  resolve = 6
   global_skills = [ForestWalker]
 
   dfs = 3
@@ -4729,7 +4836,7 @@ class SpectralInfantry(Unit):
   name = 'infantería espectral'
   units = 10
   type = 'infantry'
-  traits = [death_t, malignant_t]
+  traits = [death_t]
   gold = 300
   upkeep = 20
   resource_cost = 15
@@ -5770,7 +5877,7 @@ class Goblins(Unit):
   name = goblins_t
   units = 30
   type = 'infantry'
-  traits = [goblin_t, malignant_t]
+  traits = [goblin_t]
   gold = 50
   upkeep = 3
   resource_cost = 8
@@ -6034,7 +6141,7 @@ class Orc_Archers(Unit):
   name = orc_archers_t
   units = 20
   type = 'infantry'
-  traits = [orc_t, malignant_t]
+  traits = [orc_t]
   gold = 140
   upkeep = 12
   resource_cost = 12
@@ -6081,7 +6188,7 @@ class Orcs(Unit):
   name = 'orcos'
   units = 20
   type = 'infantry'
-  traits = [orc_t, malignant_t]
+  traits = [orc_t]
   gold = 30
   upkeep = 5
   resource_cost = 10

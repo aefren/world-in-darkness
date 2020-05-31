@@ -2,7 +2,7 @@ from random import choice, uniform
 from time import *
 
 from basics import *
-from data.lang.es import *
+import basics
 from log_module import *
 from screen_reader import *
 from sound import *
@@ -27,7 +27,7 @@ class Unrest(Event):
     if info: print(f'revisando eventos de {self.itm}.')
     for t in self.itm.tiles:
       if t.pop == 0 or t.is_city: continue
-      order = get_unrest_mod(t.public_order)
+      order = basics.get_unrest_mod(t.public_order)
       if info: print(f'{t} {t.cords}. order {order}. public order {t.public_order}')
       if roll_dice(1) <= order:
         # t.effects.append(self.name)

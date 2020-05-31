@@ -6,7 +6,7 @@ from random import randint, shuffle, choice, uniform
 from time import sleep, process_time
 
 from log_module import *
-from basics import *
+import basics
 from data.lang.es import *
 
 
@@ -29,31 +29,6 @@ class Skill:
     self.itm = itm
     self.nation = self.itm.nation    
 
-  def ai_run(self, itm):
-    pass
-
-  def init(self, itm):
-    check = self.check_cost(itm)
-    if check != 1: return check
-    cast = self.check_cast(itm)
-    if cast != 1: return cast
-    self.run(itm)
-  def check_cast(self,itm):
-    if roll_dice(2) >= self.cast: return 1
-    else: 
-      msg = f'{self} {failed_t}.'
-      if itm.show_info: sp.speak(msg,1)
-      return msg
-  def check_cost(self, itm):
-    if itm.power < self.cost:
-      msg = f'{self}. {needs_t} {power_t}.'
-      logging.debug(msg)
-      itm.log[-1] += [msg]
-      if itm.show_info: sp.speak(msg,1)
-      return msg
-    else: 
-      itm.power -= self.cost
-      return 1
   def run(self):
     pass
 
@@ -105,7 +80,6 @@ class BloodRaining(Skill):
   name = 'blood raining'
   desc = ''
   effects = 'all'
-  turns = randint(3, 7)
   ranking = 10
   type = 'generic'
 
@@ -197,8 +171,8 @@ class DarkPresence(Skill):
 
   def run(self, itm):
     if (itm.nation == self.nation
-        and death_t in itm.traits and vampire_t not in itm.traits 
-        and self.name not in itm.effects):
+        and malignant_t in itm.traits 
+        and vampire_t not in itm.traits and self.name not in itm.effects):
       if itm.day_night[0] == 0:
         itm.effects.append(self.name + str(f' ({day_t})'))
         itm.res_mod += 1
@@ -317,9 +291,9 @@ class ForestTerrain(Skill):
 
 
 class ForestWalker(Skill):
-  effect = 'self'
-  desc = '+2 resolve, +1 off, += dfs if unit is into forest.'
   name = 'morador del bosque'
+  desc = '+2 resolve, +1 off, += dfs if unit is into forest.'
+  effect = 'self'
   ranking = 5
   type = 'generic'
 
@@ -417,7 +391,7 @@ class ImpalingRoots(Skill):
   effect = 'self'
   desc = ''
   name = 'impaling roots.'
-  ranking = 20
+  #ranking = 20
   type = 'before attack'
 
   def run(self, itm):
@@ -554,8 +528,8 @@ class MassSpears(Skill):
 
 class MastersEye(Skill):
   name = 'ojos del amo'
-  effect = 'friend'
   desc = '+1 att, +1 hit roll, +1 str, +1 res.'
+  effect = 'friend'
   ranking = 5
   type = 'generic'
 
@@ -563,9 +537,14 @@ class MastersEye(Skill):
     if itm != self.itm and itm.nation == self.nation:
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
-      itm.res_mod += 1
-      itm.str_mod += 1
-      itm.moves_mod += 1
+      if death_t in itm.traits:
+        itm.effects += [f'{death_t}.']
+        itm.moves_mod += 1
+        itm.res_mod += 1
+        itm.str_mod += 1
+      if malignant_t in itm.traits:
+        itm.effects += [f'{malignant_t}']
+        itm.resolve_mod += 1
 
 
 class Night(Skill):
@@ -951,6 +930,19 @@ class VigourMourtis(Skill):
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
 
+
+
+class WailingWinds(Skill):
+  name = 'wailing winds'
+  desc = '-1 resolve for all units. ignores (death, malignant.'
+  effects = 'all'
+  ranking = 0
+  type = 'generic'
+
+  def run(self, itm):
+    itm.effects += [self.name]
+    if any(i not in itm.traits for i in [death_t, malignant_t]):
+      itm.resolve_mod -= 1
 
 
 class Weak(Skill):

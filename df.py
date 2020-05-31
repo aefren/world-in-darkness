@@ -15,18 +15,18 @@ from pygame.time import get_ticks as ticks
 
 dev_mode = 1
 if dev_mode == 0:
-  exec('from basics import *')
+  exec('import basics')
   exec('from data.lang.es import *')
-  exec('from log_module import *')
+  exec('import log_module')
   exec('from data.skills import *')
-  exec('from screen_reader import *')
+  exec('import screen_reader')
   exec('from sound import *')
 if dev_mode:
-  from basics import *
+  import basics
   from data.lang.es import *
   from data.skills import *
-  from log_module import logging
-  from screen_reader import sp
+  import log_module
+  import screen_reader
   from sound import *
 
 # Some colors.
@@ -393,7 +393,7 @@ class Terrain:
 
   def start_turn(self):
     for ev in self.events:
-      if ev.turns > 0: selfev.turns -= 1
+      if ev.turns > 0: ev.turns -= 1
     self.events = [ev for ev in self.events if ev.turns > 0]
     self.corpses = [i for i in self.corpses if i.hp_total <= 0]
     self.burned = 0
@@ -611,7 +611,7 @@ class World:
   ext = None
   height = 0
   name = 'Unnamed'
-  nationss = []
+  nations = []
   nations_score = 0
   map = []
   player_num = 0
@@ -676,7 +676,8 @@ class World:
 
   def update(self, scenary):
     self.clean_nations()
-    # end_game()
+    #self.end_game()
+    #self.cnation = self.nations[self.player_num]
     [it.autokill() for it in self.units]
     self.units = []
     for t in scenary:
@@ -1939,7 +1940,10 @@ def ai_unit_cast(nation):
     while uni.power > 0 and tries > 0:
       tries -= 1
       for sp in spells:
-          sp.ai_run(uni)
+          init = sp.ai_run(uni)
+          if init != None: 
+            uni.log[-1] += [init]
+            logging.debug(init)
 
 
 def ai_unit_disband(nation):
@@ -2426,7 +2430,7 @@ def control_game(event):
         if local_units[x].mp[0] < 1 or local_units[x].nation != nation:
           error(msg = 'sin movimientos')
           return
-        itm = get_item(items1 = local_units[x].buildings, msg = 'crear', simple = 1)
+        itm = get_item2(items1 = local_units[x].buildings, msg = 'crear', simple = 1)
         if itm:
           if itm(nation, local_units[x].pos).can_build() == 0:
             error()
@@ -2440,7 +2444,10 @@ def control_game(event):
         itm = local_units[x]
         cast = get_cast(itm)
         if cast:
-          cast.init(itm)
+          init = cast.init(itm)
+          if init != None: 
+            itm.log[-1] += [init]
+            logging.debug(init)
           nation.update(scenary)
           map_update(nation, nation.map)
           sayland = 1
@@ -2518,7 +2525,7 @@ def control_game(event):
       if x == -1 or (local_units and local_units[x].nation != nation):
         error()
         return
-      if get_item([0, 1], ['no', 'si'], 'Eliminar unidad',):
+      if get_item2([0, 1], ['no', 'si'], 'Eliminar unidad',):
         local_units[x].disband()
         sayland = 1
     if event.key == pygame.K_TAB:
@@ -2821,7 +2828,7 @@ def control_global(event):
           or filter_expand or x > -1):
         end_parameters()  
         return
-      if get_item([0, 1], ['no', 'si'], 'salir?',):
+      if get_item2([0, 1], ['no', 'si'], 'salir?',):
         exit()
 
 
@@ -2960,7 +2967,7 @@ def get_cast(itm):
           return
 
 
-def get_item(items1 = [], items2 = [], msg = '', name = None, simple = 0, sound = 'in1'):
+def get_item2(items1 = [], items2 = [], msg = '', name = None, simple = 0, sound = 'in1'):
   x = 0
   if all(i == [] for i in [items1, items2]):
     error(info = 1)
@@ -3102,105 +3109,6 @@ def info_building(itm, sound = 'in1'):
           return
 
 
-def info_unit(itm, nation, sound = 'in1'):
-  sleep(loadsound(sound))
-  say = 1
-  x = 0
-  itm.update()
-  while True:
-    sleep(0.01)
-    if say:
-      effects = [e for e in itm.effects]
-      if itm.armor: armor = itm.armor.name
-      else: armor = 'no'
-      if itm.defensive_skills: defensive_skills = [s.name for s in itm.defensive_skills]
-      else: defensive_skills = 'No'
-      if itm.global_skills: global_skills = [s.name for s in itm.global_skills]
-      else: global_skills = 'No'
-      if itm.nation == nation: mp = f'{itm.mp[0]} {of_t} {itm.mp[1]}.'
-      else: mp = 'X'
-      if itm.offensive_skills: offensive_skills = [s.name for s in itm.offensive_skills]
-      else: offensive_skills = 'No'
-      if itm.power_max: power = f'{itm.power} {of_t} {itm.power_max}'
-      else: power = f'x'
-      if itm.shield: shield = itm.shield.name
-      else: shield = 'no'
-      if itm.spells: spells = [s.name for s in itm.spells]
-      else: spells = 'No'
-      if itm.terrain_skills: terrain_skills = [s.name for s in itm.terrain_skills]
-      else: terrain_skills = 'No'
-      lista = [
-        f'{itm}. total hp {itm.hp_total}. {ranking_t} {itm.ranking}.',
-        f'{stealth_t} {itm.stealth+itm.stealth_mod} ({itm.stealth_mod}).',
-        f'{type_t} {itm.type}.',
-        f'{traits_t} {itm.traits}.',
-        f'{gold_t} {itm.gold}, {upkeep_t} {itm.upkeep} ({itm.upkeep_total}).',
-        f'{resources_t} {itm.resource_cost}.',
-        f'{food_t} {itm.food}, {population_t} {itm.pop}.',
-        f'effects {effects}.',
-        f'terrain skills {terrain_skills}.',
-        f'{health_t} {itm.hp}. '
-        f'{restores_t} {itm.hp_res+itm.hp_res_mod} (+{itm.hp_res_mod}).',
-        f'{magic_t} {power}.',
-        f'mp {mp}.',
-        f'{moves_t} {itm.moves+itm.moves_mod} ({itm.moves_mod}).',
-        f'{resolve_t} {itm.resolve+itm.resolve_mod} ({itm.resolve_mod}).',
-        f'global skills {global_skills}.',
-        f'{defense_t} {itm.dfs+itm.dfs_mod} ({itm.dfs_mod}).',
-        f'{resiliency_t} {itm.res+itm.res_mod} ({itm.res_mod}).',
-        f'{basearm_t} {itm.arm+itm.arm_mod} ({itm.arm_mod}).',
-        f'{armor_t} {armor}.',
-        f'{shield_t} {shield}.',
-        f'defensive skills {defensive_skills}.',
-        f'{attacks_t} {itm.att+itm.att_mod} ({itm.att_mod}).',
-        f'{range_t} {itm.rng+itm.rng_mod} ({itm.rng_mod}).',
-        f'{damage_t} {itm.damage+itm.damage_mod} ({itm.damage_mod}).',
-        f'{offensive_t} {itm.off+itm.off_mod} ({itm.off_mod}).',
-        f'{strength_t} {itm.str+itm.str_mod} ({itm.str_mod}).',
-        f'{piercing_t} {itm.pn+itm.pn_mod} ({itm.pn_mod}).',
-        f'offensive skills {offensive_skills}.',
-        f'spells {spells}.' 
-        ]
-      
-      sp.speak(lista[x])
-      say = 0
-      
-    for event in pygame.event.get():
-      if event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_UP:
-          x = selector(lista, x, go = "up")
-          say = 1
-        if event.key == pygame.K_DOWN:
-          say = 1
-          x = selector(lista, x, go = "down")
-        if event.key == pygame.K_HOME:
-          x = 0
-          say = 1
-          loadsound('s1')
-        if event.key == pygame.K_END:
-          x = len(lista) - 1
-          say = 1
-          loadsound('s1')
-        if event.key == pygame.K_PAGEUP:
-          x -= 5
-          say = 1
-          if x < 0: x = 0
-          loadsound('s1')
-        if event.key == pygame.K_PAGEDOWN:
-          x += 5
-          say = 1
-          if x >= len(lista): x = len(lista) - 1
-          loadsound('s1')
-        if event.key == pygame.K_s:
-          itm.set_auto_explore()
-        if event.key == pygame.K_F12:
-          sp.speak(f'debug on.', 1)
-          sp.speak(f'debug off.', 1)
-        if event.key == pygame.K_ESCAPE:
-          sleep(loadsound('back1') / 2)
-          return
-
-
 def info_tile(pos, nation, sound = 'in1'):
   sleep(loadsound(sound) / 2)
   say = 1
@@ -3257,7 +3165,7 @@ def item_info(itm, nation):
   if itm.type == building_t:
     info_building(itm)
   elif itm.type in ['beast', 'civil', 'cavalry', 'infantry']:
-    info_unit(itm, nation)
+    itm.info(nation)
 
 
 def loading_map(location, filext, saved = 0, sound = 'book_open01'):
@@ -3449,7 +3357,7 @@ def menu_building(pos, nation, sound = 'in1'):
           if isinstance(items[x], str) == False: info_building(items[x])
         if event.key == pygame.K_u:
           if isinstance(items[x], str) == False and items[x].is_complete and items[x].upgrade:
-            item = get_item(items1 = items[x].upgrade, msg = 'mejorar')
+            item = get_item2(items1 = items[x].upgrade, msg = 'mejorar')
             if item: 
               if item.check_tile_req(pos):
                 if item.gold > nation.gold:
@@ -4281,39 +4189,6 @@ def select_item(msg, building, sound, limit = 0):
         return
 
 
-def selector(item, x, go = '', wrap = 0, sound = 's1', snd = 1):
-  if len(item) == 0:
-    sleep(loadsound('errn1', channel = ch4))
-    return x
-  if go == 'up':
-    if x == 0 and wrap == 1:
-      x = len(item) - 1
-      if snd: loadsound(sound)
-      return x
-
-    if x == 0 and wrap == 0:
-      sleep(loadsound('errn1', channel = ch4) * 0.5)
-      return x
-    else:
-      x -= 1
-      if snd: loadsound(sound)
-      return x
-
-  if go == 'down':
-    if x == len(item) - 1 and wrap:
-      x = 0
-      if snd: loadsound(sound)
-      return x
-
-    if x == len(item) - 1 and wrap == 0:
-      sleep(loadsound('errn1', channel = ch4) * 0.5)
-      return x
-    else:
-      x += 1
-      if snd: loadsound(sound)
-      return x
-
-
 def set_favland(itm, sq):
   shuffle(sq)
   sq.sort(key = lambda x: itm.get_favland(x), reverse = True)
@@ -4489,7 +4364,9 @@ def game():
     # choose_nation():
     world.nations = NATIONS
     shuffle(world.nations)
+    world.cnation = world.nations[0]
     for t in scenary: t.world = world
+    
     nation_init()
     new_turn()
     next_play()
