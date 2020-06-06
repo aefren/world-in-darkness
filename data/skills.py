@@ -11,11 +11,11 @@ from data.lang.es import *
 
 
 class Skill:
-  effect = 'self'  # all, friend, enemy, self.
+  name = 'skill'
   desc = str()
+  effect = 'self'  # all, friend, enemy, self.
   cast = 6
   cost = 1
-  name = 'skill'
   nation = None
   show = 1
   sound = None
@@ -27,7 +27,11 @@ class Skill:
 
   def __init__(self, itm):
     self.itm = itm
-    self.nation = self.itm.nation    
+    self.nation = self.itm.nation
+  def run(self, itm):
+    pass
+  def tile_run(self, itm):
+    pass
 
   def run(self):
     pass
@@ -342,6 +346,28 @@ class HeavyCharge(Skill):
     itm.damage_charge_mod += 3
 
 
+class HeavyRain(Skill):
+  name = 'heavy rain'
+  desc = ''
+  effects = 'self'
+  ranking = 0
+  type = 'generic'
+
+  def run(self, itm):
+    if itm.rng+itm.rng_mod >= 5:
+      itm.effects += [self.name]
+      itm.rng_mod -= 4
+      itm.off_mod -= 1
+  def tile_run(self, itm):
+    itm.raining = 1
+    itm.flood = 2
+    roll = basics.roll_dice(1)
+    if roll >= 5: itm.flood += 1
+    if roll >= 6: itm.flood += 1
+    self.turns -= 1
+    if itm.soil.name == waste_t: self.turns -= 1
+
+
 class HillTerrain(Skill):
   effect = 'all'
   desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge, -1 dfs, -1 off. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
@@ -575,9 +601,9 @@ class NightFerocity(Skill):
 
 
 class NightSurvival(Skill):
-  effect = 'self'
-  desc = '+5 power_restoration, +3 hp restoration.'
   name = 'sobreviviente nocturno'
+  desc = '+5 power_restoration, +2 hp restoration.'
+  effect = 'self'
   ranking = 2
   type = 'generic'
 
@@ -586,7 +612,7 @@ class NightSurvival(Skill):
     if itm.day_night[0]:
       itm.effects.append(self.name)
       if itm.power: itm.power_res_mod += 5
-      itm.hp_res_mod += 3
+      itm.hp_res_mod += 2
 
 
 class MountainSurvival(Skill):
@@ -644,6 +670,27 @@ class Raid(Skill):
 
   def run(self, itm):
     itm.can_raid = 1
+
+
+class Rain(Skill):
+  name = 'raining'
+  desc = ''
+  effects = 'self'
+  ranking = 0
+  type = 'generic'
+
+  def run(self, itm):
+    if itm.rng+itm.rng_mod > 5:      
+      itm.effects += [self.name]
+      itm.off_mod -= 1
+  def tile_run(self, itm):
+    itm.raining = 1
+    itm.flood += 1
+    roll = basics.roll_dice(1)
+    if roll >= 5: itm.flood += 1
+    if roll >= 6: itm.flood += 1
+    self.turns -= 1
+    if itm.soil.name == waste_t: self.turns -= 1
 
 
 class Regroup(Skill):

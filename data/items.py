@@ -1608,7 +1608,7 @@ class Unit:
     if pos.hill not in self.favhill: go = 0
     return go
 
-  def get_skills(self, info = 1):
+  def get_skills(self, info = 0):
     if info: print(f'get skills {self}')
     self.arm_mod = 0
     self.armor_ign_mod = 0
@@ -2859,12 +2859,12 @@ class ElvesSettler(Human):
 
 class SilvanArcher(Elf):
   name = 'arquero silvano'
-  units = 20
+  units = 10
   type = 'infantry'
   traits = [elf_t]
-  gold = 250
+  gold = 200
   upkeep = 12
-  resource_cost = 20
+  resource_cost = 14
   food = 2
   pop = 20
   terrain_skills = [Burn, ForestSurvival]
@@ -3348,7 +3348,7 @@ class Aquilifer(Human):
 
 class Flamen(Human):
   name = 'flamen'
-  units = 10
+  units = 5
   type = 'infantry'
   traits = [human_t, commander_t, sacred_t]
   gold = 700
@@ -3360,7 +3360,9 @@ class Flamen(Human):
   hp = 2
   mp = [2, 2]
   moves = 5
-  resolve = 7
+  resolve = 8
+  power = 20
+  power_max = 20
   global_skills = [SermonOfCourage]
 
   dfs = 3
@@ -3376,7 +3378,47 @@ class Flamen(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [CastRain]
     self.align = Wild
+
+
+
+class PontifexMaximus(Unit):
+  name = 'pontifex maximus'
+  units = 5
+  type = 'infantry'
+  traits = [human_t, commander_t, sacred_t]
+  gold = 2000
+  upkeep = 400
+  resource_cost = 30
+  food = 5
+  pop = 80
+
+  hp = 2
+  mp = [2, 2]
+  moves = 5
+  resolve = 8
+  power = 40
+  power_max = 40
+  global_skills = [SermonOfCourage]
+
+  dfs = 3
+  res = 2
+  arm = 0
+  armor = LightArmor()
+
+  att = 1
+  damage = 2
+  off = 4
+  str = 3
+  pn = 0
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = [SecondSun, SummonDevourerOfDemons]
+    self.align = Wild
+
+
 
 
 # unidades
@@ -4415,9 +4457,9 @@ class BloodKnights(Undead):
   traits = [death_t, malignant_t]
   gold = 1200
   upkeep = 150
-  resource_cost = 22
+  resource_cost = 25
   food = 0
-  pop = 40
+  pop = 20
 
   hp = 4
   mp = [2, 2]
@@ -4431,7 +4473,7 @@ class BloodKnights(Undead):
   armor = HeavyArmor()
   shield = Shield()
 
-  att = 3
+  att = 2
   damage = 4
   off = 7
   str = 6
@@ -4881,7 +4923,8 @@ class Vampire(Undead):
   pop = 15
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 12
+  hp = 6
+  hp_res = 1
   mp = [2, 2]
   moves = 8
   resolve = 10
@@ -4919,7 +4962,8 @@ class VampireLord(Undead):
   pop = 35
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 14
+  hp = 12
+  hp_res = 2
   mp = [2, 2]
   moves = 9
   resolve = 10
@@ -4938,6 +4982,7 @@ class VampireLord(Undead):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [BloodHeal]
     self.corpses = []
     self.favhill = [0, 1]
     self.favsurf = [forest_t, none_t, swamp_t]
@@ -5000,7 +5045,7 @@ class VladDracul(Undead):
   resolve = 10
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
   power = 20
-  power_max = 80
+  power_max = 60
   power_res = 5
 
   dfs = 8
@@ -6264,6 +6309,52 @@ class Levy(Human):
     self.favsurf = [none_t]
     self.favhill = [0]
 
+
+
+class MASTER(Unit):
+  name = 'MASTER'
+  units = 1
+  unique = 1
+  type = 'DEBUG ONLY'
+  traits = [human_t, death_t, malignant_t, leader_t, vampire_t, wizard_t, commander_t]
+  gold = 0
+  upkeep = 0
+  resource_cost = 0
+  food = 0
+  pop = 0
+  terrain_skills = [DesertSurvival, ForestSurvival, MountainSurvival, SwampSurvival]
+
+  hp = 1000
+  mp = [2000, 2000]
+  moves = 12
+  resolve = 10
+  global_skills = [DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
+  power = 2000000
+  power_max = 2000000
+  power_res = 5
+
+  dfs = 8
+  res = 7
+  arm = 0
+  armor = LightArmor()
+
+  att = 6
+  damage = 6
+  off = 8
+  str = 8
+  pn = 3
+
+  stealth = 5
+
+  pref_corpses = 1
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = [CastBloodRain, RaiseDead]  # , BloodStorm, DarkMantle, SummonBloodKnight]
+    self.corpses = []
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [forest_t, none_t]
+    self.favhill = 0, 1
 
 class PeasantLevies(Human):
   name = peasant_levies_t

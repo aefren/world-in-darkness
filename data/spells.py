@@ -22,6 +22,7 @@ class Spell:
   ambient_day = 0
   ambient_night = 0
   corpses = 0
+  gold = 0
   season_autum = 0
   season_sammer = 0
   seasson_sprint = 0
@@ -34,6 +35,7 @@ class Spell:
   tile_hill = 0
   tile_tundra = 0
   tile_ocean = 0
+  tile_pop = 0
 
   def __init__(self, itm):
     self.itm = itm
@@ -50,10 +52,12 @@ class Spell:
 
   def check_conditions(self, itm, target):
     msg = ''
+    if self.gold and itm.nation.gold < self.gold: msg += f'{self.name} {needs_t} {self.gold} {gold_t}.'
     if self.target and target.type not in self.target: msg += f'not {self.target} selected.'
     if self.traits: pass
-    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f'{self.name} needs forest.'
-    if self.corpses and itm.pos.corpses == []: msg += f'{self.name} needs corpses.'
+    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f'{self.name} {needs_t} forest.'
+    if self.corpses and itm.pos.corpses == []: msg += f'{self.name} {needs_t} corpses.'
+    if self.tile_pop and itm.pos.pop < self.tile_pop: msg += f'{self.name} {needs_t} {self.tile_pop} population.'
     if msg: return msg
     else: return None
 
@@ -73,8 +77,6 @@ class Spell:
     if self.target:
       if (any(i in self.target for i in ['beast', 'cavalry', 'infantry', 'civil']) 
           and target == None):
-           
-       
         units = [i for i in itm.pos.units 
                  if i.nation == itm.nation and i != itm]
         target = basics.get_item(units, itm.nation)
@@ -100,10 +102,47 @@ class BreathOfTheDesert(Spell):
   desc = 'Envía aires del desierto a una casilla elegida. esto subirá la temperatura y dañara la producción de alimentos.'
 
 
-
 class CastBloodRain(Spell):
   name = 'blood rain'
   cast = 10
+  cost = 30
+  type = spell_t
+  tags = ['weather']
+
+  def ai_run(self, itm):
+    tiles = itm.pos.get_near_tiles(1)
+    raining = 0
+    for t in tiles:
+      if self.name in [ev.name for ev in t.events]: raining = 1
+    if raining == 0: self.init(itm)
+
+
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name}'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    dist = 2
+    roll = roll_dice(1)
+    if roll >= 6: dist += 4
+    elif roll >= 5: dist += 2
+    pos = itm.pos
+    sq = pos.get_near_tiles(dist)
+    casting = BloodRaining
+    casting.turns = randint(2,3)
+    roll = basics.roll_dice(1)
+    if roll >= 5: casting.turns += 1 
+    if roll >= 6: casting.turns += 3
+    for s in sq:
+      if casting.name not in [ev.name for ev in s.events]:
+        s.events += [casting(s)]
+        s.events = [evt for evt in s.events if evt.name != Rain.name
+                    and evt.name != HeavyRain.name]
+
+
+class CastHeavyRain(Spell):
+  name = 'storm'
+  cast = 1#0
   cost = 3#0
   type = spell_t
   tags = ['weather']
@@ -115,28 +154,70 @@ class CastBloodRain(Spell):
       if self.name in [ev.name for ev in t.events]: raining = 1
     if raining == 0: self.init(itm)
 
+
   def run(self, itm):
-    sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
     msg = f'spell {self.name}'
     itm.log[-1] += [msg]
     logging.debug(msg)
-    dist = 2
+    dist = 1
     roll = roll_dice(1)
-    if roll >= 6: dist += 4
-    elif roll >= 5: dist += 2
+    if roll >= 6: dist += 2
+    elif roll >= 5: dist += 1
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
+    casting = HeavyRain
+    casting.turns = randint(2,4)
+    roll = basics.roll_dice(1)
+    if roll >= 6: casting.turns += 2 
     for s in sq:
-      if self.name not in [ev.name for ev in s.events]:
-        s.events += [BloodRaining(s)]
-        s.events[-1].turns = randint(3,5)
+      if casting.name not in [ev.name for ev in s.events]+[Rain.name]:
+        s.events += [casting(s)]
+        s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
+
+
+class CastRain(Spell):
+  name = 'cast rain'
+  cast = 1#10
+  cost = 1#20
+  type = spell_t
+  tags = ['weather']
+
+  def ai_run(self, itm):
+    tiles = itm.pos.get_near_tiles(2)
+    tiles = [t for t in tiles if t.sight]
+    raining = 0
+    for t in tiles:
+      if BloodRaining.name in [ev.name for ev in t.events]: raining = 1
+    if raining: self.init(itm)
+
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name}'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    dist = 3
+    roll = roll_dice(1)
+    if roll >= 6: dist += 2
+    elif roll >= 5: dist += 1
+    pos = itm.pos
+    sq = pos.get_near_tiles(dist)
+    casting = Rain
+    casting.turns = randint(2,4)
+    roll = basics.roll_dice(1)
+    if roll >= 5: casting.turns += 1 
+    if roll >= 6: casting.turns += 2 
+    for s in sq:
+      if casting.name not in [ev.name for ev in s.events]+[HeavyRain.name]:
+        s.events += [casting(s)]
+        s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
 
 
 class CastWailingWinds(Spell):
   name = 'wailing winds'
   desc = '-1 resolve for all units. ignores (death, malignant.'
   cast = 6
-  cost = 1#5
+  cost = 10
   ranking = 0
   tags = ['morale']
   type = 'spell'
@@ -149,7 +230,7 @@ class CastWailingWinds(Spell):
     if wailing == 0: self.init(itm)
 
   def run(self, itm):
-    sleep(loadsound('spell38', channel=ch5, vol=0.7))
+    if itm.show_info: sleep(loadsound('spell38', channel=ch5, vol=0.7))
     msg = f'spell {self.name}'
     itm.log[-1] += [msg]
     logging.debug(msg)
@@ -159,20 +240,26 @@ class CastWailingWinds(Spell):
     elif roll >= 5: dist += 1
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
+    casting = WailingWinds
+    casting.turns = randint(2,3)
+    roll = basics.roll_dice(1)
+    if roll >= 5: casting.turns += 1 
+    if roll >= 6: casting.turns += 2 
     for s in sq:
-      if self.name not in [ev.name for ev in s.events]:
-        s.events += [WailingWinds(s)]
-        s.events[-1].turns = randint(2,3)
+      if casting.name not in [ev.name for ev in s.events]:
+        s.events += [casting(s)]
 
 
 class HealingMists(Spell):
   desc = 'summons a mist in unit position. this mist heals all units into.'
+  cost = 15
+  cast = 8
 
 
 
 class HealingRoots(Spell):
   name = 'raices curativas.'
-  cost = 10
+  cost = 15
   cast = 4
   type = 'spell'
   tags = [health_t]
@@ -206,8 +293,11 @@ class EnchantedForests(Spell):
 
 
 class FeastOfFlesh(Spell):
-  desc = 'sacrifica x población para invocar ogros a su servicio.'
+  desc = 'sacrifica 200 población para invocar ogros a su servicio. +50 unrest.'
+  cast = 4
+  cost = 20
 
+  tile_pop = 200
 
 
 class FireDarts(Spell):
@@ -286,8 +376,9 @@ class RaiseDead(Spell):
 
 
 class Reinvigoration(Spell):
-  desc = 'sacrifica x población para regenerar poder.'
-
+  desc = 'sacrifica 50 población para regenerar 10 poder.'
+  cast = 4
+  cost = 10
 
 
 class SanguineHeritage(Spell):
@@ -296,7 +387,9 @@ class SanguineHeritage(Spell):
 
 
 class SecondSun(Spell):
-  desc = 'crea un segundo sol negando la noche y dañando la agricultura de los lugares afectados.'
+  desc = 'crea un segundo sol negando la noche.'
+  cast = 10
+  cost = 40
 
 
 
@@ -322,8 +415,8 @@ class SummonAwakenTree(Spell):
 
 class SummonDevourerOfDemons(Spell):
   name = 'summon devourer of demons'
-  cost = 1
-  cast = 1
+  cast = 10
+  cost = 20
   type = 'spell'
   tags = ['summon']
 
@@ -341,8 +434,8 @@ class SummonDevourerOfDemons(Spell):
 
 class SummonDriads(Spell):
   name = 'summon driads'
-  cost = 1
-  cast = 1
+  cast = 10
+  cost = 25
   type = 'spell'
   tags = ['summon']
 
@@ -359,10 +452,10 @@ class SummonDriads(Spell):
 
 class SummonForestBears(Spell):
   name = 'summon forest bears'
-  cost = 1
-  cast = 1
-  type = 'spell'
+  cost = 15
+  cast = 8
   tags = ['summon']
+  type = 'spell'
 
   def ai_run(self, itm):
     if itm.pos.surf and itm.pos.surf == forest_t: self.init(itm)
@@ -377,8 +470,8 @@ class SummonForestBears(Spell):
 
 class SummonFalcons(Spell):
   name = 'summon forest falcons'
-  cost = 1
-  cast = 1
+  cast = 5
+  cost = 10
   type = 'spell'
   tags = ['summon']
 
@@ -395,8 +488,8 @@ class SummonFalcons(Spell):
 
 class SummonSpectralInfantry(Spell):
   name = 'summon spectral infantry'
-  cost = 1
-  cast = 1
+  cast = 8
+  cost = 30
   type = 'spell'
   tags = ['summon']
 
