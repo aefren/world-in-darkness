@@ -137,43 +137,29 @@ class CastBloodRain(Spell):
       if casting.name not in [ev.name for ev in s.events]:
         s.events += [casting(s)]
         s.events = [evt for evt in s.events if evt.name != Rain.name
-                    and evt.name != HeavyRain.name]
+                    and evt.name != Storm.name]
 
 
-class CastHeavyRain(Spell):
-  name = 'storm'
-  cast = 1#0
-  cost = 3#0
+class CastMist(Spell):
+  name = 'cast mist'
+  cast = 1#10
+  cost = 1#20
   type = spell_t
   tags = ['weather']
 
-  def ai_run(self, itm):
-    tiles = itm.pos.get_near_tiles(1)
-    raining = 0
-    for t in tiles:
-      if self.name in [ev.name for ev in t.events]: raining = 1
-    if raining == 0: self.init(itm)
-
+  def ai_run(self,itm):
+    self.init(itm)
 
   def run(self, itm):
     if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
     msg = f'spell {self.name}'
     itm.log[-1] += [msg]
     logging.debug(msg)
-    dist = 1
-    roll = roll_dice(1)
-    if roll >= 6: dist += 2
-    elif roll >= 5: dist += 1
     pos = itm.pos
-    sq = pos.get_near_tiles(dist)
-    casting = HeavyRain
+    casting = Rain
     casting.turns = randint(2,4)
-    roll = basics.roll_dice(1)
-    if roll >= 6: casting.turns += 2 
-    for s in sq:
-      if casting.name not in [ev.name for ev in s.events]+[Rain.name]:
-        s.events += [casting(s)]
-        s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
+    if casting.name not in [ev.name for ev in pos.name]:
+        pos.events += [casting(pos)]
 
 
 class CastRain(Spell):
@@ -208,15 +194,52 @@ class CastRain(Spell):
     if roll >= 5: casting.turns += 1 
     if roll >= 6: casting.turns += 2 
     for s in sq:
-      if casting.name not in [ev.name for ev in s.events]+[HeavyRain.name]:
+      if all(i not in [Storm.name, Rain.name] for i in [ev.name for ev in s.events]):
         s.events += [casting(s)]
         s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
+
+
+class CastStorm(Spell):
+  name = 'storm'
+  cast = 1#0
+  cost = 3#0
+  type = spell_t
+  tags = ['weather']
+
+  def ai_run(self, itm):
+    tiles = itm.pos.get_near_tiles(1)
+    raining = 0
+    for t in tiles:
+      if self.name in [ev.name for ev in t.events]: raining = 1
+    if raining == 0: self.init(itm)
+
+
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name}'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    dist = 1
+    roll = roll_dice(1)
+    if roll >= 6: dist += 2
+    elif roll >= 5: dist += 1
+    pos = itm.pos
+    sq = pos.get_near_tiles(dist)
+    casting = Storm
+    casting.turns = randint(2,4)
+    roll = basics.roll_dice(1)
+    if roll >= 6: casting.turns += 2 
+    for s in sq:
+      if all(i not in [Storm.name] for i in [ev.name for ev in s.events]):
+        s.events += [casting(s)]
+        s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
+        s.events = [evt for evt in s.events if evt.name != Rain.name]
 
 
 class CastWailingWinds(Spell):
   name = 'wailing winds'
   desc = '-1 resolve for all units. ignores (death, malignant.'
-  cast = 6
+  cast = 8
   cost = 10
   ranking = 0
   tags = ['morale']
@@ -322,8 +345,8 @@ class PoisonCloud(Spell):
 
 class RaiseDead(Spell):
   name = raise_dead_t
-  cost = 20
   cast = 6
+  cost = 20
   ranking = 10
   type = 'spell34'
   tags = ['reanimating']
@@ -386,10 +409,37 @@ class SanguineHeritage(Spell):
 
 
 
-class SecondSun(Spell):
+class CastSecondSun(Spell):
+  name = 'cast second sun.'
   desc = 'crea un segundo sol negando la noche.'
-  cast = 10
-  cost = 40
+  cost = 3#
+  cast = 1#
+  type = spell_t
+  tags = ['weather']
+
+  def ai_run(self, itm):
+    tiles = itm.pos.get_near_tiles(5)
+    tiles = [t for t in tiles if t.sight]
+    go = 0
+    for t in tiles:
+      if malignant_t in t.units_effects or Eclipse.name in [ev.name for ev in t.events]: 
+        go= 1
+    if go: self.init(itm)
+
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name}'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    dist = 5
+    pos = itm.pos
+    sq = pos.get_near_tiles(dist)
+    casting = SecondSun
+    casting.turns = randint(2,5)
+    for s in sq:
+      if casting.name  not in [ev.name for ev in s.events]:
+        s.events += [casting(s)]
+        s.events[-1].tile_run(s)
 
 
 
@@ -448,6 +498,37 @@ class SummonDriads(Spell):
     logging.debug(msg)
     itm.log[-1] += [msg]
 
+
+class SummonEclipse(Spell):
+  name = 'summon eclipse.'
+  desc = 'summon eclipse negating the day.'
+  cost = 3#
+  cast = 1#
+  type = spell_t
+  tags = ['weather']
+
+  def ai_run(self, itm):
+    tiles = itm.pos.get_near_tiles(8)
+    tiles = [t for t in tiles if t.sight]
+    go = 0
+    for t in tiles:
+      if malignant_t in t.units_effects or SecondSun.name in [ev.name for ev in t.events]: 
+        go= 1
+    if go: self.init(itm)
+
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name}'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    dist = 8
+    pos = itm.pos
+    sq = pos.get_near_tiles(dist)
+    casting = Eclipse
+    casting.turns = randint(5,8)
+    for s in sq:
+      if casting.name  not in [ev.name for ev in s.events]:
+        s.events += [casting(s)]
 
 
 class SummonForestBears(Spell):

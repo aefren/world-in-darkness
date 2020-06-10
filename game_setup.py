@@ -12,8 +12,8 @@ HOLY.ai = 1
 TRANS = Walachia()
 TRANS.ai = 1
 ELF = WoodElves()
-ELF.ai = 0
-NATIONS = [ELF]
+ELF.ai = 1
+NATIONS = [HOLY]
 
 #Random factions.
 RANDOM_FACTIONS = [Hell(), Wild()]

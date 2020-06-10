@@ -105,8 +105,6 @@ class Terrain:
   surf = None
   hill = 0
   cost = 0
-  defense_terrain = 0
-  defense_magic = 0
   food = 1
   grouth_total = 0
   resource = 1
@@ -140,6 +138,17 @@ class Terrain:
       name += f' {self.soil.name}.'
     return name
 
+  def add_miasma(self):
+    roll = basics.roll_dice(2)
+    corpses = 0
+    for cr in self.corpses:
+      corpses += sum(cr.deads)
+    corpses = ceil(corpses/10)
+    sk = Miasma(self)
+    if roll+corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
+        print(f'miasma by corpses on {self.cords}.')
+        sk.turns = randint(3, 15)
+        self.events += [sk]
   def add_unit(self, unit, nation, revealed=0):
     global sayland
     done = 0
@@ -284,6 +293,8 @@ class Terrain:
     self.around_tundra = 0
     self.around_volcano = 0
     self.coast = 0
+    self.units_effects = []
+    self.units_traits = []
     sq = self.get_near_tiles(1)
     for s in sq:
       if s != self:
@@ -314,6 +325,9 @@ class Terrain:
               self.around_defense += uni.ranking
 
     # datos finales.
+    for uni in self.units:
+      self.units_traits += uni.traits
+      self.units_effects += uni.effects
     if self.soil.name == ocean_t and any(i for i in [self.around_plains,
                                                      self.around_grassland, self.around_desert, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
       self.coast = 1
@@ -412,15 +426,16 @@ class Terrain:
       ev.tile_run(self)
     self.events = [ev for ev in self.events if ev.turns > 0]
     self.burned = 0
-    self.corpses = [i for i in self.corpses if i.hp_total <= 0]
+    self.corpses = [i for i in self.corpses+self.units if i.hp_total < 1 and sum(i.deads) > 0
+                    and i.corpses]
     if self.city: self.city.raid_outcome = 0
     if self.flood > 0: self.flood -= 1
     self.raided = 0
     if self.unrest > 0: self.unrest -= randint(5, 10)
     if self.unrest < 0: self.unrest = 0
-    for i in self.corpses:
-      i.lasting -= randint(1, 2)
-      logging.debug(f'casilla reduce cadaver de {i}.')
+    if self.corpses:
+      self.add_miasma()
+      for cr in self.corpses: cr.deads[0] -= randint(1, 4)//cr.hp 
   def update(self, nation=None):
     if mapeditor == 0: self.ambient = world.ambient
     self.effects = []
@@ -435,11 +450,8 @@ class Terrain:
       self.set_threat(nation)
       
     # eliminando unidades, generando corpses.
-    self.corpses = [i for i in self.corpses if i.lasting > 0]
-    corpses = [i for i in self.units if i.hp_total < 1 
-               and i.corpses and sum(i.deads) > 0]
-    for i in corpses: i.lasting = randint(8, 15)
-    self.corpses += corpses
+    self.corpses = [i for i in self.corpses+self.units if i.hp_total < 1 and sum(i.deads) > 0
+                    and i.corpses]
     self.units = [it for it in self.units 
                   if it.hp_total > 0]
     self.is_blocked()
@@ -509,7 +521,7 @@ class Terrain:
     self.resource = round(self.resource)
     self.threat = round(self.threat)
     
-    self.day_night = self.ambient.day_night
+    self.day_night = self.ambient.day_night[0]
     self.month = self.ambient.month[0]
     self.season = self.ambient.season[0]
     self.time = self.ambient.time[0]
@@ -707,13 +719,13 @@ class World:
   def season_events(self):
     self.set_master()
     self.events_num = int((self.height+self.width)*0.1)
-    self.winter_events()
+    if self.ambient.season[1][self.ambient.season[0]] == winter_t: self.winter_events()
   def set_master(self):
     self.super_unit = MASTER(Wild)
     self.super_unit.log = [[]]
     self.super_unit.pos = self.map[0]
   def winter_events(self):
-    events = [CastRain, CastHeavyRain]
+    events = [CastRain, CastStorm]
     for r in range(self.events_num):
       ev = choice(events)
       if basics.roll_dice(2) >= ev.cast:
@@ -726,12 +738,12 @@ class World:
       if go: 
         self.super_unit.pos = pos
         ev(self.super_unit).init(self.super_unit)
-        print(f'launched on {pos.cords}')
   def update(self, scenary):
     self.clean_nations()
     # self.end_game()
-    # self.cnation = self.nations[self.player_num]
+    self.cnation = self.nations[self.player_num]
     [it.autokill() for it in self.units]
+    self.season_events()
     self.units = []
     for t in scenary:
       for uni in t.units:
@@ -1576,7 +1588,7 @@ def ai_move_group(itm):
         itm.break_group()
       return
   if itm.goal[0] == stalk_t:
-    if itm.rng + itm.rng_mod > 5 and itm.pos.day_night[0]: ranking *= 0.2
+    if itm.rng + itm.rng_mod > 5 and itm.pos.day_night: ranking *= 0.2
     if ranking * 1.5 < threat:
       logging.debug(f'mayor.')
       if roll_dice(2) >= 10:
@@ -2277,8 +2289,8 @@ def combat_menu(itm, pos, target=None, dist=0):
           msg += i.battle_log
           i.log[-1] += [msg, msg2]
           i.nation.log[-1] += [msg, msg2]
+          i.add_corpses(target.pos)
         if itm.hp_total < 1:
-          target.pos.units.append(itm)
           if itm.pos != target.pos and itm in itm.pos.units: itm.pos.units.remove(itm)
           msg = f'{target} ({target.nation}) a vencido.'
           if target.show_info: speak(msg)
@@ -2500,9 +2512,9 @@ def control_game(event):
     if event.key == pygame.K_8:
       pos.add_unit(Sagittarii, holy_empire_t, 1)
     if event.key == pygame.K_9:
-      pos.add_unit(SwordsMen, holy_empire_t, 1)
+      pos.add_unit(Velites, holy_empire_t, 1)
     if event.key == pygame.K_0:
-      pos.add_unit(SilvanArcher, wood_elves_t, 1)
+      pos.add_unit(LizardMen, wood_elves_t, 1)
     if event.key == pygame.K_a:
       if x > -1:
         target = local_units[x].set_attack(local_units)
@@ -2867,6 +2879,7 @@ def control_global(event):
       if event.key == pygame.K_1:
         sp.speak(f'{food_t} {pos.food_need} {of_t} {pos.food}.', 1)
         sp.speak(f'{resources_t} {pos.resource}.')
+        sp.speak(f'flood {pos.flood}.')
       if event.key == pygame.K_2:
         events = [ev.name for ev in pos.events]
         terrain = [ev.name for ev in pos.terrain_events]
@@ -3230,13 +3243,17 @@ def info_tile(pos, nation, sound='in1'):
   while True:
     sleep(0.01)
     if say:
+      if pos.corpses == []: corpses = ['no.']
+      else: corpses = []
+      for i in pos.corpses:
+        corpses += [f'{i}: {sum(i.deads)}']
       items = [
         f'{pos}',
+        f'{corpses_t} {[str(it) for it in corpses]}',
         f'{buildings_t} {len(pos.buildings)}, {units_t} {len(pos.units)}.',
         f'{population_t} {round(pos.pop,1)}, {public_order_t} {round(pos.public_order,1)}.',
         f'{income_t} {round(pos.income,1)}.',
         f'{food_t} {pos.food}. {resources_t} {pos.resource}.',
-        f'{dp_t} {pos.defense_terrain}.',
         f'{defense_t} {pos.defense}.',
         f'{grouth_t} {pos.grouth_total}.',
         f'{size_t} {pos.size}, {pos.size_total}%.',
@@ -4080,9 +4097,9 @@ def next_play():
     if world.player_num == len(world.nations):
       new_turn()
       # init = time()
+      world.player_num = 0
       ai_random()
       # print(f'ai_random. {time()-init}.')
-      world.player_num = 0
 
     nation = world.nations[world.player_num]
     if nation.ai == 0:
@@ -4697,7 +4714,7 @@ def terrain_info(pos, nation):
     elif mapeditor:
       map_update(nation, scenary, 1)
     if mapeditor in [0, 1]:
-      if pos.events: sleep(loadsound('notify27', vol=(0.5,0.5), channel=ch3) * 0.2)
+      if pos.events: sleep(loadsound('notify27', vol=(0.5,0.5), channel=ch3) * 0.1)
       if pos.nation == nation and pos.blocked: sleep(loadsound('nav2') * 0.3)
       elif pos.nation == nation:
         sleep(loadsound('nav1') * 0.3)
@@ -4739,12 +4756,12 @@ def terrain_info(pos, nation):
           local_units.sort(key=lambda x: x.settler)
           local_units.sort(key=lambda x: x.mp[0], reverse=True)
         if filter_expand == 0:
-          if local_units and pos.sight: sp.speak(f'{len(local_units)} {units_t}.')
-          if pos.corpses and pos.sight: sp.speak(f'{corpses_t}.')
+          if local_units and pos.sight: sp.speak(f'{squads_t} {len(local_units)}.')
+          if pos.corpses and pos.sight: sp.speak(f'{corpses_t} {len(pos.corpses)}.')
         # sp.speak(f'{pos}')
         if pos.is_city and (pos.sight or pos in nation.nations_tiles):
           sp.speak(f'{pos.city}')
-          sleep(loadsound('working1')*0.3)
+          loadsound('working1')
         if filter_expand:
           cost = get_tile_cost(city, pos)
           sp.speak(f'{cost} {gold_t}.')

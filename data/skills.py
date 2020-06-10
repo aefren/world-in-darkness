@@ -8,6 +8,7 @@ from time import sleep, process_time
 from log_module import *
 import basics
 from data.lang.es import *
+from sound import *
 
 
 class Skill:
@@ -106,7 +107,8 @@ class BloodRaining(Skill):
         itm.off_mod -= 1
         itm.str_mod -= 1 
         itm.range_mod -= 5
-
+  def tile_run(self, itm):
+    self.turn -= 1
 
 
 class BloodyBeast(Skill):
@@ -118,7 +120,7 @@ class BloodyBeast(Skill):
 
   def run(self, itm):
     if itm.pos and itm.pos.pop:
-      if roll_dice(1) > 4:
+      if basics.roll_dice(1) > 4:
         deads = randint(1, itm.units)
         deads *= itm.att + itm.att_mod
         deads *= itm.damage + itm.damage_mod
@@ -139,7 +141,7 @@ class BloodyFeast(Skill):
   type = 'generic'
 
   def run(self, itm):
-    if itm.day_night[0]:
+    if itm.day_night:
       itm.hp_res_mod += 5
 
 
@@ -177,10 +179,10 @@ class DarkPresence(Skill):
     if (itm.nation == self.nation
         and malignant_t in itm.traits 
         and vampire_t not in itm.traits and self.name not in itm.effects):
-      if itm.day_night[0] == 0:
+      if itm.day_night == 0:
         itm.effects.append(self.name + str(f' ({day_t})'))
         itm.res_mod += 1
-      if itm.day_night[0]:
+      if itm.day_night:
         itm.effects.append(self.name + str(f' ({night_t})'))
         itm.dfs_mod += 1
         itm.moves_mod += 1
@@ -188,6 +190,17 @@ class DarkPresence(Skill):
         itm.res_mod += 2
         itm.str_mod += 2
 
+
+class DarkVision(Skill):
+  name = 'dark vision'
+  desc = 'units won get night vision effects.'
+  effect = 'self'
+  ranking = 5
+  type = 'generic'
+
+  def run(self, itm):
+    itm.effects.append(self.name) 
+    itm.dark_vision = 1
 
 
 class DesertSurvival(Skill):
@@ -202,6 +215,28 @@ class DesertSurvival(Skill):
     if itm.pos and itm.pos.soil.name == waste_t: 
       itm.effects.append(self.name)
       itm.stealth_mod += 2
+
+
+class Eclipse(Skill):
+  name = 'eclipse'
+  desc = '-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth.'
+  effect = 'all'
+  type = 'generic'
+
+  def run(self, itm):
+    itm.effects.append(self.name)
+    itm.stealth_mod += 2
+    if itm.dark_vision == 0 and itm.pos.day_night == 0:
+      itm.dfs_mod -= 1
+      itm.off_mod -= 1
+      if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 5
+    if malignant_t in itm.traits:
+      itm.off_mod += 2
+      itm.str_mod += 2
+  def tile_run(self, itm):
+    self.turns -= 1
+    itm.events = [ev for ev in itm.events if ev.name != SecondSun.name]
+    itm.day_night = 0
 
 
 class Fanatism(Skill):
@@ -273,7 +308,7 @@ class ForestSurvival(Skill):
     itm.forest_survival = 1 
     if itm.pos and itm.pos.surf.name == forest_t: 
       itm.effects.append(self.name)
-      itm.can_hide = 1
+      #itm.can_hide = 1
       itm.stealth_mod += 2
 
 
@@ -319,8 +354,8 @@ class ElusiveShadow(Skill):
 
   def run(self, itm):
     itm.effects.append(self.name) 
-    if itm.day_night[0]: itm.stealth_mod += 6
-    elif itm.day_night[0] == 0: itm.stealth_mod += 3
+    if itm.day_night: itm.stealth_mod += 6
+    elif itm.day_night == 0: itm.stealth_mod += 3
 
 
 
@@ -346,9 +381,9 @@ class HeavyCharge(Skill):
     itm.damage_charge_mod += 3
 
 
-class HeavyRain(Skill):
+class Storm(Skill):
   name = 'heavy rain'
-  desc = ''
+  desc = 'if unit is ranged -4 rng, -1 off.'
   effects = 'self'
   ranking = 0
   type = 'generic'
@@ -366,12 +401,16 @@ class HeavyRain(Skill):
     if roll >= 6: itm.flood += 1
     self.turns -= 1
     if itm.soil.name == waste_t: self.turns -= 1
+    if roll >= 5:
+      itm.events += [mist(itm)]
+    for ev in itm.events:
+      if 'miasma' in ev.tags: ev.turns -= 1
 
 
 class HillTerrain(Skill):
-  effect = 'all'
-  desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge, -1 dfs, -1 off. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
   name = 'hill terrain'
+  desc = '-2 moves for grount units, -4 move for mounted unit, unit can not charge, -1 dfs, -1 off. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth.'
+  effect = 'all'
   type = 'generic'
 
   def run(self, itm):
@@ -433,14 +472,14 @@ class ImpalingRoots(Skill):
         off -= target.dfs + target.dfs_mod
         hit = get_hit_mod(off)
         logging.debug(f'hit {hit}.')
-        if roll_dice(1) >= hit:
+        if basics.roll_dice(1) >= hit:
           st = 6
           st -= target.res + target.res_mod
           wound = get_wound_mod(st)
           logging.debug(f'wound {wound}.')          
-          if roll_dice(1) >= wound:
+          if basics.roll_dice(1) >= wound:
             damage += 2
-            if roll_dice(1) == 6:
+            if basics.roll_dice(1) == 6:
               damage += 2
       # itm.damage_done[-1] += damage
       if damage:
@@ -453,16 +492,16 @@ class ImpalingRoots(Skill):
 
 
 class Inspiration(Skill):
-  effect = 'friend'
-  desc = '+1 moves, +1 resolve'
   name = 'inspiraci�n'
+  desc = '+1 hit roll, +1 resolve.'
+  effect = 'friend'
   ranking = 5
   type = 'generic'
 
   def run(self, itm):
     if itm.nation == self.nation and itm != self.itm:
       itm.effects.append(self.name)
-      itm.moves_mod += 1
+      itm.hit_rollss_mod += 1
       itm.resolve_mod += 1
 
 
@@ -573,28 +612,91 @@ class MastersEye(Skill):
         itm.resolve_mod += 1
 
 
-class Night(Skill):
+
+class Miasma(Skill):
+  name = 'miasma'
+  desc = ''
+  effects = 'self'
+  ranking = 0
+  type = 2
+  turns = -1
+  tags = ['miasma']
+  def run(self, itm):
+    itm.effects += [self.name]
+    roll = basics.roll_dice(1)
+    if roll >= 5:
+      if self.name not in [ev.name for ev in itm.pos.events]:
+        sk = Miasma(itm.pos)
+        sk.turns = randint(5, 15)
+        itm.pos.events += [sk]
+        msg = f'miasma in {itm.pos} {itm.pos.cords}.'
+        if itm.pos.nation: itm.pos.nation.log[-1] += [msg]
+        logging.debug(msg)
+        if itm.pos.nation and itm.pos.nation.show_info:
+          sleep(loadsound('notify25', channel=ch4) *0.3)
+  def tile_run(self, itm):
+    self.turns -= 1
+    if itm.pop: 
+      pop_death = randint(2, 10)
+      msg = f'miasma {kills_t} {pop_death*itm.pop/100}.'
+      logging.debug(msg)
+      itm.nation.log[-1] += [msg]
+      itm.pop -= pop_death*itm.pop/100
+      if itm.nation.show_info: sleep(loadsound('notify23'))
+    roll = basics.roll_dice(1)
+    if roll >= 6 and itm.units:
+      units = [u for u in itm.units if poisonres_t not in u.traits
+               and death_t not in u.traits]
+      if units:
+        unit = choice(units)
+        turns = randint(1,3)
+        roll = basics.roll_dice(1)
+        if roll >= 6: turns += 5
+        elif roll >= 5: turns += 3
+        else: turns += 1
+        sk = Intoxicated(unit)
+        sk.turns = turns        
+        if Intoxicated.name not in [s.name for s in unit.skills]: 
+          unit.other_skills += [sk]
+
+
+class mist(Skill):
+  name = 'mist'
+  desc = '-1 rng if ranged unit, +3 stealth.'
   effect = 'all'
-  desc = '-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth.'
+  type = 'generic'
+
+  def run(selfself, itm):
+    itm.effects += [self.name]
+    itm.stealth_mod += 3
+    if itm.rng+itm.rng_mod > 5: itm.rng_mod -= 3
+
+class Night(Skill):
   name = night_t
+  desc = '-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth.'
+  effect = 'all'
   type = 'generic'
 
   def run(self, itm):
-    if itm.day_night[0]:
+    if (itm.day_night 
+        and SecondSun.name not in [ev.name for ev in itm.pos.events]):
       itm.effects.append(self.name)
       itm.stealth_mod += 2
-      if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 5
+      if itm.dark_vision == 0:
+        itm.dfs_mod -= 1
+        itm.off_mod -= 1
+        if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 5
 
 
 class NightFerocity(Skill):
-  effect = 'self'
-  desc = 'if night: +1 att, +1 moves.'
   name = 'ferocidad nocturna'
+  desc = 'if night: +1 att, +1 moves.'
+  effect = 'self'
   ranking = 5
   type = 'generic'
 
   def run(self, itm):
-    if itm.day_night[0]:
+    if itm.day_night:
       itm.effects.append(self.name) 
       itm.att_mod += 1
       itm.moves_mod += 1
@@ -609,7 +711,7 @@ class NightSurvival(Skill):
 
   def run(self, itm):
     itm.night_survival = 1
-    if itm.day_night[0]:
+    if itm.day_night:
       itm.effects.append(self.name)
       if itm.power: itm.power_res_mod += 5
       itm.hp_res_mod += 2
@@ -631,9 +733,9 @@ class MountainSurvival(Skill):
 
 
 class Organization(Skill):
-  effect = 'friend'
-  desc = '+1 off, +1 dfs.'
   name = 'organizaci�n'
+  desc = '+1 off, +1 dfs. +1 resolve if unit is not sacred.'
+  effect = 'friend'
   ranking = 3
   type = 'generic'
 
@@ -659,6 +761,21 @@ class PikeSquare (Skill):
       itm.att_mod += 1
     if itm.target: 
       itm.target.can_charge = 0
+
+
+class PyreOfCorpses(Skill):
+  name = 'pyre of corpses'
+  desc = 'burn corpses at position.'
+  effect = 'self'
+  type = 2
+
+  def run(self, itm):
+    if itm.pos.corpses: 
+      crp = choice(itm.pos.corpses)
+      crp.deads[0] -= (itm.units//2)//crp.hp
+      
+
+
 
 
 class Raid(Skill):
@@ -691,6 +808,8 @@ class Rain(Skill):
     if roll >= 6: itm.flood += 1
     self.turns -= 1
     if itm.soil.name == waste_t: self.turns -= 1
+    for ev in itm.events:
+      if 'miasma' in ev.tags: ev.turns -= 1
 
 
 class Regroup(Skill):
@@ -737,22 +856,22 @@ class Refit(Skill):
 
 
 class SermonOfCourage(Skill):
-  effect = 'friend'
-  desc = '+1 resolve a las unidades humanas.'
   name = 'serm�n de coraje'
+  desc = '+2 resolve if unit is sacred and human.'
+  effect = 'friend'
   ranking = 3
   type = 'generic'
 
   def run(self, itm):
-    if itm != self.itm and human_t in itm.traits: 
+    if itm != self.itm and human_t in itm.traits and sacred_t in itm.traits: 
       itm.effects.append(self.name)
-      itm.resolve_mod += 1
+      itm.resolve_mod += 2
 
 
 class ShadowHunter(Skill):
-  effect = 'self'
   name = 'cazador de sombras'
   desc = '+2 damage, +2 str if enemy is death.'
+  effect = 'self'
   ranking = 5
   type = 'generic'
 
@@ -809,7 +928,7 @@ class Spread(Skill):
     if death_t not in itm.target.traits:
       deads = sum(itm.target.deads)
       for i in range(deads):
-        roll = roll_dice(2)
+        roll = basics.roll_dice(2)
         if roll >= self.cast:
           itm.hp_total += itm.hp
           itm.raised[-1] += 1
@@ -865,7 +984,7 @@ class Scream(Skill):
       target = itm.target
       logging.debug(f'grito ardiente.')
       if death_t not in target.traits:
-        roll = roll_dice(1)
+        roll = basics.roll_dice(1)
         if roll >= 5: 
           damage = randint(4, 10)
           itm.damage_done[-1] += damage
@@ -876,6 +995,28 @@ class Scream(Skill):
         if roll >= 3: target.combat_retreat()
 
 
+class SecondSun(Skill):
+  name = 'second sun'
+  desc = 'negates the night.'
+  effects = 'self'
+  ranking = 0
+  type = 'generic'
+
+  def run(self, itm):
+    itm.effects += [self.name]
+    if malignant_t in itm.traits:
+      itm.effects += ['burden']
+      itm.moves -= 2
+      itm.dfs_mod -= 2
+      itm.off_mod -= 2
+      itm.str_mod -= 2
+      itm.resolve -= 2
+  def tile_run(self, itm):
+    self.turns -= 1
+    itm.events = [ev for ev in itm.events if ev.name != Eclipse.name]
+    itm.day_night = 1 
+
+
 class SwampSurvival(Skill):
   effect = 'selv'
   desc = '+3 stealth in swams.'
@@ -884,6 +1025,7 @@ class SwampSurvival(Skill):
   type = 'generic'
 
   def run(self, itm):
+    itm.swamp_survival = 1
     if itm.pos and itm.pos.name == swamp_t:
       itm.effects += [self.name]
       itm.stealth_mod += 3
@@ -928,7 +1070,7 @@ class TheBeast(Skill):
   type = 2
 
   def run(self, itm):
-    if itm.pos and roll_dice(2) >= 6 and itm.day_night[0]:
+    if itm.pos and basics.roll_dice(2) >= 6 and itm.day_night[0]:
       if itm.pos.pop:
         deads = randint(2, 5) * itm.units
         if deads > itm.pos.pop: deads = itm.pos.pop
@@ -937,7 +1079,7 @@ class TheBeast(Skill):
         if itm.pos.nation.show_info : sleep(loadsound('spell33') * 0.5)
         msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
         itm.nation.log[-1].append(msg)
-      elif itm.pos.pop == 0 and roll_dice(2) >= 10:
+      elif itm.pos.pop == 0 and basics.roll_dice(2) >= 10:
         if itm.nation.show_info: sleep(loadsound('spell36') * 0.5)
         msg = f'{itm} es ahora {itm.align()}.'
         itm.nation.log[-1].append(msg)
@@ -955,7 +1097,7 @@ class ToxicClaws(Skill):
     if (itm.target and sum(itm.damage_done)
         and death_t not in itm.target.traits):
       logging.debug(f'{self.name} damage done {itm.damage_done}.')
-      if roll_dice(1) >= 3:
+      if basics.roll_dice(1) >= 3:
         sk = Intoxicated(itm.target)
         sk.turns = sum(itm.damage_done)
         if Intoxicated.name not in [s.name for s in itm.target.skills]: 
@@ -990,6 +1132,19 @@ class WailingWinds(Skill):
     itm.effects += [self.name]
     if any(i not in itm.traits for i in [death_t, malignant_t]):
       itm.resolve_mod -= 1
+
+
+class WarCry(Skill):
+  name = 'war cry'
+  desc = '+1 resolve if unit is human .'
+  effect = 'friend'
+  ranking = 3
+  type = 'generic'
+
+  def run(self, itm):
+    if itm.nation == self.nation and itm != self.itm and human_t in itm.traits: 
+      itm.effects.append(self.name)
+      itm.resolve_mod += 1
 
 
 class Weak(Skill):
