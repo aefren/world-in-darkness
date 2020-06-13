@@ -26,7 +26,7 @@ if dev_mode:
   from data.lang.es import *
   from data.skills import *
   import log_module
-  import screen_reader
+  from screen_reader import *
   from sound import *
 
 # Some colors.
@@ -126,6 +126,7 @@ class Terrain:
     self.skill_names = []
     self.terrain_events = []
     self.units = []
+    self.units_blocked = []
     if self.soil: self.update()
 
   def __str__(self):
@@ -143,12 +144,13 @@ class Terrain:
     corpses = 0
     for cr in self.corpses:
       corpses += sum(cr.deads)
-    corpses = ceil(corpses/10)
+    corpses = ceil(corpses / 10)
     sk = Miasma(self)
-    if roll+corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
+    if roll + corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
         print(f'miasma by corpses on {self.cords}.')
         sk.turns = randint(3, 15)
         self.events += [sk]
+
   def add_unit(self, unit, nation, revealed=0):
     global sayland
     done = 0
@@ -256,11 +258,12 @@ class Terrain:
         
       for uni in t.units:
         if uni.nation == nation:
+          uni.update()
           sq = t.get_near_tiles(1)
           for s in sq:
             s.sight = 1
             if s not in nation.map: nation.map.append(s)
-          if (uni.pos.hill or uni.can_fly) and uni.day_night[0] == 0:
+          if (uni.pos.hill or uni.can_fly) and uni.day_night == 0:
             for s in sq:
               sq1 = s.get_near_tiles(1)
               for s1 in sq1:
@@ -269,7 +272,6 @@ class Terrain:
                   # print(f'se agrega {s1}.')
                 if s1.surf.name not in [forest_t] and s1.hill not in [1]:
                   s1.sight = 1
-
   
   def set_around(self, nation, scenary):
     # logging.info(f'{self}.')
@@ -315,7 +317,7 @@ class Terrain:
       if s.sight and s != self:
         self.around_corpses += len(s.corpses)
         if nation:
-          if s.nation != nation: self.around_nations += [s.nation]
+          if s.nation != nation and s.nation != None: self.around_nations += [s.nation]
           if s.nation == nation: self.around_snations += [s.nation]
           for uni in s.units:
             uni.update()
@@ -347,7 +349,6 @@ class Terrain:
       if b.is_complete or b.type == city_t:
         self.income *= b.income
         self.incomes += [str(f'{b}'), self.income]
-
   
   def set_public_order(self):
     if self.nation == None: return
@@ -426,16 +427,21 @@ class Terrain:
       ev.tile_run(self)
     self.events = [ev for ev in self.events if ev.turns > 0]
     self.burned = 0
-    self.corpses = [i for i in self.corpses+self.units if i.hp_total < 1 and sum(i.deads) > 0
+    self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
                     and i.corpses]
     if self.city: self.city.raid_outcome = 0
     if self.flood > 0: self.flood -= 1
     self.raided = 0
-    if self.unrest > 0: self.unrest -= randint(5, 10)
+    if self.unrest > 0: self.unrest -= randint(2, 5)
     if self.unrest < 0: self.unrest = 0
+    self.units_blocked + [u for u in self.units if u.blocked > 0]
+    for u in self.units_blocked: u.blocked -= 1
+    self.units += [u for u in self.units_blocked if u.blocked < 1]
+    self.units_blocked = [u for u in self.units_blocked if u.blocked > 0]
     if self.corpses:
       self.add_miasma()
-      for cr in self.corpses: cr.deads[0] -= randint(1, 4)//cr.hp 
+      for cr in self.corpses: cr.deads[0] -= randint(1, 4) // cr.hp 
+
   def update(self, nation=None):
     if mapeditor == 0: self.ambient = world.ambient
     self.effects = []
@@ -450,10 +456,10 @@ class Terrain:
       self.set_threat(nation)
       
     # eliminando unidades, generando corpses.
-    self.corpses = [i for i in self.corpses+self.units if i.hp_total < 1 and sum(i.deads) > 0
+    self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
                     and i.corpses]
     self.units = [it for it in self.units 
-                  if it.hp_total > 0]
+                  if it.hp_total > 0 and it.blocked == 0]
     self.is_blocked()
     
     # calculando defensa.
@@ -718,26 +724,31 @@ class World:
 
   def season_events(self):
     self.set_master()
-    self.events_num = int((self.height+self.width)*0.1)
+    self.events_num = int((self.height + self.width) * 0.1)
     if self.ambient.season[1][self.ambient.season[0]] == winter_t: self.winter_events()
+
   def set_master(self):
     self.super_unit = MASTER(Wild)
     self.super_unit.log = [[]]
     self.super_unit.pos = self.map[0]
+
   def winter_events(self):
     events = [CastRain, CastStorm]
     for r in range(self.events_num):
       ev = choice(events)
-      if basics.roll_dice(2) >= ev.cast:
-        go = 1
-        pos = choice(self.map)
-        tiles = pos.get_near_tiles(2)
+      go = 0
+      pos = choice(self.map)
+      roll = basics.roll_dice(2)
+      if pos.surf.name == waste_t: roll -= 2
+      if roll >= ev.cast:
+        tiles = pos.get_near_tiles(4)
         for t in tiles:
           if ev.name in [e.name for e in t.events]: go = 0
       
       if go: 
         self.super_unit.pos = pos
         ev(self.super_unit).init(self.super_unit)
+
   def update(self, scenary):
     self.clean_nations()
     # self.end_game()
@@ -1400,7 +1411,7 @@ def ai_garrison(nation):
       if s.hill and uni.mountain_survival == 0: rnd *= 0.3
       if s.surf and s.surf.name == forest_t and uni.forest_survival == 0: rnd *= 0.3
       if s.surf and s.surf.name == swamp_t and uni.swamp_survival == 0: rnd *= 0.3
-      if s.hill and uni.day_night[0]: rnd *= 0.2
+      if s.hill and uni.day_night: rnd *= 0.2
       if hostile and hostile.rng + hostile.rng_mod < 6 and uni.rng + uni.rng_mod > 5: rnd *= 1.5
       max_ranking = max(i.ranking for i in s.units if i.revealed)
       logging.debug(f'{uni} rnd {round(rnd)}, trheat {s.threat}.')
@@ -1565,7 +1576,7 @@ def ai_move_group(itm):
         logging.debug(f'switch goto.')
         for s in alt:
           if s.threat < itm.group_ranking:
-            if (itm.day_night[0] 
+            if (itm.day_night 
                 and (s.nation != itm.nation and s.nation != None)
                 and roll_dice(1) >= 3):
               logging.debug(f'will avoid hills by night.')
@@ -1621,7 +1632,7 @@ def ai_move_group(itm):
         for s in alt:
           logging.debug(f'{s.threat =: }. {s} {s.cords}.')
           if s.threat < itm.group_ranking * 0.7:
-            if (itm.day_night[0] 
+            if (itm.day_night 
                 and (s.nation != itm.nation and s.nation != None)
                 and roll_dice(1) >= 3):
               logging.debug(f'will avoid hills by night.')
@@ -2642,7 +2653,7 @@ def control_game(event):
       if nation.cities == []:
         error(msg='no hay ciudad.', sound='errn1')
         return
-      y = selector(nation.cities, y, 'up')
+      y = basics.selector(nation.cities, y, 'up')
       try:
         pos = nation.cities[y].pos
       except:
@@ -2655,7 +2666,7 @@ def control_game(event):
       if nation.cities == []:
         error(msg='no hay ciudad.', sound='errn1')
         return
-      y = selector(nation.cities, y, 'down')
+      y = basics.selector(nation.cities, y, 'down')
       try:
         pos = nation.cities[y].pos
       except:
@@ -2671,7 +2682,7 @@ def control_game(event):
         unit = []
         x = 0
       elif x > -1:
-        x = selector(local_units, x, 'up')
+        x = basics.selector(local_units, x, 'up')
       basic_info(local_units[x])
     if event.key == pygame.K_PAGEDOWN:
       play_stop()
@@ -2682,7 +2693,7 @@ def control_game(event):
         unit = []
         x = 0
       elif x > -1:
-        x = selector(local_units, x, 'down')
+        x = basics.selector(local_units, x, 'down')
       basic_info(local_units[x])
     if event.key == pygame.K_F5:
       sayland = 1
@@ -2961,10 +2972,10 @@ def create_building(city, items, sound='in1'):
         if event.key == pygame.K_i:
           if isinstance(items[x](nation, nation.pos), Building): item_info(items[x](nation, nation.pos), nation)
         if event.key == pygame.K_UP:
-          x = selector(items, x, go="up")
+          x = basics.selector(items, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(items, x, go="down")
+          x = basics.selector(items, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3069,10 +3080,10 @@ def get_cast(itm):
           loadsound('s2')
           say = 1
         if event.key == pygame.K_UP:
-          x = selector(itm.spells, x, go="up")
+          x = basics.selector(itm.spells, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(itm.spells, x, go="down")
+          x = basics.selector(itm.spells, x, go="down")
           say = 1
         if event.key == pygame.K_i:
           pass
@@ -3109,10 +3120,10 @@ def get_item2(items1=[], items2=[], msg='', name=None, simple=0, sound='in1'):
       if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
         info_building(items1[x](nation, nation.pos))
       if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-        x = selector(items1, x, go="up")
+        x = basics.selector(items1, x, go="up")
         say = 1
       if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-        x = selector(items1, x, go="down")
+        x = basics.selector(items1, x, go="down")
         say = 1
       if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
         sp.speak(msg, 1)
@@ -3214,11 +3225,11 @@ def info_building(itm, sound='in1'):
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_UP:
-          x = selector(lista, x, go="up")
+          x = basics.selector(lista, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
           say = 1
-          x = selector(lista, x, go="down")
+          x = basics.selector(lista, x, go="down")
         if event.key == pygame.K_HOME:
           x = 0
           say = 1
@@ -3266,10 +3277,10 @@ def info_tile(pos, nation, sound='in1'):
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_UP:
-          x = selector(items, x, go="up")
+          x = basics.selector(items, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(items, x, go="down")
+          x = basics.selector(items, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3333,10 +3344,10 @@ def loading_map(location, filext, saved=0, sound='book_open01'):
           sp.speak(f'sort previews by date time.', 1)
           say = 1
         if event.key == pygame.K_UP:
-          x = selector(maps, x, go='up')
+          x = basics.selector(maps, x, go='up')
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(maps, x, go='down')
+          x = basics.selector(maps, x, go='down')
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3501,14 +3512,14 @@ def menu_building(pos, nation, sound='in1'):
                 if item.gold > nation.gold:
                   loadsound('errn1')
                   return
-                set_upgrade(items[x], item)
+                items[x].improve(item)
                 say = 1
               else: sleep(loadsound('errn1'))
         if event.key == pygame.K_UP:
-          x = selector(items, x, go="up")
+          x = basics.selector(items, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(items, x, go="down")
+          x = basics.selector(items, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3573,10 +3584,10 @@ def menu_city(itm, sound='in1'):
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_UP:
-          x = selector(lista, x, go="up")
+          x = basics.selector(lista, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(lista, x, go="down")
+          x = basics.selector(lista, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3639,10 +3650,10 @@ def menu_nation(nation, sound='book_open01'):
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_UP:
-          x = selector(nations, x, go="up")
+          x = basics.selector(nations, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(nations, x, go="down")
+          x = basics.selector(nations, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -3703,10 +3714,10 @@ def menu_unit(items, sound='in1'):
         if event.key == pygame.K_i:
           if items: item_info(items[x], nation)
         if event.key == pygame.K_UP:
-          x = selector(items, x, go="up")
+          x = basics.selector(items, x, go="up")
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(items, x, go="down")
+          x = basics.selector(items, x, go="down")
           say = 1
         if event.key == pygame.K_HOME:
           x = 0
@@ -4317,10 +4328,10 @@ def select_item(msg, building, sound, limit=0):
       if isinstance(building[x], str) == False: sp.speak(f'{building[x]().id[0]}.', 1)
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-        x = selector(building, x, 'up')
+        x = basics.selector(building, x, 'up')
         say = 1
       if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-        x = selector(building, x, 'down')
+        x = basics.selector(building, x, 'down')
         say = 1
       if event.type == pygame.KEYDOWN and event.key == pygame.K_HOME:
         say = 1
@@ -4594,10 +4605,10 @@ def start():
       for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
           if event.key == pygame.K_UP:
-            x = selector(items, x, go="up")
+            x = basics.selector(items, x, go="up")
             say = 1
           if event.key == pygame.K_DOWN:
-            x = selector(items, x, go="down")
+            x = basics.selector(items, x, go="down")
             say = 1
           if event.key == pygame.K_HOME:
             x = 0
@@ -4700,6 +4711,7 @@ def take_city(itm):
   itm.nation.update(scenary)
 
 
+
 def terrain_info(pos, nation):
   global city_name, local_units, nation_name, terrain_name, sayland
   if sayland:
@@ -4714,7 +4726,7 @@ def terrain_info(pos, nation):
     elif mapeditor:
       map_update(nation, scenary, 1)
     if mapeditor in [0, 1]:
-      if pos.events: sleep(loadsound('notify27', vol=(0.5,0.5), channel=ch3) * 0.1)
+      if pos.events: sleep(loadsound('notify27', vol=(0.5, 0.5), channel=ch3) * 0.1)
       if pos.nation == nation and pos.blocked: sleep(loadsound('nav2') * 0.3)
       elif pos.nation == nation:
         sleep(loadsound('nav1') * 0.3)
@@ -4805,10 +4817,10 @@ def train_unit(city, items, msg, sound='in1'):
           item_info(item, nation)
           say = 1
         if event.key == pygame.K_UP:
-          x = selector(items, x, go='up')
+          x = basics.selector(items, x, go='up')
           say = 1
         if event.key == pygame.K_DOWN:
-          x = selector(items, x, go='down')
+          x = basics.selector(items, x, go='down')
           say = 1
         if event.key == pygame.K_RETURN:
           if req_unit(item, nation, city):
@@ -4960,18 +4972,18 @@ def view_log(log, sound='book_open01', x=None):
           say = 1
           view_log(nation.devlog)
         if  event.key == pygame.K_LEFT:
-          x = selector(log, x, 'up', sound='itm_book_pageturn_03')
+          x = basics.selector(log, x, 'up', sound='itm_book_pageturn_03')
           y = 0
           say = 1
         if  event.key == pygame.K_RIGHT:
-          x = selector(log, x, 'down', sound='itm_book_pageturn_03')
+          x = basics.selector(log, x, 'down', sound='itm_book_pageturn_03')
           y = 0
           say = 1
         if  event.key == pygame.K_UP:
-          y = selector(log[x], y, 'up', sound='itm_book_pageturn_01')
+          y = basics.selector(log[x], y, 'up', sound='itm_book_pageturn_01')
           say = 1
         if  event.key == pygame.K_DOWN:
-          y = selector(log[x], y, 'down', sound='itm_book_pageturn_01')
+          y = basics.selector(log[x], y, 'down', sound='itm_book_pageturn_01')
           say = 1
         if  event.key == pygame.K_HOME:
           y = 0
