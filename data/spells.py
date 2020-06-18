@@ -550,7 +550,7 @@ class SightFromFuture(Spell):
 class SummonSecondSun(Spell):
   name = 'cast second sun.'
   desc = 'crea un segundo sol negando la noche.'
-  cast = 11
+  cast = 9
   cost = 40
   type = spell_t
   tags = ['weather']
@@ -725,6 +725,24 @@ class SummonFalcons(Spell):
     msg = f'{unit} ({summoning_t})'
     logging.debug(msg)
     itm.log[-1] += [msg]
+
+
+class SummonMandeha(Spell):
+  name = 'summon mandeha'
+  cast = 8
+  cost = 35
+  type = 'spell'
+  tags = ['summon']
+
+  def ai_run(self, itm):
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(Mandeha, itm.nation.name)
+    msg = f'{unit} ({summoning_t})'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
 
 
 

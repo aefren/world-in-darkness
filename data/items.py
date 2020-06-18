@@ -1334,6 +1334,8 @@ class Unit:
 
   dfs = 0
   res = 0
+  hres = 0
+  hlm = 0
   arm = 0
   armor = None
   shield = None
@@ -1381,6 +1383,7 @@ class Unit:
   can_siege = 0
   city = None
   dark_vision = 0
+  demon_souls = 0
   desert_survival = 0
   dist = 0
   fled = 0
@@ -1395,7 +1398,7 @@ class Unit:
   group_base = 0
   hidden = 0
   leader = None
-  level = 0
+  level = 1
   mountain_survival = 0
   nation = None
   night_survival = 0
@@ -1612,61 +1615,11 @@ class Unit:
     if pos.hill not in self.favhill: go = 0
     return go
 
-  def get_skills(self, info = 0):
-    if info: print(f'get skills {self}')
-    self.arm_mod = 0
-    self.armor_ign_mod = 0
-    self.att_mod = 0
-    self.damage_mod = 0
-    self.damage_critical_mod = 0
-    self.damage_charge_mod = 0
-    self.damage_sacred_mod = 0
-    self.dfs_mod = 0
-    self.hit_rolls_mod = 0
-    self.hp_res_mod = 0
-    self.hp_mod = 0
-    self.moves_mod = 0
-    self.off_mod = 0
-    self.pn_mod = 0
-    self.power_mod = 0
-    self.power_max_mod = 0
-    self.power_res_mod = 0
-    self.rng_mod = 0
-    self.ranking_skills = 0
-    self.res_mod = 0
-    self.resolve_mod = 0
-    self.stealth_mod = 0
-    self.str_mod = 0
-    self.sts_mod = 0
-
-    self.skill_names = []
-    self.effects = []
-    if self.hidden: self.effects += {hidden_t}
-    if self.settler == 1: self.skill_names.append(f' {settler_t}.')
-    if self.charge and self.can_charge: self.effects += {charge_t} 
-    
-    skills = [i for i in self.skills]
-    [self.skill_names.append(i.name) for i in self.skills]
-    tile_skills = []
-    if self.pos:
-      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events + self.pos.events + self.pos.skills]
-      elif self.attacking: tile_skills += [sk for sk in self.target.pos.terrain_events + self.pos.events]
-    if info: print(f'{len(tile_skills)} de casillas.')
-    for i in tile_skills:
-      if i.type == 'generic':
-        if info: print(f'{i} added.')
-        skills.append(i)
-        if info: print(f'se agrega {i.name}')
-    
-    if self.target: skills += [s for s in self.target.skills if s.effect == 'enemy']    
-    if info: print(f'run')
-    for sk in skills:
-      if sk.type == 'generic':
-        if info: print(sk.name)
-        sk.run(self)
-    
-    self.skill_names.sort()
-
+  def get_skills(self):
+    self.skills = [i for i in self.global_skills + self.terrain_skills + 
+                   self.defensive_skills + self.offensive_skills + self.other_skills]
+    return self.skills
+  
   def info(self, nation, sound = 'in1'):
     sleep(loadsound(sound))
     say = 1
@@ -1699,6 +1652,7 @@ class Unit:
           f'{stealth_t} {self.stealth+self.stealth_mod} ({self.stealth_mod}).',
           f'{type_t} {self.type}.',
           f'{traits_t} {self.traits}.',
+          f'{size_t} {self.size}.',
           f'{gold_t} {self.gold}, {upkeep_t} {self.upkeep} ({self.upkeep_total}).',
           f'{resources_t} {self.resource_cost}.',
           f'{food_t} {self.food}, {population_t} {self.pop}.',
@@ -1706,6 +1660,11 @@ class Unit:
           f'terrain skills {terrain_skills}.',
           f'{health_t} {self.hp}. '
           f'{restores_t} {self.hp_res+self.hp_res_mod} (+{self.hp_res_mod}).',
+          ]
+        
+        if self.demon_souls: lista += [f'demon souls {self.demon_souls}.']
+        
+        lista += [
           f'{magic_t} {power}.',
           f'mp {mp}.',
           f'{moves_t} {self.moves+self.moves_mod} ({self.moves_mod}).',
@@ -1919,9 +1878,9 @@ class Unit:
   def set_ranking(self):
     self.ranking_off = 0
     self.ranking_off_l = []
-    self.ranking_off += self.damage + self.damage_mod
+    self.ranking_off += (self.damage + self.damage_mod)
     self.ranking_off_l += ['damage', self.ranking_off]
-    self.ranking_off += self.damage_sacred + self.damage_sacred_mod
+    self.ranking_off += (self.damage_sacred + self.damage_sacred_mod)
     self.ranking_off_l += ['sacred', self.ranking_off]
     self.ranking_off *= self.att + self.att_mod
     self.ranking_off_l += ['att', self.ranking_off]
@@ -1929,43 +1888,125 @@ class Unit:
     self.ranking_off_l += ['units', self.ranking_off]
     self.ranking_off += (self.damage_charge + self.damage_charge_mod) * 10
     self.ranking_off_l += ['charge', self.ranking_off]
-    self.ranking_off *= 1 + (self.off + self.off_mod) / 10
+    #if self.ranking > 1: self.ranking //= 2
+    #self.ranking_off_l += ['divided', self.ranking_off]
+    if self.off+self.off_mod >= 8: self.ranking_off *= 3 + (self.off + self.off_mod) / 10    
+    elif self.off+self.off_mod >= 6: self.ranking_off *= 2 + (self.off + self.off_mod) / 10
+    elif self.off+self.off_mod >= 4: self.ranking_off *= 1.3 + (self.off + self.off_mod) / 10
+    else: self.ranking_off *= 1 + (self.off + self.off_mod) / 20
     self.ranking_off_l += ['off', self.ranking_off]
-    self.ranking_off *= 1 + (self.str + self.str_mod) / 10
+    if self.str+self.str_mod >= 8: self.ranking_off *= 2.5 + (self.str + self.str_mod) / 10
+    elif self.str+self.str_mod >= 6: self.ranking_off *= 2 + (self.str + self.str_mod) / 10
+    elif self.str+self.str_mod >= 4: self.ranking_off *= 1.5 + (self.str + self.str_mod) / 10
+    else: self.ranking_off *= 1 + (self.str + self.str_mod) / 10
     self.ranking_off_l += ['str', self.ranking_off]
-    self.ranking_off += (self.pn + self.pn_mod) * 5
+    self.ranking_off *= 1 + (self.pn + self.pn_mod) / 5
     self.ranking_off_l += ['pn', self.ranking_off]
-    self.ranking_off *= 1 + ((self.moves + self.moves_mod) / 2) / 10
+    self.ranking_off *= 1 + (self.moves + self.moves_mod) / 20
     self.ranking_off_l += ['moves', self.ranking_off]
+    self.ranking_off = round(self.ranking_off/6)
   
     self.ranking_dfs = self.hp_total
     self.ranking_dfs_l = ['hp', self.ranking_dfs]
-    self.ranking_dfs *= 1 + (self.dfs + self.dfs_mod) / 10
+    if self.dfs+self.dfs_mod >= 8: self.ranking_dfs *= 3 + (self.dfs + self.dfs_mod) / 10
+    elif self.dfs+self.dfs_mod >= 6: self.ranking_dfs *= 2 + (self.dfs + self.dfs_mod) / 10
+    else: self.ranking_dfs *= 1 + (self.dfs + self.dfs_mod) / 10
     self.ranking_dfs_l += ['dfs', self.ranking_dfs]
-    self.ranking_dfs *= 1 + (self.res + self.res_mod) / 5
+    if self.res+self.res_mod >= 8: self.ranking_dfs *= 3 + (self.res + self.res_mod) / 10
+    elif self.res+self.res_mod >= 6: self.ranking_dfs *= 2 + (self.res + self.res_mod) / 10
+    elif self.res+self.res_mod >= 4: self.ranking_dfs *= 1.5 + (self.res + self.res_mod) / 10
+    else: self.ranking_dfs *= 1 + (self.res + self.res_mod) / 10
     self.ranking_dfs_l += ['res', self.ranking_dfs]
-    if self.arm+self.arm_mod >= 6: 
-      self.ranking_dfs *= 1 + (self.arm + self.arm_mod)
-      self.ranking_dfs_l += ['arm', self.ranking_dfs]
-    elif self.arm+self.arm_mod >= 4: 
-      self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 5
-      self.ranking_dfs_l += ['arm', self.ranking_dfs]
-    elif self.arm+self.arm_mod >= 1: 
-      self.ranking_dfs *= 1 + (self.arm + self.arm_mod) / 10
-      self.ranking_dfs_l += ['arm', self.ranking_dfs]
+    if self.hres+self.hres_mod >= 4: self.ranking_dfs *= 2 + (self.hres + self.hres_mod) / 10
+    elif self.hres+self.hres_mod >= 2: self.ranking_dfs *= 1.5 + (self.hres + self.hres_mod) / 10
+    else: self.ranking_dfs *= 1 + (self.hres + self.hres_mod) / 10
+    self.ranking_dfs_l += ['h res', self.ranking_dfs]
+    if self.arm+self.arm_mod >= 8: self.ranking_dfs *= 2.5 + (self.arm + self.arm_mod)/10
+    elif self.arm+self.arm_mod >= 6: self.ranking_dfs *= 2 + (self.arm + self.arm_mod)/10
+    elif self.arm+self.arm_mod >= 4: self.ranking_dfs *= 1.5 + (self.arm + self.arm_mod)/10
+    else: self.ranking_dfs *= 1 + (self.arm + self.arm_mod)/10
+    self.ranking_dfs_l += ['arm', self.ranking_dfs]
     if self.armor : 
-      self.ranking_dfs *= 1 + (self.armor.arm / 10)
+      if self.armor.arm >= 4: self.ranking_dfs *= 1.5 + (self.armor.arm / 10)
+      else: self.ranking_dfs *= 1 + (self.armor.arm / 10)
       self.ranking_dfs_l += ['armor', self.ranking_dfs]
     if self.shield: 
-      self.ranking_dfs += 1 + (self.shield.dfs) / 10
+      self.ranking_dfs *= 1.5 + (self.shield.dfs) / 10
       self.ranking_dfs_l += ['shield', self.ranking_dfs]
+    self.ranking_dfs = round(self.ranking_dfs/4)
+
+
     self.ranking = self.ranking_dfs + self.ranking_off
-    self.ranking += (self.rng + self.rng_mod) * 5
+    if self.rng+self.rng_mod >= 20: self.ranking *= 2
+    elif self.rng+self.rng_mod >= 15: self.ranking *= 1.75
+    elif self.rng+self.rng_mod >= 10: self.ranking *= 1.5
+    elif self.rng+self.rng_mod >= 6: self.ranking *= 1.2
   
-    self.ranking = round(self.ranking / 4)
     if self.can_fly: self.ranking *= 1.3
     if self.resolve + self.resolve_mod >= 6: self.ranking *= 1.3
-    self.ranking += sum(s.ranking for s in self.skills + self.spells)
+    print(f'final ranking {self.ranking}.')
+    for sk in self.skills:
+      print(f'{sk.name}, {sk.ranking}.')
+      self.ranking *= sk.ranking
+      print(f'{self.ranking= }')
+    self.ranking = round(self.ranking)
+
+  def set_skills(self, info = 1):
+    if info: print(f'get skills {self}')
+    self.arm_mod = 0
+    self.armor_ign_mod = 0
+    self.att_mod = 0
+    self.damage_mod = 0
+    self.damage_critical_mod = 0
+    self.damage_charge_mod = 0
+    self.damage_sacred_mod = 0
+    self.dfs_mod = 0
+    self.hit_rolls_mod = 0
+    self.hp_res_mod = 0
+    self.hres_mod = 0
+    self.hp_mod = 0
+    self.moves_mod = 0
+    self.off_mod = 0
+    self.pn_mod = 0
+    self.power_mod = 0
+    self.power_max_mod = 0
+    self.power_res_mod = 0
+    self.rng_mod = 0
+    self.ranking_skills = 0
+    self.res_mod = 0
+    self.resolve_mod = 0
+    self.size_mod = 0
+    self.stealth_mod = 0
+    self.str_mod = 0
+    self.sts_mod = 0
+
+    self.skill_names = []
+    self.effects = []
+    if self.hidden: self.effects += {hidden_t}
+    if self.settler == 1: self.skill_names.append(f' {settler_t}.')
+    if self.charge and self.can_charge: self.effects += {charge_t} 
+    
+    skills = [i for i in self.skills]
+    [self.skill_names.append(i.name) for i in self.skills]
+    if self.pos: self.pos.set_skills()
+    tile_skills = []
+    if self.pos:
+      if self.attacking == 0: tile_skills += [sk for sk in self.pos.terrain_events + self.pos.skills + self.pos.events ]
+      elif self.attacking: tile_skills += [sk for sk in self.target.pos.terrain_events + self.pos.skills + self.pos.events]
+    if info: print(f'{len(tile_skills)} de casillas.')
+    for i in tile_skills:
+      if i.type == 'generic':
+        if info: print(f'{i.name} added.')
+        skills.append(i)
+    
+    if self.target: skills += [s for s in self.target.skills if s.effect == 'enemy']    
+    if info: print(f'run')
+    for sk in skills:
+      if sk.type == 'generic':
+        if info: print(sk.name)
+        sk.run(self)
+    
+    self.skill_names.sort()
 
   def set_tile_attr(self, info = 0):
     tiles = self.pos.get_near_tiles(1)
@@ -1975,6 +2016,7 @@ class Unit:
     for t in tiles:
       t.update(self.nation)
       unrest = self.ranking * 0.1
+      unrest -= t.defense*0.5
       if info: print(f'unrest {unrest}')
       if t == self.pos: unrest *= 2
       if info: print(f'diferente que. unrest {unrest}')
@@ -2018,7 +2060,8 @@ class Unit:
     self.raid()
 
   def update(self):
-    self.day_night = self.ambient.day_night[0]
+    print(f'update {self}')
+    if self.pos: self.day_night = self.pos.day_night
     self.month = self.ambient.month[0]
     self.season = self.ambient.season[0]
     self.time = self.ambient.time[0]
@@ -2052,9 +2095,8 @@ class Unit:
     if self.hp_total > 0: self.squads = ceil(self.units / self.initial_units)
     
     # ranking.
-    self.skills = [i for i in self.global_skills + self.terrain_skills + 
-                   self.defensive_skills + self.offensive_skills + self.other_skills]
     self.get_skills()
+    self.set_skills()
     self.effects += [s.name for s in self.other_skills]
     self.set_ranking()
     if self.leader and self.leader not in self.nation.units: 
@@ -2222,7 +2264,7 @@ class Hall(City):
 class GlisteningPastures(Building):
   name = 'Pasturas radiantes'
   gold = 20000
-  food = 100
+  food = 2
   income = 1.2
 
   own_terrain = 1
@@ -2237,10 +2279,10 @@ class GlisteningPastures(Building):
     self.soil = [grassland_t, plains_t, tundra_t]
     self.surf = [forest_t]
     self.hill = [0, 1]
-    self.upgrade = [WindsStables]
+    self.upgrade = [WhisperingWoods]
 
 
-class WindsStables(GlisteningPastures, Building):
+class WhisperingWoods(GlisteningPastures, Building):
   name = 'Establos del viento'
   base = GlisteningPastures
   gold = 30000
@@ -2252,21 +2294,21 @@ class WindsStables(GlisteningPastures, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [ForestRider]
+    self.av_units = [DemonHunters, ForestRider, ForestGiant,]
     self.resource_cost = [0, 120]
     self.size = 0
 
 
 class FalconRefuge(Building):
   name = 'refugio del alcón'
-  gold = 7000
+  gold = 8000
   own_terrain = 1
   unique = 1
   tags = [military_t]
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Druid, Falcons, SilvanArcher]
+    self.av_units = [Druid, Falcons, Huntress]
     self.resource_cost = [0, 80]
     self.size = 0
     self.soil = [grassland_t, plains_t, tundra_t]
@@ -2288,7 +2330,7 @@ class ForestLookout(FalconRefuge, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [ForestEagle, HighSilvanArcher]
+    self.av_units = [ForestEagle, WoddArcher]
     self.resource_cost = [0, 80]
     self.soil = [grassland_t, plains_t, tundra_t]
     self.surf = [forest_t]
@@ -2298,7 +2340,7 @@ class ForestLookout(FalconRefuge, Building):
 
 class Sanctuary(Building):
   name = 'santuario'
-  gold = 15000
+  gold = 13000
   food = 2
   income = 1.5
   unique = 1
@@ -2309,7 +2351,7 @@ class Sanctuary(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [BladeDancers]
+    self.av_units = [BladeDancers, KeeperOfTheGrove]
     self.resource_cost = [0, 80]
     self.surf = [forest_t]
     self.hill = [0]
@@ -2319,7 +2361,7 @@ class Sanctuary(Building):
 class HauntedForest(Sanctuary, Building):
   name = 'Bosque embrujado'
   base = Sanctuary
-  gold = 25000
+  gold = 22000
   own_terrain = 1
   size = 5
   tags = [military_t]
@@ -2334,15 +2376,31 @@ class HauntedForest(Sanctuary, Building):
     self.upgrade = [MoonsFountain]
 
 
-class MoonsFountain(HauntedForest, Building):
-  name = 'Fuente de la luna'
+
+class WailingWoods(HauntedForest, Building):
+  name = 'wailing woods'
+  base = Sanctuary
+  gold = 30000
+  tags = [military_t]
+
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [SistersFromTheDeepth]
+    self.resource_cost = [0, 150]
+    self.size = 0
+    self.upgrade = []
+
+
+
+class MoonsFountain(WailingWoods, Building):
+  name = 'Fuentes de la luna'
   base = Sanctuary
   gold = 40000
   tags = [military_t]
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [AwakenTree, Driads]
+    self.av_units = [AwakenTree, Driads, PriestessOfTheMoon]
     self.resource_cost = [0, 150]
     self.size = 0
     self.upgrade = []
@@ -2444,11 +2502,177 @@ class stoneCarvers(Building):
 
 
 # Unidades.
+class DemonHunters(Elf):
+  name = 'demon hunters level 1S'
+  units = 5
+  type = 'infantry'
+  traits = [elf_t]
+  size = 2
+  gold = 500
+  upkeep = 80
+  resource_cost = 25
+  food = 3
+  pop = 25
+  terrain_skills = [Burn, DesertSurvival, ForestSurvival, MountainSurvival, SwampSurvival]
+
+  hp = 5
+  mp = [2, 2]
+  moves = 6
+  resolve = 7
+  global_skills = [DarkVision, DemonHunterL1, ForestWalker, Furtive, ShadowHunter]
+
+  dfs = 5
+  res = 2
+  hres = 0
+  arm = 0
+  armor = None
+
+  att = 1
+  damage = 2
+  off = 4
+  str = 3
+  pn = 0
+  offensive_skills = [Ambushment]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = [HealingRoots, SummonFalcons]
+    self.align = Wild
+
+
+
+
+class Druid(Elf):
+  name = 'druida'
+  units = 5
+  type = 'infantry'
+  traits = [elf_t, commander_t, wizard_t, poisonres_t]
+  size = 2
+  gold = 800
+  upkeep = 100
+  resource_cost = 22
+  food = 3
+  pop = 20
+  terrain_skills = [ForestSurvival]
+
+  hp = 2
+  mp = [2, 2]
+  moves = 7
+  resolve = 7
+  power = 30
+  power_max = 30
+  power_res = 5
+  global_skills = [DarkVision, ForestWalker, Furtive]
+
+  dfs = 4
+  res = 2
+  hres = 0
+  arm = 0
+  armor = None
+
+  att = 2
+  damage = 2
+  off = 4
+  str = 3
+  pn = 0
+  offensive_skills = [Ambushment, ToxicArrows]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = [HealingRoots, SummonFalcons, CastRain]
+    self.align = Wild
+
+
+class KeeperOfTheGrove (Elf):
+  name = 'keeper of the grove '
+  units = 10
+  type = 'infantry'
+  traits = [elf_t, commander_t, wizard_t, poisonres_t]
+  size = 2
+  gold = 1200
+  upkeep = 70
+  resource_cost = 30
+  food = 3
+  pop = 20
+  terrain_skills = [ForestSurvival]
+
+  hp = 2
+  mp = [2, 2]
+  moves = 7
+  resolve = 7
+  power = 0
+  power_max = 30
+  power_res = 3
+  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses, Refit, Regroup]
+
+  dfs = 5
+  res = 2
+  hres = 0
+  arm = 0
+  armor = MediumArmor()
+
+  att = 2
+  damage = 2
+  off = 5
+  str = 4
+  pn = 0
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = []#[Entangling Roots ]
+    self.align = Wild
+
+
+class PriestessOfTheMoon(Elf):
+  name = 'priestess of the moon'
+  units = 1
+  unique = 1
+  type = 'infantry'
+  traits = [elf_t, commander_t, wizard_t]
+  size = 3
+  gold = 2400
+  upkeep = 500
+  resource_cost = 35
+  food = 6
+  pop = 30
+  terrain_skills = [ForestSurvival]
+
+  hp = 8
+  mp = [4, 4]
+  moves = 8
+  resolve = 8
+  power = 0
+  power_max = 60
+  power_res = 5
+  global_skills = [DarkVision, ForestWalker, Furtive, Inspiration, PyreOfCorpses]
+
+  dfs = 7
+  res = 4
+  hres = 2
+  arm = 2
+  armor = None
+
+  att = 3
+  damage = 2
+  rng = 20
+  off = 7
+  str = 5
+  pn = 2
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = []#[Entangling Roots ]
+    self.align = Wild
+
+
+
+
 class AwakenTree(Elf):
   name = 'árbol despertado'
   units = 1
   type = 'infantry'
   traits = [elf_t, poisonres_t]
+  size = 5
   gold = 1200
   upkeep = 140
   resource_cost = 40
@@ -2464,6 +2688,8 @@ class AwakenTree(Elf):
 
   dfs = 3
   res = 6
+  hres = 0
+  hlm = 0
   arm = 4
   armor = None
 
@@ -2490,6 +2716,7 @@ class BladeDancers(Elf):
   units = 20
   type = 'infantry'
   traits = [elf_t]
+  size = 2
   gold = 320
   upkeep = 20
   resource_cost = 24
@@ -2505,6 +2732,7 @@ class BladeDancers(Elf):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -2514,6 +2742,7 @@ class BladeDancers(Elf):
   off = 5
   str = 3
   pn = 0
+  offensive_skills = [Ambushment]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -2524,50 +2753,12 @@ class BladeDancers(Elf):
     self.favsurf = [forest_t]
 
 
-
-class Druid(Unit):
-  name = 'druida'
-  units = 5
-  type = 'infantry'
-  traits = [elf_t, commander_t, wizard_t]
-  gold = 1000
-  upkeep = 150
-  resource_cost = 30
-  food = 3
-  pop = 20
-  terrain_skills = [ForestSurvival]
-
-  hp = 2
-  mp = [2, 2]
-  moves = 6
-  resolve = 7
-  power = 30
-  power_max = 30
-  power_res = 5
-  global_skills = [DarkVision]
-
-  dfs = 4
-  res = 2
-  arm = 0
-  armor = None
-
-  att = 1
-  damage = 2
-  off = 4
-  str = 3
-  pn = 0
-
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.spells = [HealingRoots, SummonFalcons]#[CastBloodRain, CastRain, CastHeavyRain, CastWailingWinds, HealingRoots, SummonAwakenTree, SummonFalcons, SummonDevourerOfDemons, SummonDriads, SummonSpectralInfantry]
-    self.align = Wild
-
-
 class Driads(Elf):
   name = 'driades'
   units = 5
   type = 'infantry'
   traits = [elf_t, poisonres_t]
+  size = 2
   gold = 580
   upkeep = 45
   resource_cost = 30
@@ -2579,10 +2770,11 @@ class Driads(Elf):
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [DarkVision,ForestWalker]
+  global_skills = [DarkVision,ForestWalker, Furtive]
 
   dfs = 5
   res = 3
+  hres = 0
   arm = 2
   armor = None
 
@@ -2594,6 +2786,7 @@ class Driads(Elf):
   pn = 1
   
   stealth = 8
+  offensive_skills = [Ambushment]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -2605,6 +2798,7 @@ class EternalGuard(Elf):
   units = 20
   type = 'infantry'
   traits = [elf_t]
+  size = 2
   gold = 550
   upkeep = 25
   resource_cost = 25
@@ -2620,6 +2814,7 @@ class EternalGuard(Elf):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = HeavyArmor()
 
@@ -2645,6 +2840,7 @@ class Falcons(Elf):
   units = 2
   type = 'beast'
   traits = [animal_t]
+  size = 1
   gold = 140
   upkeep = 20
   resource_cost = 18
@@ -2660,6 +2856,7 @@ class Falcons(Elf):
 
   dfs = 3
   res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -2677,9 +2874,10 @@ class Falcons(Elf):
 
 class ForestBears(Unit):
   name = 'Osos del bosque'
-  units = 5
+  units = 4
   type = 'beast'
   traits = [animal_t]
+  size = 3
   gold = 300
   upkeep = 20
   resource_cost = 22
@@ -2691,10 +2889,11 @@ class ForestBears(Unit):
   mp = [2, 2]
   moves = 6
   resolve = 6
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Furtive]
 
   dfs = 4
-  res = 4
+  res = 2
+  hres = 2
   arm = 1
   armor = None
 
@@ -2716,10 +2915,11 @@ class ForestBears(Unit):
 
 class ForestEagle(Elf):
   name = 'águila del bosque'
-  units = 1
+  units = 2
   type = 'beast'
   traits = [animal_t]
-  gold = 300
+  size = 2
+  gold = 600
   upkeep = 50
   resource_cost = 25
   food = 4
@@ -2734,6 +2934,7 @@ class ForestEagle(Elf):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -2749,11 +2950,93 @@ class ForestEagle(Elf):
     self.align = Wild
 
 
+
+class Earban(Elf):
+  name = 'earban'
+  units = 1
+  type = 'beast'
+  traits = [animal_t, commander_t]
+  size = 3
+  gold = 1200
+  upkeep = 200
+  resource_cost = 35
+  food = 6
+  pop = 30
+  terrain_skills = [ForestSurvival, MountainSurvival]
+
+  hp = 5
+  mp = [4, 4]
+  moves = 8
+  resolve = 10
+  global_skills = [Fly, ForestWalker]
+
+  dfs = 7
+  res = 3
+  hres = 1
+  arm = 2
+  armor = None
+
+  att = 5
+  damage = 3
+  rng = 1
+  off = 5
+  str = 5
+  pn = 1
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+
+
+class ForestGiant(Unit):
+  name = 'forest giant'
+  units = 1
+  type = 'beast'
+  traits = []
+  size = 4
+  gold = 400
+  upkeep = 60
+  resource_cost = 24
+  food = 5
+  pop = 15
+  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+
+  hp = 5
+  mp = [2, 2]
+  moves = 5
+  resolve = 6
+  global_skills = [ForestWalker, Trample]
+
+  dfs = 4
+  res = 5
+  hres = 2
+  arm = 2
+  armor = None
+
+  att = 2
+  damage = 4
+  rng = 1
+  off = 5
+  str = 6
+  pn = 0
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t]
+
+
+
+
 class ForestGuard(Elf):
   name = 'guardia forestal'
   units = 20
   type = 'infantry'
   traits = [elf_t]
+  size = 2
   gold = 150
   upkeep = 8
   resource_cost = 14
@@ -2769,6 +3052,7 @@ class ForestGuard(Elf):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
 
@@ -2778,6 +3062,7 @@ class ForestGuard(Elf):
   off = 3
   str = 3
   pn = 0
+  offensive_skills = [Ambushment]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -2793,6 +3078,7 @@ class ForestRider(Elf):
   units = 10
   type = 'cavalry'
   traits = [elf_t]
+  size = 3
   gold = 850
   upkeep = 40
   resource_cost = 30
@@ -2808,6 +3094,7 @@ class ForestRider(Elf):
 
   dfs = 4
   res = 3
+  hres = 1
   arm = 1
   armor = HeavyArmor
   shield = Shield()
@@ -2835,6 +3122,7 @@ class ElvesSettler(Human):
   units = 200
   type = 'civil'
   traits = [elf_t, settler_t]
+  size = 2
   gold = 1500
   upkeep = 10
   resource_cost = 60
@@ -2849,6 +3137,7 @@ class ElvesSettler(Human):
 
   dfs = 1
   res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -2866,13 +3155,14 @@ class ElvesSettler(Human):
     self.corpses = [Zombies]
 
 
-class SilvanArcher(Elf):
-  name = 'arquero silvano'
-  units = 20
+class Huntress(Elf):
+  name = huntresses_t
+  units = 10
   type = 'infantry'
   traits = [elf_t]
+  size = 2
   gold = 300
-  upkeep = 12
+  upkeep = 10
   resource_cost = 14
   food = 2
   pop = 20
@@ -2880,19 +3170,20 @@ class SilvanArcher(Elf):
 
   hp = 2
   mp = [2, 2]
-  moves = 7
+  moves = 6
   resolve = 6
-  global_skills = [ForestWalker, PyreOfCorpses]
+  global_skills = [ForestWalker, Furtive, PyreOfCorpses]
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
-  att = 2
-  damage = 1
-  rng = 15
-  off = 4
+  att = 1
+  damage = 2
+  rng = 10
+  off = 5
   str = 3
   pn = 0
   offensive_skills = [Ambushment, Skirmisher]
@@ -2906,11 +3197,12 @@ class SilvanArcher(Elf):
     self.favsurf = [forest_t]
 
 
-class HighSilvanArcher(Elf):
+class WoddArcher(Elf):
   name = 'alto arquero silvano'
   units = 15
   type = 'infantry'
   traits = [elf_t]
+  size = 2
   gold = 450
   upkeep = 20
   resource_cost = 28
@@ -2921,20 +3213,21 @@ class HighSilvanArcher(Elf):
   hp = 2
   mp = [2, 2]
   moves = 7
-  resolve = 6
-  global_skills = [DarkVision, ForestWalker, LongBow, PyreOfCorpses,Refit, Regroup]
+  resolve = 7
+  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses,Refit, Regroup]
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
   att = 2
   damage = 2
-  rng = 15
+  rng = 20
   off = 5
-  str = 4
-  pn = 1
+  str = 3
+  pn = 0
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -2946,11 +3239,55 @@ class HighSilvanArcher(Elf):
     self.favsurf = [forest_t]
 
 
+class SistersFromTheDeepth(Elf):
+  name = 'sisters from the deppth'
+  units = 10
+  type = 'infantry'
+  traits = [elf_t, poisonres_t]
+  size = 2
+  gold = 350
+  upkeep = 15
+  resource_cost = 22
+  food = 2
+  pop = 30
+  terrain_skills = [Burn, ForestSurvival]
+
+  hp = 2
+  mp = [2, 2]
+  moves = 7
+  resolve = 6
+  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses, Regroup]
+
+  dfs = 4
+  res = 2
+  hres = 0
+  arm = 0
+  armor = None
+
+  att = 1
+  damage = 2
+  rng = 10
+  off = 5
+  str = 5
+  pn = 0
+  offensive_skills = [Ambushment, Skirmisher, ToxicArrows]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t]
+
+
+
 class WildHuntsmen(Elf):
   name = 'Cazadores salvajes'
   units = 10
   type = 'cavalry'
   traits = [elf_t]
+  size = 4
   gold = 650
   upkeep = 30
   resource_cost = 18
@@ -2962,10 +3299,11 @@ class WildHuntsmen(Elf):
   mp = [3, 3]
   moves = 6
   resolve = 6
-  global_skills = [ForestWalker]
+  global_skills = [ForestWalker, Furtive, Trample]
 
   dfs = 4
   res = 4
+  hres = 1
   arm = 2
   armor = None
 
@@ -3252,6 +3590,8 @@ class Legatus(Human):
   units = 10
   type = 'infantry'
   comm = 1
+  traits = [human_t, commander_t]
+  size = 2
   gold = 1000
   upkeep = 120
   resource_cost = 25
@@ -3268,6 +3608,7 @@ class Legatus(Human):
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -3291,6 +3632,7 @@ class Augur(Unit):
   units = 5
   type = 'infantry'
   traits =  [human_t, commander_t, sacred_t, wizard_t]
+  size = 2
   gold = 1500
   upkeep = 150
   resource_cost = 30
@@ -3308,6 +3650,7 @@ class Augur(Unit):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3328,6 +3671,7 @@ class Aquilifer(Human):
   units = 10
   type = 'infantry'
   traits = [human_t, leader_t]
+  size = 2
   gold = 3000
   upkeep = 200
   resource_cost = 30
@@ -3344,6 +3688,7 @@ class Aquilifer(Human):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = HeavyArmor()
   shield = Shield()
@@ -3364,6 +3709,7 @@ class Flamen(Human):
   units = 5
   type = 'infantry'
   traits = [human_t, commander_t, sacred_t, wizard_t]
+  size = 2
   gold = 1300
   upkeep = 200
   resource_cost = 30
@@ -3380,6 +3726,7 @@ class Flamen(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
 
@@ -3402,6 +3749,7 @@ class PontifexMaximus(Unit):
   unique = 1
   type = 'infantry'
   traits = [human_t, commander_t, sacred_t, wizard_t]
+  size = 2
   gold = 4000
   upkeep = 400
   resource_cost = 30
@@ -3418,6 +3766,7 @@ class PontifexMaximus(Unit):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
   shield = Shield()
@@ -3430,7 +3779,7 @@ class PontifexMaximus(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [CastSecondSun, SummonDevourerOfDemons]
+    self.spells = [SummonSecondSun, SummonDevourerOfDemons]
     self.align = Wild
 
 
@@ -3442,6 +3791,7 @@ class Settler(Human):
   units = 300
   type = 'civil'
   traits = [human_t, settler_t]
+  size = 2
   gold = 2000
   upkeep = 1
   resource_cost = 50
@@ -3455,6 +3805,7 @@ class Settler(Human):
 
   dfs = 1
   res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -3476,6 +3827,7 @@ class Flagellants(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, sacred_t]
+  size = 2
   gold = 140
   upkeep = 10
   resource_cost = 11
@@ -3491,6 +3843,7 @@ class Flagellants(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3512,6 +3865,7 @@ class RebornOnes(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, sacred_t]
+  size = 2
   gold = 180
   upkeep = 14
   resource_cost = 14
@@ -3527,6 +3881,7 @@ class RebornOnes(Human):
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = None
   Shield = Shield()
@@ -3549,6 +3904,7 @@ class Velites(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 250
   upkeep = 18
   resource_cost = 12
@@ -3564,6 +3920,8 @@ class Velites(Human):
 
   dfs = 4
   res = 2
+  hres = 0
+  hres = 1
   arm = 0
   armor = None
   shield = Shield()
@@ -3584,6 +3942,7 @@ class ImperialGuard(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 620
   upkeep = 40
   resource_cost = 18
@@ -3599,6 +3958,7 @@ class ImperialGuard(Human):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = HeavyArmor()
 
@@ -3618,6 +3978,7 @@ class Hastati(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 320
   upkeep = 20
   resource_cost = 15
@@ -3633,6 +3994,7 @@ class Hastati(Human):
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3654,6 +4016,7 @@ class Principes(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 600
   upkeep = 50
   resource_cost = 24
@@ -3669,11 +4032,12 @@ class Principes(Human):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = HeavyArmor()
 
   att = 1
-  rng = 4
+  rng = 3
   damage = 3
   off = 4
   str = 4
@@ -3692,6 +4056,7 @@ class Halberdier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 550
   upkeep = 50
   resource_cost = 18
@@ -3707,6 +4072,7 @@ class Halberdier(Human):
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = MediumArmor()
 
@@ -3727,6 +4093,7 @@ class Inquisitors(Human):
   units = 5
   type = 'infantry'
   traits = [human_t, sacred_t]
+  size = 2
   gold = 600
   upkeep = 60
   resource_cost = 22
@@ -3741,6 +4108,7 @@ class Inquisitors(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
 
@@ -3762,6 +4130,7 @@ class SacredWarriors(Human):
   units = 10
   type = 'infantry'
   traits = [human_t, sacred_t]
+  size = 2
   gold = 300
   upkeep = 40
   resource_cost = 16
@@ -3777,6 +4146,7 @@ class SacredWarriors(Human):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = None
   shield = Shield()
@@ -3799,6 +4169,7 @@ class KnightsTemplar (Human):
   units = 10
   type = 'infantry'
   traits = [human_t, sacred_t]
+  size = 2
   gold = 550
   upkeep = 60
   resource_cost = 22
@@ -3814,6 +4185,7 @@ class KnightsTemplar (Human):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = HeavyArmor()
 
@@ -3835,6 +4207,7 @@ class Sagittarii(Human):
   units = 15
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 320
   upkeep = 15
   resource_cost = 15
@@ -3850,6 +4223,7 @@ class Sagittarii(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3857,7 +4231,7 @@ class Sagittarii(Human):
   damage = 1
   rng = 15
   off = 4
-  str = 3
+  str = 2
   pn = 0
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
@@ -3871,6 +4245,7 @@ class CrossBowMen(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 420
   upkeep = 30
   resource_cost = 18
@@ -3886,6 +4261,7 @@ class CrossBowMen(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3907,6 +4283,7 @@ class Arquebusier(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 520
   upkeep = 40
   resource_cost = 25
@@ -3921,6 +4298,7 @@ class Arquebusier(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3942,6 +4320,7 @@ class Musket(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 550
   upkeep = 50
   resource_cost = 25
@@ -3956,6 +4335,7 @@ class Musket(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -3977,6 +4357,7 @@ class Equites(Human):
   units = 10
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 900
   upkeep = 60
   resource_cost = 18
@@ -3992,6 +4373,7 @@ class Equites(Human):
 
   dfs = 3
   res = 3
+  hres = 1
   arm = 1
   armor = None
   shield = Shield()
@@ -4018,6 +4400,7 @@ class Equites2(Human):
   units = 10
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 1400
   upkeep = 100
   resource_cost = 22
@@ -4029,10 +4412,11 @@ class Equites2(Human):
   mp = [3, 3]
   moves = 7
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Refit]
+  global_skills = [BattleBrothers, Regroup, Refit, Trample]
 
   dfs = 5
   res = 3
+  hres = 1
   arm = 2
   armor = HeavyArmor()
 
@@ -4056,6 +4440,7 @@ class Gryphon(Unit):
   units = 4
   type = 'beast'
   traits = [animal_t]
+  size = 5
   gold = 800
   upkeep = 60
   resource_cost = 20
@@ -4071,6 +4456,7 @@ class Gryphon(Unit):
 
   dfs = 5
   res = 4
+  hres = 3
   arm = 1
   armor = None
 
@@ -4093,6 +4479,7 @@ class GryphonRiders(Unit):
   units = 4
   type = 'beast'
   traits = [animal_t, human_t]
+  size = 5
   gold = 1200
   upkeep = 120
   resource_cost = 25
@@ -4108,6 +4495,7 @@ class GryphonRiders(Unit):
 
   dfs = 6
   res = 4
+  hres = 3
   arm = 2
   armor = None
 
@@ -4429,6 +4817,7 @@ class Adjule(Unit):
   units = 10
   type = 'beast'
   traits = [death_t]
+  size = 2
   gold = 330
   upkeep = 32
   resource_cost = 18
@@ -4443,6 +4832,7 @@ class Adjule(Unit):
 
   dfs = 3
   res = 4
+  hres = 1
   arm = 0
   armor = None
 
@@ -4473,6 +4863,7 @@ class WailingLady(Undead):
   units = 1
   type = 'infantry'
   traits = [death_t, malignant_t, ethereal_t]
+  size = 2
   gold = 666
   upkeep = 333
   resource_cost = 30
@@ -4488,6 +4879,7 @@ class WailingLady(Undead):
 
   dfs = 5
   res = 6
+  hres = 4
   arm = 0
   armor = None
 
@@ -4512,6 +4904,7 @@ class Bats(Unit):
   units = 20
   type = 'beast'
   traits = [animal_t, poisonres_t]
+  size = 1
   gold = 135
   upkeep = 5
   resource_cost = 12
@@ -4527,6 +4920,7 @@ class Bats(Unit):
 
   dfs = 4
   res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -4549,6 +4943,7 @@ class BlackKnights(Undead):
   units = 5
   type = 'cavalry'
   traits = [death_t, malignant_t]
+  size = 2
   gold = 800
   upkeep = 70
   resource_cost = 26
@@ -4564,6 +4959,7 @@ class BlackKnights(Undead):
 
   dfs = 5
   res = 5
+  hres = 2
   arm = 1
   armor = HeavyArmor()
 
@@ -4589,6 +4985,7 @@ class BloodKnights(Undead):
   units = 1
   type = 'infantry'
   traits = [death_t, malignant_t]
+  size = 2
   gold = 1200
   upkeep = 150
   resource_cost = 25
@@ -4603,6 +5000,7 @@ class BloodKnights(Undead):
 
   dfs = 7
   res = 5
+  hres = 2
   arm = 1
   armor = HeavyArmor()
   shield = Shield()
@@ -4626,6 +5024,7 @@ class CryptHorrors (Undead):
   units = 10
   type = 'infantry'
   traits = [death_t, malignant_t]
+  size = 3
   gold = 460
   upkeep = 40
   resource_cost = 16
@@ -4640,6 +5039,7 @@ class CryptHorrors (Undead):
 
   dfs = 5
   res = 5
+  hres = 1
   arm = 2
   armor = None
 
@@ -4661,6 +5061,7 @@ class DireWolves(Undead):
   units = 5
   type = 'beast'
   traits = [death_t, malignant_t]
+  size = 3
   gold = 350
   upkeep = 60
   resource_cost = 22
@@ -4676,6 +5077,7 @@ class DireWolves(Undead):
 
   dfs = 3
   res = 4
+  hres = 1
   arm = 2
 
   att = 2
@@ -4698,6 +5100,7 @@ class Draugr(Unit):
   units = 5
   type = 'infantry'
   traits = [death_t, malignant_t]
+  size = 4
   gold = 220
   upkeep = 40
   resource_cost = 18
@@ -4709,10 +5112,11 @@ class Draugr(Unit):
   mp = [2, 2]
   moves = 6
   resolve = 7
-  global_skills = [DarkVision, Scavenger, NightFerocity, Regroup]
+  global_skills = [DarkVision, Scavenger, NightFerocity, Regroup, Trample]
 
   dfs = 5
   res = 4
+  hres = 1
   arm = 2
 
   att = 2
@@ -4742,6 +5146,7 @@ class FellBats(Undead):
   units = 5
   type = 'beast'
   traits = [death_t, malignant_t]
+  size = 2
   gold = 320
   upkeep = 20
   resource_cost = 18
@@ -4757,6 +5162,7 @@ class FellBats(Undead):
 
   dfs = 5
   res = 3
+  hres = 1
   arm = 0
 
   att = 2
@@ -4777,6 +5183,7 @@ class Ghouls(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, malignant_t, poisonres_t]
+  size = 2
   gold = 200
   upkeep = 15
   resource_cost = 11
@@ -4792,6 +5199,7 @@ class Ghouls(Human):
 
   dfs = 4
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -4815,6 +5223,7 @@ class Isaac(Unit):
   units = 10
   type = 'infantry'
   traits = [human_t, malignant_t, commander_t, wizard_t]
+  size = 2
   unique = 1
   gold = 3800
   upkeep = 90
@@ -4834,6 +5243,7 @@ class Isaac(Unit):
 
   dfs = 5
   res = 2
+  hres = 0
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -4860,6 +5270,7 @@ class Necromancer(Human):
   units = 1
   type = 'infantry'
   traits = [human_t, malignant_t, commander_t, wizard_t]
+  size = 2
   gold = 800
   upkeep = 400
   resource_cost = 20
@@ -4878,6 +5289,7 @@ class Necromancer(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
   shield = Shield()
@@ -4904,6 +5316,7 @@ class GraveGuards(Undead):
   units = 10
   type = 'infantry'
   traits = [death_t, malignant_t]
+  size = 2
   gold = 550
   upkeep = 50
   resource_cost = 18
@@ -4919,6 +5332,7 @@ class GraveGuards(Undead):
 
   dfs = 5
   res = 5
+  hres = 1
   arm = 2
   armor = HeavyArmor()
   shield = Shield()
@@ -4942,6 +5356,7 @@ class Settler2(Human):
   units = 200
   type = 'civil'
   traits = [human_t, settler_t]
+  size = 2
   gold = 1000
   upkeep = 0
   resource_cost = 50
@@ -4955,6 +5370,7 @@ class Settler2(Human):
 
   dfs = 1
   res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -4976,6 +5392,7 @@ class Skeletons(Undead):
   units = 10
   type = 'infantry'
   traits = [death_t]
+  size = 2
   gold = 400
   upkeep = 0
   resource_cost = 10
@@ -4991,6 +5408,7 @@ class Skeletons(Undead):
 
   dfs = 3
   res = 3
+  hres = 1
   arm = 1
 
   att = 2
@@ -5012,6 +5430,7 @@ class SpectralInfantry(Unit):
   units = 10
   type = 'infantry'
   traits = [death_t]
+  size = 2
   gold = 300
   upkeep = 10
   resource_cost = 15
@@ -5027,6 +5446,7 @@ class SpectralInfantry(Unit):
 
   dfs = 4
   res = 4
+  hres = 1
   arm = 0
   armor = MediumArmor()
 
@@ -5049,6 +5469,7 @@ class Vampire(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
+  size = 2
   gold = 500
   upkeep = 80
   resource_cost = 25
@@ -5065,6 +5486,7 @@ class Vampire(Undead):
 
   dfs = 6
   res = 5
+  hres = 3
   arm = 0
   armor = LightArmor()
 
@@ -5088,6 +5510,7 @@ class VampireLord(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, commander_t, malignant_t, vampire_t]
+  size = 2
   gold = 700
   upkeep = 200
   resource_cost = 25
@@ -5104,7 +5527,8 @@ class VampireLord(Undead):
 
   dfs = 7
   res = 5
-  arm = 0
+  hres = 4
+  arm = 1
   armor = MediumArmor()
 
   att = 5
@@ -5126,6 +5550,7 @@ class Vargheist(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, vampire_t]
+  size = 2
   gold = 420
   upkeep = 120
   resource_cost = 20
@@ -5141,7 +5566,8 @@ class Vargheist(Undead):
 
   dfs = 4
   res = 5
-  arm = 0
+  hres = 5
+  arm = 2
 
   att = 4
   damage = 4
@@ -5165,6 +5591,7 @@ class VladDracul(Undead):
   unique = 1
   type = 'beast'
   traits = [death_t, malignant_t, leader_t, vampire_t, wizard_t]
+  size = 3
   gold = 3200
   upkeep = 1620
   resource_cost = 50
@@ -5172,7 +5599,7 @@ class VladDracul(Undead):
   pop = 100
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 18
+  hp = 20
   mp = [2, 2]
   moves = 12
   resolve = 10
@@ -5183,7 +5610,8 @@ class VladDracul(Undead):
 
   dfs = 8
   res = 7
-  arm = 0
+  hres = 5
+  arm = 3
   armor = LightArmor()
 
   att = 6
@@ -5210,6 +5638,7 @@ class VarGhul(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t, commander_t, vampire_t]
+  size = 3
   gold = 370
   upkeep = 80
   resource_cost = 20
@@ -5220,10 +5649,11 @@ class VarGhul(Undead):
   mp = [2, 2]
   moves = 6
   resolve = 6
-  global_skills = [DarkVision, Scavenger, LordOfBlodd, NightFerocity, NightSurvival]
+  global_skills = [DarkVision, Scavenger, LordOfBlodd, NightFerocity, NightSurvival, Trample]
 
   dfs = 4
-  res = 5
+  res = 4
+  hres = 1
   arm = 2
 
   att = 3
@@ -5249,6 +5679,7 @@ class Zombies(Undead, Ground):
   units = 20
   type = 'infantry'
   traits = [death_t]
+  size = 2
   gold = 220
   upkeep = 0
   resource_cost = 10
@@ -5263,6 +5694,7 @@ class Zombies(Undead, Ground):
 
   dfs = 2
   res = 3
+  hres = 0
   arm = 0
 
   att = 1
@@ -5579,16 +6011,16 @@ class WoodElves(Nation):
     self.for_res.hill = [0, 1]
     
     #Population types.
-    self.population_type = [ForestGuard(self), SilvanArcher(self)]
+    self.population_type = [ForestGuard(self), Huntress(self)]
     
     # rebeldes.
-    self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
+    self.units_rebels = [Archers, Hunters, ForestGuard, Warriors]
     # initial placement.
     self.initial_placement = Hall
     # initial settler.
     self.initial_settler = ElvesSettler
     # initial units.
-    self.start_units = [ForestGuard, ForestGuard]
+    self.start_units = [ForestGuard, ForestGuard, Druid]
 
 
 class Walachia(Nation):
@@ -5669,6 +6101,7 @@ class Archers(Human):
   units = 15
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 160
   upkeep = 8
   resource_cost = 12
@@ -5683,6 +6116,7 @@ class Archers(Human):
 
   dfs = 2
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -5711,6 +6145,7 @@ class Akhlut(Unit):
   name = 'akhlut'
   units = 1
   type = 'beast'
+  size = 3
   gold = 320
   upkeep = 60
   resource_cost = 28
@@ -5726,6 +6161,7 @@ class Akhlut(Unit):
 
   dfs = 3
   res = 5
+  hres = 2
   arm = 2
   armor = None
 
@@ -5755,6 +6191,7 @@ class BlackOrcs(Unit):
   units = 10
   type = 'infantry'
   traits = [orc_t]
+  size = 3
   gold = 360
   upkeep = 35
   resource_cost = 20
@@ -5770,6 +6207,7 @@ class BlackOrcs(Unit):
 
   dfs = 4
   res = 4
+  hres = 0
   arm = 2
   armor = HeavyArmor
 
@@ -5798,6 +6236,7 @@ class Children_Of_The_Wind(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 50
   upkeep = 20
   resource_cost = 16
@@ -5813,6 +6252,7 @@ class Children_Of_The_Wind(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
   shield = Shield()
@@ -5834,6 +6274,7 @@ class Crocodile(Unit):
   name = crocodile_t
   units = 1
   type = animal_t
+  size = 3
   gold = 220
   upkeep = 30
   resource_cost = 20
@@ -5847,19 +6288,20 @@ class Crocodile(Unit):
   resolve = 3
   global_skills = [DarkVision, Furtive]
 
-  dfs = 3
-  res = 5
-  arm = 3
+  dfs = 4
+  res = 4
+  hres = 2
+  arm = 2
   armor = None
 
-  att = 2
+  att = 3
   damage = 3
   off = 5
   str = 5
-  pn = 1
+  pn = 2
 
   fear = 2
-
+  sort_chance = 100
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -5876,6 +6318,7 @@ class DesertNomads(Human):
   units = 10
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 240
   upkeep = 20
   resource_cost = 18
@@ -5890,6 +6333,7 @@ class DesertNomads(Human):
 
   dfs = 3
   res = 3
+  hres = 0
   arm = 1
   armor = None
   shield = None
@@ -5920,6 +6364,7 @@ class DevourerOfDemons(Unit):
   units = 1
   type = 'beast'
   traits = [spirit_t]
+  size = 5
   gold = 2200
   upkeep = 1200
   resource_cost = 50
@@ -5931,10 +6376,11 @@ class DevourerOfDemons(Unit):
   mp = [2, 2]
   moves = 10
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, Ethereal, FearAura, Fly,]
+  global_skills = [DarkVision, ElusiveShadow, Ethereal, FearAura, Fly, Trample]
 
   dfs = 6
   res = 6
+  hres = 2
   arm = 0
   armor = None
 
@@ -5999,14 +6445,15 @@ class GiantBear(Unit):
   units = 1
   type = 'beast'
   traits = [animal_t]
-  gold = 300
-  upkeep = 40
+  size = 5
+  gold = 800
+  upkeep = 48
   resource_cost = 26
   food = 8
   pop = 20
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 5
+  hp = 7
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -6014,14 +6461,15 @@ class GiantBear(Unit):
 
   dfs = 4
   res = 5
-  arm = 1
+  hres = 3
+  arm = 4
   armor = None
 
-  att = 2
-  damage = 3
+  att = 3
+  damage = 2
   rng = 1
   off = 5
-  str = 6
+  str = 5
   pn = 0
 
   def __init__(self, nation):
@@ -6029,8 +6477,8 @@ class GiantBear(Unit):
     self.align = Wild
     self.corpses = [Skeletons]
     self.favhill = [0, 1]
-    self.favsoil = [grassland_t, plains_t, tundra_t]
-    self.favsurf = [forest_t]
+    self.favsoil = [tundra_t]
+    self.favsurf = [forest_t, none_t]
 
 
 class GiantWolves(Unit):
@@ -6038,6 +6486,7 @@ class GiantWolves(Unit):
   units = 10
   type = 'beast'
   traits = [animal_t]
+  size = 4
   gold = 60
   upkeep = 15
   resource_cost = 18
@@ -6053,7 +6502,8 @@ class GiantWolves(Unit):
 
   dfs = 4
   res = 4
-  arm = 2
+  hres = 1
+  arm = 1
   armor = None
 
   att = 2
@@ -6083,6 +6533,7 @@ class Goblins(Unit):
   units = 30
   type = 'infantry'
   traits = [goblin_t]
+  size = 1
   gold = 50
   upkeep = 3
   resource_cost = 8
@@ -6097,7 +6548,8 @@ class Goblins(Unit):
   global_skills = [BloodyBeast, Furtive]
 
   dfs = 4
-  res = 2
+  res = 1
+  hres = 0
   arm = 0
   armor = None
 
@@ -6129,6 +6581,7 @@ class Harpy(Unit):
   units = 10
   type = 'beast'
   traits = [malignant_t, poisonres_t]
+  size = 2
   gold = 40
   upkeep = 10
   resource_cost = 16
@@ -6144,6 +6597,7 @@ class Harpy(Unit):
 
   dfs = 5
   res = 3
+  hres = 0
   arm = 0
   armor = None
 
@@ -6172,6 +6626,7 @@ class HellHounds(Undead):
   units = 1
   type = 'beast'
   traits = [death_t, malignant_t]
+  size = 3
   gold = 160
   upkeep = 20
   resource_cost = 30
@@ -6187,6 +6642,7 @@ class HellHounds(Undead):
 
   dfs = 4
   res = 5
+  hres = 2
   arm = 2
   armor = None
 
@@ -6212,6 +6668,7 @@ class Hyaenas(Unit):
   units = 10
   type = 'beast'
   traits = [animal_t]
+  size = 2
   gold = 50
   upkeep = 8
   resource_cost = 15
@@ -6226,7 +6683,8 @@ class Hyaenas(Unit):
 
   dfs = 3
   res = 3
-  arm = 0
+  hres = 1
+  arm = 1
   armor = None
 
   att = 1
@@ -6256,6 +6714,7 @@ class Hunters(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 90
   upkeep = 6
   resource_cost = 12
@@ -6271,12 +6730,13 @@ class Hunters(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
-  att = 2
+  att = 1
   rng = 10
-  damage = 1
+  damage = 2
   off = 3
   str = 3
   pn = 0
@@ -6300,6 +6760,7 @@ class NomadsRiders(Human):
   units = 20
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 60
   upkeep = 15
   resource_cost = 18
@@ -6314,6 +6775,7 @@ class NomadsRiders(Human):
 
   dfs = 3
   res = 3
+  hres = 1
   arm = 1
   armor = None
 
@@ -6346,6 +6808,7 @@ class Orc_Archers(Unit):
   units = 20
   type = 'infantry'
   traits = [orc_t]
+  size = 2
   gold = 140
   upkeep = 12
   resource_cost = 12
@@ -6361,6 +6824,7 @@ class Orc_Archers(Unit):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 1
   armor = None
 
@@ -6393,6 +6857,7 @@ class Orcs(Unit):
   units = 20
   type = 'infantry'
   traits = [orc_t]
+  size = 2
   gold = 30
   upkeep = 5
   resource_cost = 10
@@ -6408,6 +6873,7 @@ class Orcs(Unit):
 
   dfs = 3
   res = 3
+  hres = 1
   arm = 1
   armor = None
 
@@ -6437,6 +6903,7 @@ class Levy(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, levy_t]
+  size = 2
   gold = 50
   upkeep = 9
   resource_cost = 10
@@ -6451,6 +6918,7 @@ class Levy(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
   shield = Shield()
@@ -6474,6 +6942,7 @@ class LizardMen(Human):
   units = 20
   type = 'infantry'
   traits = [lizard_t, poisonres_t]
+  size = 2
   gold = 160
   upkeep = 10
   resource_cost = 8
@@ -6490,6 +6959,7 @@ class LizardMen(Human):
 
   dfs = 4
   res = 3
+  hres = 2
   arm = 2
   armor = None
   shield = None
@@ -6500,6 +6970,8 @@ class LizardMen(Human):
   str = 3
   pn = 0
 
+  fear = 5
+  sort_chance = 90
   def __init__(self, nation):
     super().__init__(nation)
     self.other_skills = [Miasma(self)]
@@ -6514,6 +6986,7 @@ class LizardMenHeavyInfantry(Human):
   units = 10
   type = 'infantry'
   traits = [lizard_t, poisonres_t]
+  size = 2
   gold = 420
   upkeep = 30
   resource_cost = 18
@@ -6529,6 +7002,7 @@ class LizardMenHeavyInfantry(Human):
 
   dfs = 4
   res = 3
+  hres = 2
   arm = 2
   armor = None
   shield = HeavyArmor()
@@ -6539,6 +7013,8 @@ class LizardMenHeavyInfantry(Human):
   str = 5
   pn = 1
 
+  fear = 5
+  sort_chance = 90
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
@@ -6548,6 +7024,96 @@ class LizardMenHeavyInfantry(Human):
 
 
 class Mandeha(Unit):
+  name = 'mandeha'
+  units = 1
+  type = 'beast'
+  traits = []
+  size = 5
+  gold = 3200
+  upkeep = 540
+  resource_cost = 40
+  food = 7
+  pop = 30
+  terrain_skills = [ForestSurvival, MountainSurvival]
+
+  hp = 12
+  mp = [2, 2]
+  moves = 6
+  resolve = 10
+  global_skills = [DarkVision, DeepestDarkness, FearAura]
+
+  dfs = 6
+  res = 8
+  hres = 4
+  arm = 2
+  armor = None
+
+  att = 3
+  damage = 4
+  rng = 2
+  off = 6
+  str = 6
+  pn = 2
+  offensive_skills = []
+
+  fear = 2
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t]
+
+
+
+
+
+class Mammot(Unit):
+  name = 'mammot'
+  units = 1
+  type = 'beast'
+  traits = [animal_t]
+  size = 6
+  gold = 1260
+  upkeep = 185
+  resource_cost = 28
+  food = 10
+  pop = 30
+  terrain_skills = [Burn]
+
+  hp = 12
+  mp = [2, 2]
+  moves = 5
+  resolve = 5
+  global_skills = [Trample]
+
+  dfs = 5
+  res = 4
+  hres = 3
+  arm = 4
+  armor = MediumArmor()
+
+  att = 3
+  damage = 3
+  off = 4
+  str = 5
+  pn = 0
+
+  fear = 5
+  populated_land = 1
+  sort_chance = 90
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [0]
+    self.favsoil = [tundra_t]
+    self.favsurf = [none_t]
+
+
 
 class MASTER(Unit):
   name = 'MASTER'
@@ -6555,6 +7121,7 @@ class MASTER(Unit):
   unique = 1
   type = 'DEBUG ONLY'
   traits = [human_t, death_t, malignant_t, leader_t, vampire_t, wizard_t, commander_t]
+  size = 10
   gold = 0
   upkeep = 0
   resource_cost = 0
@@ -6597,36 +7164,38 @@ class MASTER(Unit):
 
 class Ogres(Unit):
   name = 'ogros'
-  units = 4
+  units = 6
   type = 'beast'
   traits = [ogre_t]
+  size = 3
   gold = 460
-  upkeep = 66
-  resource_cost = 25
-  food = 10
-  pop = 40
+  upkeep = 56
+  resource_cost = 22
+  food = 8
+  pop = 20
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 8
   mp = [2, 2]
   moves = 5
   resolve = 6
   global_skills = [BloodyBeast]
 
-  dfs = 3
-  res = 5
+  dfs = 4
+  res = 4
+  hres = 2
   arm = 2
   armor = None
 
   att = 2
   damage = 2
   off = 5
-  str = 6
+  str = 5
   pn = 0
 
   fear = 2
   populated_land = 1
-  sort_chance = 70
+  sort_chance = 80
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6636,8 +7205,6 @@ class Ogres(Unit):
     self.favhill = [0, 1]
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [none_t, forest_t]
-    self.traits += [orc_t]
-  
 
 
 class PeasantLevies(Human):
@@ -6645,6 +7212,7 @@ class PeasantLevies(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, levy_t]
+  size = 2
   gold = 90
   upkeep = 6
   resource_cost = 8
@@ -6659,6 +7227,7 @@ class PeasantLevies(Human):
 
   dfs = 2
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -6684,6 +7253,7 @@ class Raiders(Human):
   units = 10
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 50
   upkeep = 15
   resource_cost = 14
@@ -6699,6 +7269,7 @@ class Raiders(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = LightArmor()
 
@@ -6726,6 +7297,7 @@ class Riders(Human):
   units = 20
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 80
   upkeep = 20
   resource_cost = 15
@@ -6741,6 +7313,7 @@ class Riders(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 1
   armor = None
 
@@ -6770,6 +7343,7 @@ class SlaveHunters(Human):
   units = 10
   type = 'infantry'
   traits = [human_t, slaves_t]
+  size = 2
   gold = 180
   upkeep = 2
   resource_cost = 1
@@ -6784,6 +7358,7 @@ class SlaveHunters(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -6815,6 +7390,7 @@ class SlaveWarriors(Human):
   units = 20
   type = 'infantry'
   traits = [human_t, slaves_t]
+  size = 2
   gold = 120
   upkeep = 3
   resource_cost = 10
@@ -6829,6 +7405,7 @@ class SlaveWarriors(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
   shield = Shield()
@@ -6857,6 +7434,7 @@ class TheKnightsTemplar(Human):
   units = 20
   type = 'cavalry'
   traits = [human_t]
+  size = 3
   gold = 550
   upkeep = 40
   resource_cost = 30
@@ -6868,10 +7446,11 @@ class TheKnightsTemplar(Human):
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [BattleBrothers, Regroup, Refit]
+  global_skills = [BattleBrothers, Regroup, Refit, Trample]
 
   dfs = 5
   res = 3
+  hres = 0
   arm = 2
   armor = HeavyArmor()
 
@@ -6893,11 +7472,103 @@ class TheKnightsTemplar(Human):
     self.favsurf = [none_t]
 
 
+
+class Troglodytes(Unit):
+  name = 'troglodytes'
+  units = 10
+  type = 'beast'
+  traits = [troglodyte_t]
+  size = 3
+  gold = 360
+  upkeep = 32
+  resource_cost = 18
+  food = 5
+  pop = 25
+  terrain_skills = [Burn, MountainSurvival, Raid]
+
+  hp = 4
+  mp = [2, 2]
+  moves = 5
+  resolve = 4
+  global_skills = []
+
+  dfs = 4
+  res = 3
+  hres = 1
+  arm = 1
+  armor = None
+
+  att = 2
+  damage = 2
+  off = 4
+  str = 4
+  pn = 0
+
+  fear = 2
+  populated_land = 1
+  sort_chance = 90
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [1]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t]
+
+
+class Troll(Unit):
+  name = 'troll'
+  units = 1
+  type = 'beast'
+  traits = [troll_t]
+  size = 5
+  gold = 920
+  upkeep = 75
+  resource_cost = 26
+  food = 6
+  pop = 20
+  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+
+  hp = 8
+  mp = [2, 2]
+  moves = 5
+  resolve = 5
+  global_skills = [Trample]
+
+  dfs = 5
+  res = 5
+  hres = 5
+  arm = 5
+  armor = None
+
+  att = 1
+  damage = 3
+  off = 5
+  str = 5
+  pn = 0
+
+  fear = 2
+  populated_land = 1
+  sort_chance = 70
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [0, 1]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t, forest_t]
+
+
 class Wargs(Unit):
   name = 'huargos'
   units = 20
   type = 'beast'
   traits = [malignant_t]
+  size = 2
   gold = 60
   upkeep = 20
   resource_cost = 18
@@ -6913,7 +7584,8 @@ class Wargs(Unit):
 
   dfs = 4
   res = 3
-  arm = 0
+  hres = 1
+  arm = 1
   armor = None
 
   att = 1
@@ -6943,6 +7615,7 @@ class Warriors(Human):
   units = 20
   type = 'infantry'
   traits = [human_t]
+  size = 2
   gold = 30
   upkeep = 6
   resource_cost = 10
@@ -6957,6 +7630,7 @@ class Warriors(Human):
 
   dfs = 3
   res = 2
+  hres = 0
   arm = 0
   armor = None
 
@@ -6983,6 +7657,7 @@ class Wolves(Unit):
   units = 10
   type = 'beast'
   traits = [animal_t]
+  size = 2
   gold = 50
   upkeep = 6
   resource_cost = 14
@@ -6998,6 +7673,7 @@ class Wolves(Unit):
 
   dfs = 4
   res = 3
+  hres = 0
   arm = 0
   armor = None
 
@@ -7006,6 +7682,7 @@ class Wolves(Unit):
   off = 3
   str = 4
   pn = 0
+  offensive_skills = [Ambushment]
   
   fear = 4
   populated_land = 1
@@ -7028,9 +7705,9 @@ class Hell(Nation):
   def __init__(self):
     super().__init__()
     self.log = [[hell_t]]
-    self.av_units = [Ghouls, Goblins, Harpy, HellHounds, Hyaenas, Orcs,
-                     Orc_Archers, Skeletons, Vargheist, VarGhul, Wargs,
-                     Zombies, Necromancer]
+    self.av_units = [Ghouls, Goblins, Harpy, HellHounds, Hyaenas, Necromancer,
+                     Ogres, Orcs, Orc_Archers, Skeletons, Vargheist, VarGhul, 
+                     Wargs, Zombies]
 
 
 class Wild(Nation):
@@ -7041,7 +7718,8 @@ class Wild(Nation):
     super().__init__()
     self.log = [[wild_t]]
     self.av_units = [Akhlut, Crocodile, DesertNomads, Hunters, GiantBear, 
-                     NomadsRiders, LizardMen, Raiders, Warriors, Wolves]
+                     Mammot, NomadsRiders, LizardMen, Raiders, Troglodytes,  
+                     Warriors, Wolves]
 
 #Spells.
 from data.spells import *

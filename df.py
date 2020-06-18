@@ -147,9 +147,12 @@ class Terrain:
     corpses = ceil(corpses / 10)
     sk = Miasma(self)
     if roll + corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
-        print(f'miasma by corpses on {self.cords}.')
-        sk.turns = randint(3, 15)
-        self.events += [sk]
+      print(f'miasma by corpses on {self.cords}.')
+      sk.turns = randint(3, 5)
+      self.events += [sk]
+    elif sk.name in [ev.name for ev in self.events] and roll >= 8:
+      for ev in self.events:
+        if ev.name == sk.name: ev.turns += 1
 
   def add_unit(self, unit, nation, revealed=0):
     global sayland
@@ -180,20 +183,6 @@ class Terrain:
         return v
       
       v += 1
-
-  def get_skills(self):
-    self.skills = []
-    self.skill_names = []
-    for uni in self.units:
-      if uni.hp_total > 0:
-        uni.update()
-        for sk in uni.skills:
-          if sk.effect in ['all', 'friend'] and sk.name not in self.skill_names:
-            # print(f'terreno agrega {sk.name}.')
-            self.skills.append(sk)
-            self.skill_names.append(sk.name)
-            
-      self.skill_names.sort()
 
   def get_near_tiles(self, value):
     tiles = []
@@ -381,7 +370,25 @@ class Terrain:
       self.unrest = 0
     if self.unrest > 100: self.unrest = 100
 
-  def set_skills(self):
+  def set_skills(self, info=0):
+    if self.units: info = 1
+    if info: print(f'set_skills')
+    self.skills = []
+    self.skill_names = []
+    self.units.sort(key=lambda x: x.ranking,reverse=True)
+    for uni in self.units:
+      if uni.hp_total > 0:
+        unit_skills = uni.get_skills()
+        for sk in unit_skills:
+          if sk.effect in ['all', 'friend'] and sk.name not in self.skill_names:
+            # print(f'terreno agrega {sk.name}.')
+            self.skills += [sk]
+            self.skill_names += [sk.name]
+            
+      self.skill_names.sort()
+      [sk.tile_run(self) for sk in self.skills]
+
+  def set_tile_skills(self):
     if self.hill == 0:
       self.terrain_events = [e for e in self.terrain_events
                              if e.name != HillTerrain.name]
@@ -433,6 +440,8 @@ class Terrain:
     if self.flood > 0: self.flood -= 1
     self.raided = 0
     if self.unrest > 0: self.unrest -= randint(2, 5)
+    if self.unrest > 0: self.unrest -= self.defense*0.05
+    self.unrest = round(self.unrest)
     if self.unrest < 0: self.unrest = 0
     self.units_blocked + [u for u in self.units if u.blocked > 0]
     for u in self.units_blocked: u.blocked -= 1
@@ -442,12 +451,16 @@ class Terrain:
       self.add_miasma()
       for cr in self.corpses: cr.deads[0] -= randint(1, 4) // cr.hp 
 
-  def update(self, nation=None):
-    if mapeditor == 0: self.ambient = world.ambient
+  def update(self, nation=None, info=0):
+    if self.units: info = 1
+    if info: print(f'update {self} {self.cords}.')
     self.effects = []
+    if mapeditor == 0: 
+      self.ambient = world.ambient
+      self.set_skills()
+    self.set_tile_skills()
     self.has_city = 1 if self.city else 0
     self.is_city = 1 if [i for i in self.buildings if i.type == city_t] else 0
-    if mapeditor == 0: self.set_skills()
     if nation: self.set_around(nation, nation.map)
     else: self.set_around(nation, scenary)
     
@@ -533,7 +546,6 @@ class Terrain:
     self.time = self.ambient.time[0]
     self.week = self.ambient.week
     self.year = self.ambient.year
-    self.get_skills()
 
 
 
@@ -726,22 +738,40 @@ class World:
     self.set_master()
     self.events_num = int((self.height + self.width) * 0.1)
     if self.ambient.season[1][self.ambient.season[0]] == winter_t: self.winter_events()
+    if self.ambient.season[1][self.ambient.season[0]] == spring_t: self.winter_events()
 
   def set_master(self):
     self.super_unit = MASTER(Wild)
     self.super_unit.log = [[]]
     self.super_unit.pos = self.map[0]
 
-  def winter_events(self):
-    events = [CastRain, CastStorm]
-    for r in range(self.events_num):
+  def Spring_events(self):
+    for r in range (len(self.map)//50):
+      events = [CastRain]
       ev = choice(events)
-      go = 0
+      go = 1
       pos = choice(self.map)
       roll = basics.roll_dice(2)
-      if pos.surf.name == waste_t: roll -= 2
+      if pos.soil.name == waste_t: roll -= 2
       if roll >= ev.cast:
-        tiles = pos.get_near_tiles(4)
+        tiles = pos.get_near_tiles(2)
+        for t in tiles:
+          if ev.name in [e.name for e in t.events]: go = 0
+      
+      if go: 
+        self.super_unit.pos = pos
+        ev(self.super_unit).init(self.super_unit)
+
+  def winter_events(self):
+    for r in range (len(self.map)//50):
+      events = [CastRain, CastStorm]
+      ev = choice(events)
+      go = 1
+      pos = choice(self.map)
+      roll = basics.roll_dice(2)
+      if pos.soil.name == waste_t: roll -= 2
+      if roll >= ev.cast:
+        tiles = pos.get_near_tiles(2)
         for t in tiles:
           if ev.name in [e.name for e in t.events]: go = 0
       
@@ -2152,6 +2182,7 @@ def before_combat(itm):
 
 def after_combat(itm):
   itm.update()
+  itm.skills.sort(key=lambda x: x.index)
   for sk in itm.skills:
     if sk.type == 'after combat': 
       sk.run(itm)
@@ -2180,6 +2211,7 @@ def combat_menu(itm, pos, target=None, dist=0):
   _units.sort(key=lambda x: sum([x.off, x.off_mod, x.str, x.str_mod]), reverse=True)
   _units.sort(key=lambda x: x.units, reverse=True)
   _units.sort(key=lambda x: x.rng >= 6, reverse=True)
+  _units.sort(key=lambda x: x.hidden)
   _units.sort(key=lambda x: x.comm)
   _units.sort(key=lambda x: x.mp[0] >= 0, reverse=True)
   logging.debug(f'distancia inicial {dist}.')
@@ -2216,7 +2248,12 @@ def combat_menu(itm, pos, target=None, dist=0):
     i.deads = []
     i.enemy_fled = []
     i.fled = []
+    i.hits_armor_blocked = []
+    i.hits_body = []
     i.hits_blocked = []
+    i.hits_head = []
+    i.hits_resisted = []
+    i.hits_shield_blocked = []
     i.hits_failed = []
     i.strikes = []
     i.raised = []
@@ -2239,9 +2276,14 @@ def combat_menu(itm, pos, target=None, dist=0):
         i.damage_done.append(0)
         i.deads.append(0)
         i.fled.append(0)
-        i.hits_blocked.append(0)
-        i.hits_failed.append(0)
-        i.raised.append(0)
+        i.hits_armor_blocked += [0]
+        i.hits_blocked += [0]
+        i.hits_body += [0]
+        i.hits_head += [0]
+        i.hits_resisted += [0]
+        i.hits_shield_blocked += [0]
+        i.hits_failed += [0]
+        i.raised += [0]
         i.strikes += {0} 
         i.target.c_units = i.target.units
         i.wounds.append(0)
@@ -2361,7 +2403,6 @@ def combat_fight(dist, itm, _round, info=1):
   target = itm.target
   target.update()
   target.c_units = target.units
-  # logging.debug(f'unidades iniciales {target.c_units}')
   if info: logging.info(f'{itm} total hp {itm.hp_total} ataca.')
   log = itm.temp_log
   log += [  
@@ -2382,62 +2423,77 @@ def combat_fight(dist, itm, _round, info=1):
       for i in range(hit_rolls):
         if info: logging.debug(f'impactos {i} de {hit_rolls}')
         hits = 0
-        hit_roll = roll_dice(1)
+        hit_roll = basics.roll_dice(1)
         if info: logging.debug(f'{hit_roll=:}.')
-        off_need = itm.off + itm.off_mod
+        off = itm.off+itm.off_mod
+        if itm.rng+itm.rng_mod >= 6 and itm.dist < itm.rng+itm.rng_mod: 
+          off -= 2
+        off_need = off
         if info: logging.debug(f'off_need1  {off_need}.')
         off_need -= target.dfs + target.dfs_mod
         if info: logging.debug(f'off_need2 {off_need}.')
-        off_need = get_hit_mod(off_need)
+        off_need = basics.get_hit_mod(off_need)
         if info: logging.debug(f'off_need3 {off_need}.')
         if hit_roll >= off_need:
           hits = 1
+          itm.strikes[-1] += 1
           break
 
-      # wound_roll
+      # shield.
+        if target.shield:
+          shield_need = basics.roll_dice(1)
+          shield = basics.get_armor_mod(target.shield.dfs)
+          if shield > shield_need and shield > 0: 
+            hits = 0
+            itm.hits_shield_blocked[-1] += 1
+      
       if hits:
-        itm.strikes[-1] += 1
         wounds = 0
-        wound_roll = roll_dice(1)
-        logging.debug(f'{wound_roll}')
-        if wound_roll == 6: 
-          damage_critical += floor(itm.damage / 2)
-          if info: logging.debug(f'crítico {damage}.')
+        hit_to = 'body'
+        wound_roll = basics.roll_dice(1)
+        if info:logging.debug(f'roll {wound_roll=}')
         wound_need = itm.str + itm.str_mod
         if info: logging.debug(f'wound_need1 {wound_need}.')
-        wound_need -= target.res + target.res_mod
+        res = target.res+target.res_mod
+        roll = basics.roll_dice(1)
+        if itm.rng+itm.rng_mod < 6:
+          head_factor =  6
+          size_factor = (itm.size+itm.size_mod) -(itm.target.size+itm.target.size_mod)
+          head_factor -= size_factor
+          head_factor -= (itm.rng+itm.rng_mod)
+        elif itm.rng+itm.rng_mod >= 6: head_factor = 6
+        if roll >= head_factor:
+          hit_to = 'head'
+          if info:logging.debug(f'hit to the head.')
+          print(f'hit to the head.')
+          res = target.hres+target.hres_mod
+        wound_need -= res
         if info: logging.debug(f'wound_need2 {wound_need}.')
-        wound_need = get_wound_mod(wound_need)
+        wound_need = basics.get_wound_mod(wound_need)
         if info: logging.debug(f'wound_need3 {wound_need}.')
         if wound_roll < wound_need:
-          itm.hits_blocked[-1] += 1 
+          itm.hits_resisted[-1] += 1 
           continue
         wounds = 1
 
         # armor
-        roll = roll_dice(1)
-        armor = target.arm + target.arm_mod
-        if target.armor: armor += target.armor.arm
-        if target.armor_ign + target.armor_ign_mod == 0: armor -= itm.pn + itm.pn_mod
-        else: 
-          if info: logging.debug(f'{target} ignora pn.')
-        armor = get_armor_mod(armor)
-        if info: logging.debug(f'roll{roll} necesita {armor}.')
-        if roll >= armor and armor > 0:
-          wounds = 0
-          itm.hits_blocked[-1] += 1
-
-        # shield.
-        if target.shield and wounds:
-          shield_need = roll_dice(1)
-          shield = get_armor_mod(target.shield.dfs)
-          if shield > shield_need and shield > 0: 
+        if hit_to == 'body':
+          roll = basics.roll_dice(1)
+          armor = target.arm + target.arm_mod
+          if target.armor: armor += target.armor.arm
+          if target.armor_ign + target.armor_ign_mod == 0: armor -= itm.pn + itm.pn_mod
+          else: 
+            if info: logging.debug(f'{target} ignora pn.')
+          armor = basics.get_armor_mod(armor)
+          if info: logging.debug(f'roll{roll} necesita {armor}.')
+          if roll >= armor and armor > 0:
             wounds = 0
-            itm.hits_blocked[-1] += 1
+            itm.hits_armor_blocked[-1] += 1
 
         # wounds.
         if wounds and target.hp_total > 0:
-          itm.wounds[-1] += 1
+          if hit_to == 'body': itm.hits_body[-1] += 1
+          elif hit_to == 'head': itm.hits_head[-1] += 1
           if undead_t in target.traits:
             damage += itm.damage_sacred
             if info: logging.debug(f'damage holy {itm.damage_sacred}.')
@@ -2454,12 +2510,20 @@ def combat_fight(dist, itm, _round, info=1):
   
   itm.hits_failed[-1] = itm.attacks[-1] - itm.strikes[-1]
   itm.charge = 0
+  if itm.damage_done[-1] and itm.target.hidden: 
+    itm.battlelog += [f'{itm.target} revealed.']
+    itm.target.revealed = 1
   
+  log += [  
+    f'{attacks_t} {itm.attacks[-1]}, {hits_failed_t} {itm.hits_failed[-1]}, '
+    f'{hits_t} {itm.strikes[-1]}.',
+    f'to the head {itm.hits_head[-1]}, to the body {itm.hits_body[-1]}.']
+  if itm.hits_resisted[-1]: log += [f'resisted {itm.hits_resisted[-1]}.']
+  if itm.hits_armor_blocked[-1]: log += [f'armor blocked {itm.hits_armor_blocked[-1]}.']
+  if itm.hits_shield_blocked[-1]: log += [f'shield blocked {itm.hits_shield_blocked[-1]}.']
   log += [
-    f'{attacks_t} {itm.attacks[-1]}, {hits_failed_t} {itm.hits_failed[-1]}.',
-    f'{strikes_t} {itm.strikes[-1]}, {hits_blocked_t} {itm.hits_blocked[-1]}, '
-    f'{wounds_t} {itm.wounds[-1]}.,',
-    f'{damage_t} {itm.damage_done[-1]}. {deads_t} {itm.target.deads[-1]}.',
+    f'{wounds_t} {itm.hits_body[-1]+itm.hits_head[-1]}, {damage_t} {itm.damage_done[-1]}, '
+    f'{deads_t} {itm.target.deads[-1]}.'
     ]
 
 
@@ -2523,7 +2587,7 @@ def control_game(event):
     if event.key == pygame.K_8:
       pos.add_unit(Sagittarii, holy_empire_t, 1)
     if event.key == pygame.K_9:
-      pos.add_unit(Velites, holy_empire_t, 1)
+      pos.add_unit(Principes, holy_empire_t, 1)
     if event.key == pygame.K_0:
       pos.add_unit(LizardMen, wood_elves_t, 1)
     if event.key == pygame.K_a:
@@ -2531,7 +2595,6 @@ def control_game(event):
         target = local_units[x].set_attack(local_units)
         if target:
           combat_menu(local_units[x], pos, target)
-          local_units[x].revealed = 1
           x = -1
           sayland = 1
     if event.key == pygame.K_b:
@@ -3924,7 +3987,7 @@ def moving_unit(itm):
     if check_enemy(itm, goto, goto.is_city):
       logging.debug(f'hay enemigos.')
       veredict = combat_menu(itm, goto)
-      itm.revealed = 1
+      #itm.revealed = 1
       itm.update()
       logging.debug(f'hidden {itm.hidden}.')
       if veredict == 0:
@@ -4049,6 +4112,7 @@ def nation_set_start_position(nation):
 
 
 def new_turn():
+  print(f'new_turn')
   global turns, sayland, ambient
   ambient = world.ambient
   last_day_night = ambient.day_night[0]
@@ -4083,6 +4147,8 @@ def new_turn():
     elif ambient.season[0] in [1, 2]:
       ambient.day_night[0] = 0
       if ambient.time[0] >= 4: ambient.day_night[0] = 1
+  for n in world.nations:
+    n.start_turn()
   world.turn += 1
   world.ambient.update()
   [i.start_turn() for i in world.map]
@@ -4091,8 +4157,6 @@ def new_turn():
   logging.info(f'{ambient.stime}, {ambient.smonth}, {ambient.syear}.')
   sp.speak(msg, 1)
   sleep(loadsound('notify14') * 0.2)
-  for n in world.nations:
-    n.start_turn()
   if ambient.day_night[0] != last_day_night:
     if ambient.day_night[0] == 0: sleep(loadsound('dawn01', channel=ch4) * 0.9)
     if ambient.day_night[0]: sleep(loadsound('night01', channel=ch4) * 0.9)
@@ -4101,6 +4165,7 @@ def new_turn():
 
 
 def next_play():
+  print(f'next play')
   global nation, pos, players, sayland, unit, x
   unit = []
   x = -1
@@ -4638,6 +4703,7 @@ def start():
 
 
 def start_turn(nation):
+  print(f'start_turn')
   global sayland
   sp.speak(f'{nation}.', 1)
   sp.speak(f'{ambient.day_night[1][ambient.day_night[0]]}.')

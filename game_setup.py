@@ -8,12 +8,12 @@ DIFFICULTY_TYPE = 'dynamic'
 
 #factions.
 HOLY = HolyEmpire()
-HOLY.ai = 1
+HOLY.ai = 0
 TRANS = Walachia()
 TRANS.ai = 1
 ELF = WoodElves()
-ELF.ai = 1
-NATIONS = [ELF, HOLY, TRANS]
+ELF.ai = 0
+NATIONS = [ELF]
 
 #Random factions.
 RANDOM_FACTIONS = [Hell(), Wild()]
