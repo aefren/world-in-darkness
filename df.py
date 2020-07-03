@@ -49,17 +49,16 @@ class Ambient:
     self.day_night = [0, [day_t, night_t]]
     self.month = [0, [january_t, february_t, march_t, april_t, may_t, june_t,
                       july_t, may_t, september_t, october_t, november_t, december_t]]
-    self.season = [0, [winter_t, spring_t, summer_t, autum_t]]
+    self.season = [2, [winter_t, spring_t, summer_t, autum_t]]
     self.time = [0, [morning_t, noon_t , afternoon_t, evening_t, night_t, midnight_t, dawn_t]]
     self.week = 1
     self.year = 1
+    self.update()
 
   def update(self):
     self.sseason = f'{self.season[1][self.season[0]]}'
     self.stime = f'{self.time[1][self.time[0]]}'
-    if self.week == 1: self.smonth = f'{early_t} {of_t} '
-    elif self.week == 2: self.smonth = f'{late_t} {of_t} '
-    self.smonth += f' {self.month[1][self.month[0]]}'
+    self.smonth = f' {self.month[1][self.month[0]]}'
     self.syear = f'{year_t} {self.year}'
     self.sday_night = f'{self.day_night[1][self.day_night[0]]}'
 
@@ -85,6 +84,7 @@ class Terrain:
   cost = 0
   cost_fly = 2
   defense = 0
+  defense_req = 0
   flood = 0
   has_city = 0
   income = 0
@@ -96,6 +96,7 @@ class Terrain:
   pop = 0
   public_order = 0
   raid_gain = 0
+  raining = 0
   size = 0
   size_total = 10
   skills = []
@@ -139,6 +140,14 @@ class Terrain:
       name += f' {self.soil.name}.'
     return name
 
+  def add_ghouls(self):
+    roll = basics.roll_dice(2)
+    if self.units: roll -= 1
+    if roll >= 11:
+      unit = self.add_unit(Ghouls, hell_t)
+      unit.hp_total=randint(3,8)*unit.hp
+      unit.update()
+      print(f'{roll=} {unit} added in  {self.cords}.')
   def add_miasma(self):
     roll = basics.roll_dice(2)
     corpses = 0
@@ -147,14 +156,13 @@ class Terrain:
     corpses = ceil(corpses / 10)
     sk = Miasma(self)
     if roll + corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
-      print(f'miasma by corpses on {self.cords}.')
       sk.turns = randint(3, 5)
       self.events += [sk]
     elif sk.name in [ev.name for ev in self.events] and roll >= 8:
       for ev in self.events:
         if ev.name == sk.name: ev.turns += 1
 
-  def add_unit(self, unit, nation, revealed=0):
+  def add_unit(self, unit, nation, revealed=0, units=None):
     global sayland
     done = 0
     for nt in world.nations + world.random_nations:
@@ -171,6 +179,7 @@ class Terrain:
     unit.update()
     unit.set_hidden(unit.pos)
     unit.revealed = revealed
+    unit.set_tile_attr()
     sayland = 1
     return unit
 
@@ -216,7 +225,6 @@ class Terrain:
   
   def is_blocked(self):
     self.blocked = 0
-    shuffle(self.units)
     for uni in self.units:
       if (uni.hidden == 0 and uni.nation != self.nation  
           and self.blocked == 0 and self.is_city == 0):
@@ -283,9 +291,11 @@ class Terrain:
     self.around_threat = 0
     self.around_tundra = 0
     self.around_volcano = 0
+    self.buildings_tags = []
     self.coast = 0
     self.units_effects = []
     self.units_traits = []
+    self.units_tags = []
     sq = self.get_near_tiles(1)
     for s in sq:
       if s != self:
@@ -317,8 +327,11 @@ class Terrain:
 
     # datos finales.
     for uni in self.units:
-      self.units_traits += uni.traits
       self.units_effects += uni.effects
+      self.units_tags += uni.tags
+      self.units_traits += uni.traits
+      for bu in self.buildings:
+        self.buildings_tags += bu.tags
     if self.soil.name == ocean_t and any(i for i in [self.around_plains,
                                                      self.around_grassland, self.around_desert, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
       self.coast = 1
@@ -326,6 +339,14 @@ class Terrain:
     elif self.soil.name != ocean_t and self.around_coast:
       self.coast = 1
 
+  def set_defense(self, nation, info=0):
+    if info: print(f'set_defense.')
+    self.defense = 0
+    for u in self.units:
+      u.update()
+      if nation and u.nation == nation: 
+        self.defense += u.ranking
+        if info:print(f'{u.id}  {u.hidden}, {u.ranking}.')
   def set_income(self):
     if self.nation == None: return
     self.income = self.pop * self.nation.gold_rate
@@ -339,12 +360,17 @@ class Terrain:
         self.income *= b.income
         self.incomes += [str(f'{b}'), self.income]
   
-  def set_public_order(self):
+  def set_public_order(self, info=0):
+    if info: print(f'set_public_order.') 
+    if self.pop < 0: self.pop = 0
     if self.nation == None: return
 
     self.public_order = self.pop * 100 / self.food
+    if info: print(f'after food {self.public_order= }.')
     self.public_order = 100 - self.public_order
-    self.public_order += self.city.public_order
+    if info: print(f'after 100 reduction {self.public_order= }.')
+    if self.is_city == 0: self.public_order += self.city.public_order*0.5
+    if info: print(f'after if is city {self.public_order= }.')
     # From buildings.
     self.public_order_buildings = 0
     for b in self.buildings:
@@ -352,26 +378,30 @@ class Terrain:
       if b.is_complete or b.type == city_t:
         self.public_order_buildings += b.public_order
 
-    # From units.
     self.public_order += self.public_order_buildings
+    if info: print(f'after buildings {self.public_order= }.')
+    # From units.
     self.po = self.public_order
-    self.public_order += self.defense
+    self.public_order += self.defense*0.5
+    if info: print(f'after units defense {self.public_order= }.')
     if self.public_order: 
       self.public_order_unrest = self.unrest * 100 // abs(self.public_order)
       self.public_order -= self.public_order_unrest
+      if info: print(f'after unrest {self.public_order= }.')
     
     self.public_order_reduction = self.public_order_buildings * abs(self.public_order) / 100
     self.public_order += self.public_order_reduction
+    if info: print(f'after reduction {self.public_order= }.')
     if self.public_order > 100: self.public_order = 100
     if self.po > 100: self.po = 100
     if self.public_order < -100: self.public_order = -100
     if self.pop == 0: 
       self.public_order = 0
       self.unrest = 0
-    if self.unrest > 100: self.unrest = 100
+    #if self.unrest > 100: self.unrest = 100
+    self.unrest = round(self.unrest)
 
   def set_skills(self, info=0):
-    if self.units: info = 1
     if info: print(f'set_skills')
     self.skills = []
     self.skill_names = []
@@ -388,6 +418,18 @@ class Terrain:
       self.skill_names.sort()
       [sk.tile_run(self) for sk in self.skills]
 
+  def set_starving(self):
+    if self.pop >= 120*self.food/100:
+      self.unrest += randint(10, 35)
+    elif self.pop >= 80*self.food/100:
+      self.unrest += randint(5, 15)
+    if self.pop >= 100*self.food/100 and basics.roll_dice(2) >= 11:
+      deads = randint(10, 30)
+      if deads > self.pop: deads = self.pop
+      self.unrest += deads*self.pop/100
+      msg = f'starving in {self} {self.cords} deads {deads}.'
+      self.nation.log[-1] += [msg]
+      if self.nation.show_info: sleep(loadsound('spell36',channel=ch5)//1.3)
   def set_tile_skills(self):
     if self.hill == 0:
       self.terrain_events = [e for e in self.terrain_events
@@ -421,6 +463,7 @@ class Terrain:
       if Night.name not in [e.name for e in self.terrain_events]:
         self.terrain_events += [Night(self)]
 
+  
   def set_threat(self, nation):
     self.threat = 0
     if self.sight:
@@ -430,6 +473,8 @@ class Terrain:
           self.threat += uni.ranking
 
   def start_turn(self):
+    self.raining = 0
+    self.set_starving()
     for ev in self.events:
       ev.tile_run(self)
     self.events = [ev for ev in self.events if ev.turns > 0]
@@ -439,8 +484,8 @@ class Terrain:
     if self.city: self.city.raid_outcome = 0
     if self.flood > 0: self.flood -= 1
     self.raided = 0
-    if self.unrest > 0: self.unrest -= randint(2, 5)
-    if self.unrest > 0: self.unrest -= self.defense*0.05
+    if self.unrest > 0: self.unrest -= randint(2, 10)
+    if self.unrest > 0: self.unrest -= self.defense*0.1
     self.unrest = round(self.unrest)
     if self.unrest < 0: self.unrest = 0
     self.units_blocked + [u for u in self.units if u.blocked > 0]
@@ -449,17 +494,46 @@ class Terrain:
     self.units_blocked = [u for u in self.units_blocked if u.blocked > 0]
     if self.corpses:
       self.add_miasma()
-      for cr in self.corpses: cr.deads[0] -= randint(1, 4) // cr.hp 
+      self.add_ghouls()
+      for cr in self.corpses: cr.deads[0] -= randint(2, 5) // cr.hp 
 
+  def stats_buildings(self):
+    for b in self.buildings:
+      if b.is_complete == 0:
+        self.food *= b.food_pre
+        self.grouth_total += b.grouth_pre
+        self.resource *= b.res_pre
+      if b.is_complete or b.type == city_t:
+        self.food *= b.food
+        self.grouth_total *= b.grouth_total
+        self.resource *= b.resource
+  def stats_events(self):
+    for ev in self.events:
+      self.food *= ev.food
+      self.income *= ev.income
+      self.resource *= ev.res
+      self.unrest *= ev.unrest
+  def stats_tiles(self):
+    self.cost = self.soil.cost
+    self.cost += self.surf.cost
+    self.food = self.soil.food
+    self.food *= self.surf.food
+    self.grouth_total = 0
+    self.resource = self.soil.resource
+    self.resource *= self.surf.resource
+    if self.hill:
+      self.cost += 1
+      self.food *= 0.6
+      self.resource *= 2
+    
   def update(self, nation=None, info=0):
-    if self.units: info = 1
     if info: print(f'update {self} {self.cords}.')
     self.effects = []
     if mapeditor == 0: 
       self.ambient = world.ambient
       self.set_skills()
-    self.set_tile_skills()
-    self.has_city = 1 if self.city else 0
+      self.set_tile_skills()
+    self.has_city = 1 if self.city else 1
     self.is_city = 1 if [i for i in self.buildings if i.type == city_t] else 0
     if nation: self.set_around(nation, nation.map)
     else: self.set_around(nation, scenary)
@@ -472,14 +546,11 @@ class Terrain:
     self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
                     and i.corpses]
     self.units = [it for it in self.units 
-                  if it.hp_total > 0 and it.blocked == 0]
+                  if it.hp_total > 0]
     self.is_blocked()
     
     # calculando defensa.
-    self.defense = 0
-    for i in self.units:
-      i.update()
-      if nation and i.nation == nation: self.defense += i.ranking
+    self.set_defense(nation)
     
     # destruyendo edificios.
     for b in self.buildings:
@@ -490,38 +561,17 @@ class Terrain:
         sleep(loadsound('set8') / 2)
 
     self.buildings = [b for b in self.buildings if b.resource_cost[0] >= 0]
-    # for bu in self.buildings: bu.pos = self
     self.bu = len(self.buildings)
     self.in_progress = 1 if [i for i in self.buildings
                              if i.resource_cost[0] < i.resource_cost[1]] else 0
 
-    # suelos.
-    self.cost = self.soil.cost
-    self.cost += self.surf.cost
-    self.food = self.soil.food
-    self.food *= self.surf.food
-    self.grouth_total = 0
-    if self.pop < 0: self.pop = 0
-    
-    self.resource = self.soil.resource
-    self.resource *= self.surf.resource
-    if self.hill:
-      self.cost += 1
-      self.food *= 0.6
-      self.resource *= 2
-    self.size = self.size_total
-    # básico de edificios.
-    for b in self.buildings:
-      if b.is_complete == 0:
-        self.food *= b.food_pre
-        self.grouth_total += b.grouth_pre
-        self.resource *= b.res_pre
-      if b.is_complete or b.type == city_t:
-        self.food *= b.food
-        self.grouth_total *= b.grouth_total
-        self.resource *= b.resource
+    # Stats.
+    self.stats_tiles()
+    self.stats_buildings()
+    self.stats_events()
     self.set_public_order()
     self.set_income()
+    self.size = self.size_total
     self.size -= sum([b.size for b in self.buildings])
     
     # unidades.
@@ -541,9 +591,9 @@ class Terrain:
     self.threat = round(self.threat)
     
     self.day_night = self.ambient.day_night[0]
-    self.month = self.ambient.month[0]
-    self.season = self.ambient.season[0]
-    self.time = self.ambient.time[0]
+    self.month = self.ambient.smonth
+    self.season = self.ambient.sseason
+    self.time = self.ambient.stime
     self.week = self.ambient.week
     self.year = self.ambient.year
 
@@ -687,7 +737,7 @@ class World:
     while tries > 0 and num > 0:
       tries -= 1
       tiles = [i for i in self.map
-               if i.nation == None and i.get_nearest_nation() <= 3]
+               if i.nation == None and i.get_nearest_nation() <= 6]
       shuffle(tiles)
       nat = choice(self.random_nations)
       item = choice(nat.av_units)(nat)
@@ -699,19 +749,16 @@ class World:
       if item.pref_corpses: tiles.sort(key=lambda x: len(x.corpses), reverse=True) 
       tile = tiles[0]
       go = 1
-      for uni in tile.units:
-        if uni.nation in self.nations or uni.nation != item.nation: go = 0
+      if tile.nation: go = 0
       
       # si listo.
       item.update()
       if go:
+        if item.units > 1: item.hp_total = randint(30,70)*item.hp_total/100
+        item.update()
         item.pos = tile
         item.nation.update(item.nation.map)
         loadsound('set10')
-        if roll_dice(2) >= 11:
-          item.hp_total *= 2
-          item.pop *= 2
-          loadsound('set12')
         tile.units.append(item)
         self.units.append(item)
         num -= item.ranking
@@ -737,17 +784,55 @@ class World:
   def season_events(self):
     self.set_master()
     self.events_num = int((self.height + self.width) * 0.1)
-    if self.ambient.season[1][self.ambient.season[0]] == winter_t: self.winter_events()
-    if self.ambient.season[1][self.ambient.season[0]] == spring_t: self.winter_events()
+    self.generic_events()
+    if self.ambient.sseason == autum_t: self.autum_events()
+    if self.ambient.sseason == summer_t: self.summer_events()
+    if self.ambient.sseason == spring_t: self.spring_events()
+    if self.ambient.sseason == winter_t: self.winter_events()
 
   def set_master(self):
     self.super_unit = MASTER(Wild)
     self.super_unit.log = [[]]
     self.super_unit.pos = self.map[0]
 
-  def Spring_events(self):
+  def generic_events(self):
+    pass
+  def autum_events(self):
     for r in range (len(self.map)//50):
       events = [CastRain]
+      ev = choice(events)
+      go = 1
+      pos = choice(self.map)
+      roll = basics.roll_dice(2)
+      if pos.soil.name == waste_t: roll -= 2
+      if roll >= ev.cast:
+        tiles = pos.get_near_tiles(2)
+        for t in tiles:
+          if ev.name in [e.name for e in t.events]: go = 0
+      
+      if go: 
+        self.super_unit.pos = pos
+        ev(self.super_unit).init(self.super_unit)
+
+  def summer_events(self):
+    for r in range (len(self.map)//50):
+      events = [CastLocustSwarm, CastRain]
+      ev = choice(events)
+      go = 1
+      pos = choice(self.map)
+      roll = basics.roll_dice(2)
+      if roll >= ev.cast:
+        tiles = pos.get_near_tiles(2)
+        for t in tiles:
+          if ev.name in [e.name for e in t.events]: go = 0
+      
+      if go: 
+        self.super_unit.pos = pos
+        ev(self.super_unit).init(self.super_unit)
+
+  def spring_events(self):
+    for r in range (len(self.map)//50):
+      events = [CastLocustSwarm, CastRain]
       ev = choice(events)
       go = 1
       pos = choice(self.map)
@@ -790,44 +875,48 @@ class World:
       for uni in t.units:
         if uni.nation in self.random_nations: self.units.append(uni)
     self.nations_score = sum(n.score for n in self.nations)
-    self.random_score = sum(u.ranking for u in self.units)
     self.units = [i for i in self.units if i.hp_total > 0]
+    
+    self.random_score = sum(u.ranking for u in self.units)
 
 
 
 # funciones.
-def ai_action_random(itm):
+def ai_action_random(itm, info=0):
   itm.update()
   itm.pos.update(itm.nation)
   logging.debug(f'acción aleatórea para {itm} en {itm.pos} {itm.pos.cords}.')
-  logging.debug(f'salud {itm.hp_total}. mp {itm.mp}')
+  if info: logging.debug(f'salud {itm.hp_total}. mp {itm.mp}')
   tries = 5
   while (itm.mp[0] > 0 and itm.hp_total > 0 and itm.goto == []
            and tries > 0 and itm.stopped == 0):
     # si está en movimiento.
     if itm.goto:
-      logging.debug(f'se dirije a {itm.goto[0][1]} en {itm.goto[0][0]}.')
+      if info: logging.debug(f'se dirije a {itm.goto[0][1]} en {itm.goto[0][0]}.')
       return
     # si no descansa y no se mueve.
     elif itm.goto == []:
       itm.pos.update(itm.nation)
       # cast spells.
       if itm.spells: ai_unit_cast(itm.nation)
-      # unir unidades similares.
+      # joins units.
       if len(itm.pos.units) > 1: ai_join_units(itm)
       # ataque hidden.
       itm.pos.update(itm.nation)
-      rnd = randint(round(itm.ranking * 0.6), round(itm.ranking * 1.2))
+      rnd = itm.ranking*uniform(0.6,1.2)
       if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd * 0.2
       if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd * 0.2
       if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd * 0.2
       if commander_t in itm.traits: rnd -= rnd * 0.2
-      logging.debug(f'{rnd=:}, {itm.pos.threat=:}.')
+      if info: logging.debug(f'{rnd=:}, {itm.pos.threat=:}.')
       if rnd > itm.pos.threat:
         auto_attack(itm)
         if any(i <= 0 for i in [itm.mp[0], itm.hp_total]): return
       
-      # se moverá.
+      #splits
+      if itm.pos.threat+itm.pos.around_threat > itm.ranking:
+        itm.split(2)
+      # moves. 
       if itm.mp[0] > 0:
         random_move(itm, scenary)
     if tries < 2:
@@ -1148,15 +1237,15 @@ def ai_divide_units(nation):
            and i.leader == None and i.group == []]
   for i in units:
     i.pos.update(i.nation)
-    if i.pos.around_threat > i.ranking * 0.75: continue
+    if i.pos.around_threat > i.ranking * 0.5: continue
     city = i.pos.city
     if city: city.get_defense_info()
-    roll = roll_dice(1)
-    needs = round(i.ranking / 15)
+    roll = basics.roll_dice(1)
+    needs = 6 - i.squads
     if i.scout: needs -= 2
     if i.pos.hill or i.rng + i.rng_mod > 5: needs += 2
     if i.pos.food_need >= i.pos.food: needs = 2
-    if city and city.seen_threat > city.defense_total * 0.5: needs += 2 
+    if city and city.around_threat > city.defense: needs += 3 
     if roll >= needs:
       i.split()
 
@@ -1290,6 +1379,10 @@ def ai_free_groups(nation, scenary):
 def ai_free_units(nation, scenary, info=0):
   logging.info(f'unidades libres.')
   nation.get_free_units()
+  for uni in nation.units_free:
+    if uni.squads > 4 and uni.garrison == 0 and uni.pos.around_threat < uni.ranking*0.3: 
+      uni.split(1)
+  nation.get_free_units()
   if nation.units_free: logging.debug(f'{len(nation.units_free)} unidades libres.')
   nation.units.sort(key=lambda x: x.ranking, reverse=True)
   banned_tiles = []
@@ -1356,8 +1449,7 @@ def ai_free_units(nation, scenary, info=0):
           logging.debug(msg)
           uni.log[-1] += [msg]
       
-      # while:
-      roll = roll_dice(1)
+      roll = basics.roll_dice(1)
       logging.debug(f'roll {roll}, skip {skip}.')
       if skip >= roll:
         msg = f'salta.'
@@ -1375,7 +1467,7 @@ def ai_free_units(nation, scenary, info=0):
         msg = f'no tiles found.'
         logging.debug(msg)
         uni.log[-1] += [msg]
-        move_set(uni, uni.city)
+        move_set(uni, uni.city.pos)
         return
       [it.set_around(nation, scenary) for it in sq]
       shuffle(sq)
@@ -1386,8 +1478,7 @@ def ai_free_units(nation, scenary, info=0):
       sq.sort(key=lambda x: x.public_order, reverse=True,)
       if uni.rng + uni.rng_mod > 5: 
         sq.sort(key=lambda x: x.hill or (x.surf and x.surf.name == forest_t) and x.defense == 0, reverse=True)
-        sq.sort(key=lambda x: x.defense < uni.ranking, reverse=True,)
-      sq.sort(key=lambda x: x.defense)
+      sq.sort(key=lambda x: x.defense_req - x.defense,reverse=True)
       sq.sort(key=lambda x: uni.get_favland(x), reverse=True)
       sq.sort(key=lambda x: x.food - x.food_need > uni.food * uni.units, reverse=True,)
       for s in sq:
@@ -1410,93 +1501,133 @@ def ai_free_units(nation, scenary, info=0):
 
 def ai_garrison(nation):
   logging.info(f'acciones de unidades en guarnición.')
+  nation.devlog[-1] += [f'acciones de unidades en guarnición.']
   nation.update(scenary)
+  banned = []
   # unidades ranged.
   logging.debug(f'unidades iniciales {len([i for i in nation.units if i.garrison])}.')
-  units = [it for it in nation.units if it.garrison and it.rng > 6
+  nation.devlog[-1] += [f'unidades iniciales {len([i for i in nation.units if i.garrison])}.']
+  units = [it for it in nation.units if it.garrison and it.rng+it.rng_mod >= 6
            and it.comm == 0]
   logging.debug(f'unidades ranged. {len(units)}.')
+  nation.devlog[-1] += [f'unidades ranged. {len(units)}.']
   units.sort(key=lambda x: x.ranking)
   units.sort(key=lambda x: x.mp[0], reverse=True)
-  units.sort(key=lambda x: x.rng, reverse=True)
+  units.sort(key=lambda x: x.rng+x.rng_mod,reverse=True)
   for uni in units:
-    if uni.mp[0] < 1: continue
+    rnd = uni.ranking*uniform(1.3,0.7)
+    if rnd >= uni.pos.threat: auto_attack(uni)
+    if uni.mp[0] < 2 or uni.hp_total < 1: continue
     sq = uni.pos.get_near_tiles(1)
     sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
             and s != uni.pos and s.threat > 0]
-    if roll_dice(1) >= 5: sq.sort(key=lambda x: x.threat, reverse=True)
+    sq.sort(key=lambda x: x.threat)
     for s in sq:
       s.update(uni.nation)
-      if s.threat < 1: continue
+      if s.threat < 1 or s in banned: continue
       if uni.pos.is_city:
         uni.pos.city.get_defense_info()
         if uni.pos.defense < uni.pos.around_threat * 2:
           logging.debug(f'pocas unidades..')
           continue
-      rnd = randint(round(uni.pos.defense * 0.75), round(uni.pos.defense * 1.25))
+      rnd = uni.ranking*uniform(1.1,0.9)
+      local_defense = sum(i.ranking for i in uni.pos.units if i.garrison)
       hostile = [i for i in uni.pos.units if i.revealed]
       if len(hostile) == 1: hostile = hostile[0]
       else: hostile = None
-      if uni.comm: rnd *= 0.2
-      if s.hill and uni.mountain_survival == 0: rnd *= 0.3
-      if s.surf and s.surf.name == forest_t and uni.forest_survival == 0: rnd *= 0.3
-      if s.surf and s.surf.name == swamp_t and uni.swamp_survival == 0: rnd *= 0.3
-      if s.hill and uni.day_night: rnd *= 0.2
+      if uni.pos.around_threat: rnd *= 0.7
+      if uni.comm: rnd *= 0.6
+      if uni.forest_survival and s.surf.name != forest_t: rnd *=0.8 
+      if uni.swamp_survival and s.surf.name != swamp_t: rnd *=0.8
+      if uni.mountain_survival and s.hill == 0: rnd *=0.8
+      if s.hill and uni.mountain_survival == 0: rnd *= 0.7
+      if s.surf and s.surf.name == forest_t and uni.forest_survival == 0: rnd *= 0.7
+      if s.surf and s.surf.name == swamp_t and uni.swamp_survival == 0: rnd *= 0.7
+      if s.hill and uni.day_night: rnd *= 0.8
       if hostile and hostile.rng + hostile.rng_mod < 6 and uni.rng + uni.rng_mod > 5: rnd *= 1.5
+      if s.nation != nation: rnd *= 0.5
       max_ranking = max(i.ranking for i in s.units if i.revealed)
       logging.debug(f'{uni} rnd {round(rnd)}, trheat {s.threat}.')
       logging.debug(f'max ranking {max_ranking}.')
-      if rnd > max_ranking:
+      nation.devlog[-1] += [f'{uni} rnd {round(rnd)} max ranking {round(max_ranking)}.']
+      if (rnd > max_ranking and local_defense > s.around_threat 
+          and rnd > s.around_threat*1.5):
+        if uni.ranking > (max_ranking+s.around_threat)*3.5: uni.split(2)
+        elif uni.ranking > (max_ranking+s.around_threat)*2.5: uni.split(1)
+        msg = f'garrison attack to {s} {s.cords}. '
+        msg += f'rnd {rnd}, threat {s.threat}, around threat {s.around_threat}.'
+        nation.devlog[-1] += [msg]
         move_set(uni, s)
         move_set(uni, 'attack')
+        if uni.ranking > (s.threat+s.around_threat)*3: banned += [s]
+        break
   
   units = [it for it in nation.units if it.garrison == 1
            and it.scout == 0 and it.settler == 0 and it.comm == 0
            and it.rng <= 6 and it.mp[0] >= 2]
   logging.debug(f'unidades melee. {len(units)}.')
+  nation.devlog[-1] += [f'unidades melee. {len(units)}.']
   # unidades mele.
   shuffle(units)
   units.sort(key=lambda x: x.ranking, reverse=True)
-  if roll_dice(1) >= 4: units.sort(key=lambda x: x.pos.is_city)
+  if basics.roll_dice(1) >= 4: units.sort(key=lambda x: x.pos.is_city)
   for uni in units:
+    rnd = uni.ranking*uniform(1.3,0.7)
+    if rnd >= uni.pos.threat: auto_attack(uni)
+    if uni.mp[0] < 2 or uni.hp_total < 1: continue
     sq = uni.pos.get_near_tiles(1)
     sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
             and s != uni.pos and s.threat > 0]
-    if roll_dice(1) >= 3: sq.sort(key=lambda x: x.threat, reverse=True)
+    sq.sort(key=lambda x: x.threat)
     for s in sq:
       s.update(nation)
-      if s.threat < 1: continue
+      if s.threat < 1 or s in banned: continue
       if uni.pos.is_city:
         uni.pos.city.get_defense_info()
         if uni.pos.defense < uni.pos.around_threat * 1.5:
           logging.debug(f'pocas unidades..')
           continue
       defense = uni.ranking
-      rnd = randint(round(defense * 0.75), round(defense * 1.25))
+      rnd = uni.ranking*uniform(1.1,0.9)
+      local_defense = sum(i.ranking for i in uni.pos.units if uni.garrison)
       moves = max([i.moves + i.moves_mod for i in s.units if i.hidden == 0])
       logging.debug(f'rnd inicial {rnd}.')
+      if uni.pos.around_threat: rnd *= 0.7
+      if uni.comm: rnd *= 0.6
+      if uni.forest_survival and s.surf.name != forest_t: rnd *=0.8 
+      if uni.swamp_survival and s.surf.name != swamp_t: rnd *=0.8
+      if uni.mountain_survival and s.hill == 0: rnd *=0.8
       if mounted_t in uni.traits and s.surf.name in [forest_t, swamp_t] or s.hill: 
-        rnd = rnd * 0.5
+        rnd *= 0.5
         logging.debug(f'reducción por  montada. bosque, pantano o clina.')
       if uni.forest_survival == 0 and s.surf.name in [forest_t]:
-        rnd = rnd * 0.5
+        rnd *= 0.5
         logging.debug(f'reduce by forest.')
       if uni.swamp_survival == 0 and s.surf.name in [swamp_t]:
-        rnd = rnd * 0.5
+        rnd *= 0.5
         logging.debug(f'reduce by swamp.')
       if uni.mountain_survival == 0 and s.hill:
-        rnd = rnd * 0.5
+        rnd *= 0.5
         logging.debug(f'reduce by hill.')
       if moves > uni.moves + uni.moves_mod:
-        rnd = rnd * 0.5
+        rnd *= 0.5
         logging.debug(f'reduce by moves.')
+      if s.nation != nation: rnd *= 0.5
       max_ranking = max(i.ranking for i in s.units if i.hidden == 0)
       logging.debug(f'{uni} rnd {round(rnd)}, trheat {s.threat}.')
       logging.debug(f'max ranking {max_ranking}.')
-      if rnd > max_ranking:
+      nation.devlog[-1] += [f'{uni} rnd {round(rnd)} max ranking {round(max_ranking)}.']
+      if (rnd > max_ranking and local_defense > s.around_threat 
+          and rnd > s.around_threat*1.5):
+        if uni.ranking > (max_ranking+s.around_threat)*3.5: uni.split(2)
+        elif uni.ranking > (max_ranking+s.around_threat)*2.5: uni.split(1)
+        msg = f'garrison attack to {s} {s.cords}. '
+        msg += f'rnd {rnd}, threat {s.threat}, around threat {s.around_threat}.'
+        nation.devlog[-1] += [msg]
         move_set(uni, s)
         move_set(uni, 'attack')
-
+        if uni.ranking > (s.threat+s.around_threat)*3: banned += [s]
+        break
 
 
 def ai_get_extra_units(defense_req, nation):
@@ -1724,7 +1855,8 @@ def ai_play(nation):
   # parametros de casillas cercanas.
   set_near_tiles(nation, scenary)
   # initial placement.
-  if nation.cities == []: nation_start_placement(nation)
+  if nation.cities == [] and world.turn == 1: 
+    nation_start_placement(nation)
   # colonos.
   logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.')
   [set_settler(it, scenary) for it in nation.units if it.settler and it.goto == []]
@@ -1813,7 +1945,7 @@ def ai_protect_cities(nation):
     
     logging.debug(f'defending {ct.defense}. defense_pred {ct.defense_pred}.')
     defense_need = ct.defense_need
-    if defense_need > 0:
+    if defense_need > 10:
       logging.debug(f'necesita {defense_need}.')
       units = [it for it in ct.units if it.garrison == 0
                and it.scout == 0 and it.settler == 0
@@ -1825,7 +1957,6 @@ def ai_protect_cities(nation):
       if units:
         logging.debug(f'busca en sus propias unidades.')
         nation.devlog[-1] += [f'busca en sus propias unidades.']
-        units.sort(key=lambda x: x.pos.get_distance(x.pos, ct.pos))
         units.sort(key=lambda x: x.pos.po, reverse=True)
         units.sort(key=lambda x: x.pos.income)
         units.sort(key=lambda x: levy_t not in x.traits, reverse=True)
@@ -1833,6 +1964,8 @@ def ai_protect_cities(nation):
           units.sort(key=lambda x: x.mp[1] < 3, reverse=True)
           units.sort(key=lambda x: x.comm == 0, reverse=True)
         units.sort(key=lambda x: x.rng + x.rng_mod >= 6 and x.units, reverse=True)
+        units.sort(key=lambda x: x.comm)
+        units.sort(key=lambda x: x.pos.get_distance(x.pos, ct.pos))
         units.sort(key=lambda x: x.pos.around_threat)
         logging.debug(f'unit list {[str(i) for i in units]}.')
         nation.devlog[-1] += [f'unit list {[str(i) for i in units]}.']
@@ -1857,11 +1990,10 @@ def ai_protect_cities(nation):
         units.sort(key=lambda x: x.rng >= 6, reverse=True)
         units.sort(key=lambda x: x.units, reverse=True)
         units.sort(key=lambda x: x.mp[0], reverse=True)
-        units.sort(key=lambda x: x.pos.defense)
-        units.sort(key=lambda x: x.pos.get_distance(x.pos, ct.pos))
         units.sort(key=lambda x: x.comm)
         units.sort(key=lambda x: x.pos.around_threat)
         if ct.defense_total > ct.seen_threat: units.sort(key=lambda x: mounted_t in x.traits)
+        units.sort(key=lambda x: x.pos.get_distance(x.pos, ct.pos))
         logging.debug(f'unit list {[str(i) for i in units]}.')
         nation.devlog[-1] += [f'unit list {[str(i) for i in units]}.']
         for uni in units:
@@ -1877,55 +2009,91 @@ def ai_protect_cities(nation):
 
 
 
-def ai_protect_tiles(nation):
+def ai_protect_tiles(nation,info=1):
   logging.info(f'proteger casillas {nation} turno {world.turn}..')
+  nation.devlog[-1] += [f'protect tiles.']
   init = time()
   shuffle(nation.tiles)
   [i.set_around(nation, nation.map) for i in nation.tiles]
   nation.tiles.sort(key=lambda x: x.hill, reverse=True)
-  nation.tiles.sort(key=lambda x: len(x.buildings), reverse=True)
-  nation.tiles.sort(key=lambda x: x.income, reverse=True)
-  nation.tiles.sort(key=lambda x: x.is_city, reverse=True)
   nation.tiles.sort(key=lambda x: len(x.around_nations) > 0, reverse=True)
+  nation.tiles.sort(key=lambda x: x.defense_req, reverse=True)
+  nation.tiles.sort(key=lambda x: x.around_threat, reverse=True)
   nation.tiles.sort(key=lambda x: x.city.capital, reverse=True)
   for t in nation.tiles:
+    defense_needs = t.around_threat*2
+    if (t.is_city == 0 and t.defense_req >= 20 
+        and t.defense_req > defense_needs): 
+      defense_needs = t.defense_req
     defense = sum(u.ranking for u in t.units
                     if u.garrison == 1 and u.nation == nation)
-    if t.around_threat > defense or (t.defense == 0 and t.around_defense == 0):
-      logging.debug(f'{t}. {t.cords}.')
-      logging.debug(f'defensa {defense}, amenaza {t.around_threat}.')
-      units = nation.get_free_units()
-      ranking = sum([i.ranking for i in units])
-      logging.debug(f'{len(units)} unidades disponibles iniciales.')
-      logging.debug(f'ranking total {ranking}')
+    defense_needs -= defense
+    if defense < 80*defense_needs/100:
+      msg = f'{t}. {t.cords} needs {defense_needs} defense.'
+      if info: logging.debug(msg)
+      nation.devlog[-1] += [msg]
+      if info: logging.debug(f'defensa {defense}, amenaza {t.around_threat}.')
+      units = [i for i in t.units if i.nation == nation]
+      ranking = 0
+      sq = t.get_near_tiles(2)
+      sq.sort(key=lambda x: x.surf.name == none_t,reverse=True)
+      sq.sort(key=lambda x: x.hill)
+      for s in sq:
+        for u in s.units:
+          if ranking >= 80*defense_needs/100: break
+          if u.pos.is_city and u.pos.around_threat + u.pos.threat: break
+          if u.pos.is_city == 0 and t.around_threat+t.threat == 0 and u.garrison: break
+          if u.pos.is_city and len([g for g in u.pos.units if g.garrison]) < 3:
+            print(f'break with {len(u.pos.units)}.') 
+            break   
+          if (u.mp[0] >= 2 and u.nation == nation
+              and u.group == [] and u.leader == None 
+              and u.pos.around_threat + u.pos.threat == 0 
+              and u.comm == 0):
+            units += {u}
+            ranking += u.ranking
+      if info: logging.debug(f'{len(units)} unidades disponibles iniciales.')
+      if info: logging.debug(f'ranking total {ranking}')
       units.sort(key=lambda x: x.pos.around_threat)
-      units.sort(key=lambda x: x.pos.get_distance(x.pos, t))
-      units.sort(key=lambda x: x.mp[0], reverse=True)
       if t.surf.name == forest_t:
-        units.sort(key=lambda x: x.forest_survival or x.rng + x.rng_mod, reverse=True)
-        logging.debug(f'sort to forest.')
+        if info: logging.debug(f'sort to forest.')
       if t.surf.name == swamp_t:
         units.sort(key=lambda x: x.swamp_survival or x.rng + x.rng_mod, reverse=True)
-        logging.debug(f'sort to swamp.')
+        if info: logging.debug(f'sort to swamp.')
       if t.surf.name in [forest_t, swamp_t] or t.hill: 
         units.sort(key=lambda x: mounted_t not in x.traits, reverse=True)
-        logging.debug(f'sort by not mounted.')
+        if info: logging.debug(f'sort by not mounted.')
+      units.sort(key=lambda x: x.pos.get_distance(x.pos, t))
       for uni in units:
+        if defense > defense_needs or (uni.pos == t and uni.garrison): break
         t.update(uni.nation)
-        if defense < t.around_threat or defense == 0:
-          defense += uni.ranking
-          logging.debug(f'{uni} defenderá {t} {t.cords}.')
-          logging.debug(f'defensa {defense}.')
-          if uni.pos != t:
-            msg = f'{uni} defenderá {t} {t.cords}.'
-            uni.log[-1] += [msg]
-            move_set(uni, t)
-            move_set(uni, 'gar')
-            if t.around_threat == 0: break
-          elif uni.pos == t: move_set(uni, 'gar')
-          if t.around_threat == 0: break
+        if defense+uni.ranking > defense_needs*2: 
+          uni.split((1))
+          msg = f'splited.'
+          if info: logging.debug(msg)
+          uni.update()
+        defense += uni.ranking
+        if uni.garrison:
+          uni.garrison = 0
+          uni.scout = 0
+          msg = f'{uni} leaves garrison on {uni.pos} {uni.pos.cords}.'
+          uni.log[-1] += [msg]
+          nation.devlog[-1] += [msg]
+          if info:  logging.debug(msg)
+        msg = f'{uni} de {uni.pos.cords} defenderá {t} {t.cords}.'
+        if info: logging.debug(msg)
+        nation.devlog[-1] += [msg]
+        uni.log[-1] += [msg]
+        msg = f'defensa {defense} needs {defense_needs}.'
+        if info: logging.debug(msg)
+        nation.devlog[-1] += [msg]
+        uni.log[-1] += [msg]
+        if uni.pos != t:
+          move_set(uni, t)
+          move_set(uni, 'gar')
+        elif uni.pos == t: move_set(uni, 'gar')
   
-  logging.debug(f'time elapses. {time()-init}.')
+  if info: logging.debug(f'time elapses. {time()-init}.')
 
 
 
@@ -1956,6 +2124,8 @@ def ai_random():
         oportunist_attack(uni)
       unit_attrition(uni)
       ai_action_random(uni)
+  
+  print(f'test')
 
 
 
@@ -1976,13 +2146,24 @@ def ai_set_free_units(nation, req=0):
           logging.debug(f'{uni} requiere no defender {t}. req {req} {t.cords}.')
           
   for t in nation.tiles:
-    defense = t.defense
-    t.units.sort(key=lambda x: x.rng >= 6)
-    for uni in t.units:
-      if defense - uni.ranking >= t.around_threat and t.is_city == 0 and uni.garrison == 1:
+    units = [u for u in t.units if u.nation == nation and u.garrison]
+    defense = sum(u.ranking for u in units)
+    defense_need = t.defense_req + t.around_threat
+    if t.surf.name in [forest_t, swamp_t] or t.hill: 
+      [u.update() for u in units]
+      units.sort(key=lambda x: x.rng+x.rng_mod)
+    for uni in units:
+      if defense > defense_need*4: uni.split(3)
+      elif defense > defense_need*3: uni.split(2)
+      elif defense > defense_need*2: uni.split(1)
+      uni.update()
+      if defense - uni.ranking >= defense_need and t.is_city == 0 and uni.garrison == 1:
         uni.garrison = 0
         defense -= uni.ranking
-        logging.debug(f'{uni} es ahora libre de {t} {t.cords}.')
+        msg =f'{uni} es ahora libre de {t} {t.cords}.'
+        logging.debug(msg)
+        nation.devlog[-1] += [msg]
+        uni.log[-1] += [msg]
   
   logging.debug(f'time elapses. {time()-init}.')
 
@@ -2003,10 +2184,10 @@ def ai_train(nation):
     units = [it(nation) for it in ct.all_av_units if it.settler == 0]
     [it.update() for it in units]
     units = [it for it in units if it.settler == 0 and it.comm == 0]
-    if ct.seen_threat * 2 > ct.defense_total: 
-      ct.defense_pred = ct.seen_threat * 2
+    ct.get_defense_info()
+    if ct.defense_total < ct.defense_pred*3: 
       logging.debug(f'amenaza mayor.')
-      upkeep_limit = nation.upkeep * 2
+      upkeep_limit = nation.upkeep * 1.5
       logging.debug(f'upkeep increased to {upkeep_limit}.')
       ct.get_defense_info()
     logging.debug(f'amenaza {ct.seen_threat}.')
@@ -2038,20 +2219,20 @@ def ai_train_comm(nation):
   comms = len(nation.units_comm)
   others = len([i for i in nation.units if i.comm == 0])
   logging.debug(f'{comms =: }, {others =: }, {nation.commander_rate =: }.')
-  logging.debug(f'{floor(others/nation.commander_rate) =: } {comms =: }.')
-  if floor(others / nation.commander_rate) < comms:
+  logging.debug(f'{floor(others/nation.commander_rate)= } {comms =: }.')
+  if comms < floor(others / nation.commander_rate):
     for ct in nation.cities:
       ct.update()
       ct.set_av_units()
       logging.debug(f'{ct.defense_total_percent =: }.')
       if ct.defense_total_percent < 200: continue
-      units = [it(nation) for it in ct.all_av_units if it.comm]
+      units = [it(nation) for it in ct.all_av_units]
       [it.update() for it in units]
       units = [it for it in units if it.comm]
       shuffle(units)
-      logging.debug(f'available commanders {len(nation.units_comm)}.')
+      logging.debug(f'available commanders {len(units)}.')
       for uni in units:
-        if req_unit(uni, nation, ct):
+        if nation.upkeep+uni.upkeep <    nation.upkeep_limit and req_unit(uni, nation, ct):
           logging.debug(f'{uni} suma upkeep {nation.upkeep+uni.upkeep }.')
           ct.train(uni)
           break
@@ -2062,25 +2243,28 @@ def ai_unit_cast(nation):
   logging.info(f'commander cast.')
   units = [i for i in nation.units if i.power > 0]
   for uni in units:
+    banned = []
     spells = [sp(uni) for sp in uni.spells]
     shuffle(spells)
-    min_power = min([sp.cost for sp in spells])
+    min_power = min([sum(sp.cost for sp in spells)])
     tries = 10
     while uni.power > min_power and tries > 0:
       tries -= 1
       for spl in spells:
+        if uni.power < min_power: break
+        if spl.name in banned: continue
         print(spl.name)
         init = spl.ai_run(uni)
         if init != None: 
           uni.log[-1] += [init]
           logging.debug(init)
-          break
+          banned += [spl.name]
 
 
 
 def ai_unit_disband(nation):
   logging.info(f'ai_unit_disband.')
-  if nation.income < nation.upkeep and nation.gold < nation.upkeep * 5:
+  if nation.income < nation.upkeep and nation.gold < nation.upkeep * 1.5:
     logging.debug(f'nation income{nation.income}. upkeep {nation.upkeep}. gold {nation.gold}.')
     units = [i for i in nation.units if i.upkeep > 0 and i.comm == 0
              and i.goto == []]
@@ -2088,6 +2272,7 @@ def ai_unit_disband(nation):
     if units: uni = units[0]
     
     uni.update()
+    uni.split(5)
     uni.pos.units.remove(uni)
     uni.nation.units.remove(uni)
     uni.city.pop_back += uni.pop
@@ -2097,40 +2282,13 @@ def ai_unit_disband(nation):
 
 def auto_attack(itm):
   local_units = get_units(itm.pos, itm.nation)
-  target = itm.set_attack(local_units)
+  target = itm.set_attack()
   if target:
     combat_menu(itm, itm.pos, target)
-    itm.revealed = 1
     itm.update()
     msg = f'ataque invisible.'
     itm.log[-1].append(msg)
     return 1
-
-
-
-def basic_info(itm):
-  sp.speak(f'{itm}', 1)
-  sp.speak(f'{itm.nation}.')
-  sp.speak(f'hp {itm.hp_total}.')
-  if itm.hidden:
-    loadsound('hidden1', vol=0.5)
-    sp.speak(f'{hidden_t}.')
-  if itm.nation == world.nations[world.player_num]:
-    sp.speak(f'mp {itm.mp[0]} {of_t} {itm.mp[1]}.')
-  if itm.goto and isinstance(itm.goto[0], list):
-    loadsound('walk_ft1')
-    goto = itm.goto[0][1]
-    cord = ''
-    if itm.pos.y < goto.y: cord += f'{south_t}.' 
-    if itm.pos.y > goto.y: cord += f'{north_t}.'
-    if itm.pos.x < goto.x: cord += f' { east_t}.'  
-    if itm.pos.x > goto.x: cord += f' {west_t}.'
-    sp.speak(f'{heading_to_t} {cord}')
-    if itm.goto[0][1] in world.nations[world.player_num].map:
-      sp.speak(f'{itm.goto[0][1]}.')
-      sp.speak(itm.goto[0][1].cords)
-    else: sp.speak(f'...')
-
 
 
 def check_enemy(itm, pos, is_city=0, info=0):
@@ -2153,8 +2311,8 @@ def check_position(itm):
   logging.debug(f'checking position.')
   if itm.pos.is_city and itm.nation != itm.pos.nation and itm.hidden == 0:
     if check_enemy(itm, itm.pos, is_city=1) == None: 
-      if itm.nation in world.nations: take_city(itm)
-      else: destroy_city(itm.pos.city)
+      if itm.nation in world.nations and itm.pos.defense >= 50*itm.pos.pop/100: take_city(itm)
+      elif itm.nation not in world.nations and itm.pos.defense >= 100*itm.pos.pop/100: take_city(itm) 
 
 
 
@@ -2184,9 +2342,8 @@ def after_combat(itm):
   itm.update()
   itm.skills.sort(key=lambda x: x.index)
   for sk in itm.skills:
-    if sk.type == 'after combat': 
-      sk.run(itm)
-      if itm.battlelog: itm.temp_log += itm.battlelog
+    sk.run_after_combat(itm)
+    if itm.battlelog: itm.temp_log += itm.battlelog
 
 
 
@@ -2205,13 +2362,14 @@ def after_attack(itm):
 
 
 def combat_menu(itm, pos, target=None, dist=0):
+  itm.update()
   if itm not in  itm.pos.units:
     logging.debug(f'itm not in itm.pos')
   _units = [it for it in pos.units if it.nation != itm.nation]
+  [it.update() for it in _units]
   _units.sort(key=lambda x: sum([x.off, x.off_mod, x.str, x.str_mod]), reverse=True)
   _units.sort(key=lambda x: x.units, reverse=True)
   _units.sort(key=lambda x: x.rng >= 6, reverse=True)
-  _units.sort(key=lambda x: x.hidden)
   _units.sort(key=lambda x: x.comm)
   _units.sort(key=lambda x: x.mp[0] >= 0, reverse=True)
   logging.debug(f'distancia inicial {dist}.')
@@ -2259,8 +2417,10 @@ def combat_menu(itm, pos, target=None, dist=0):
     i.raised = []
     i.temp_log = None
     i.wounds = []
-  gold_itm = round(itm.upkeep * itm.units) * itm.history.turns
-  gold_target = round(target.upkeep * target.units) * target.history.turns
+  gold_itm = randint(1,3)
+  gold_itm += round(itm.upkeep * itm.units) * itm.history.turns
+  gold_target = randint(1,3)
+  gold_target += round(target.upkeep * target.units) * target.history.turns
   _round = 1
   while itm.hp_total > 0 or target.hp_total > 0:
     if go:
@@ -2291,7 +2451,9 @@ def combat_menu(itm, pos, target=None, dist=0):
       # log
       temp_log = [
         f'{round_t} {_round}.',
-        f'{units[0]} {health_t} {units[0].hp_total}. vs {units[1]} {health_t} {units[1].hp_total}.',
+        f'{units[0]} {health_t} {units[0].hp_total}. ranking {units[0].ranking} \
+        vs {units[1]} {health_t} {units[1].hp_total}. ranking {units[0].ranking}.',
+         
         f'{resolve_t} {units[0].resolve+units[0].resolve_mod}. {units[1].resolve+units[1].resolve_mod}.',
         f'{moves_t} {units[0].moves+units[0].moves_mod}. {units[1].moves+units[1].moves_mod}.',
         f'{skills_t} {units[0].skill_names}. {units[1].skill_names}.',
@@ -2398,7 +2560,7 @@ def combat_moves(dist, itm, info=1):
 
 
 
-def combat_fight(dist, itm, _round, info=1):
+def combat_fight(dist, itm, _round, info=0):
   itm.update()
   target = itm.target
   target.update()
@@ -2465,7 +2627,6 @@ def combat_fight(dist, itm, _round, info=1):
         if roll >= head_factor:
           hit_to = 'head'
           if info:logging.debug(f'hit to the head.')
-          print(f'hit to the head.')
           res = target.hres+target.hres_mod
         wound_need -= res
         if info: logging.debug(f'wound_need2 {wound_need}.')
@@ -2547,7 +2708,7 @@ def combat_post(itm, target):
       unit.mp[0] = 0
       unit.update()
       logging.debug(f'{unit} huyen {sum(i.fled)}.')
-      if unit.units < unit.initial_units / 4: continue
+      if unit.units < unit.min_units / 4: continue
       unit.pos.units.append(unit)
       if unit.can_retreat:
         logging.debug(f'se retirará.')
@@ -2585,14 +2746,14 @@ def control_game(event):
     if event.key == pygame.K_7:
       pos.add_unit(Halberdier, holy_empire_t, 1)
     if event.key == pygame.K_8:
-      pos.add_unit(Sagittarii, holy_empire_t, 1)
+      pos.add_unit(Flagellants, holy_empire_t, 1)
     if event.key == pygame.K_9:
-      pos.add_unit(Principes, holy_empire_t, 1)
+      pos.add_unit(Zombies, wild_t, 1)
     if event.key == pygame.K_0:
-      pos.add_unit(LizardMen, wood_elves_t, 1)
+      pos.add_unit(DemonHunters, wood_elves_t, 1)
     if event.key == pygame.K_a:
       if x > -1:
-        target = local_units[x].set_attack(local_units)
+        target = local_units[x].set_attack()
         if target:
           combat_menu(local_units[x], pos, target)
           x = -1
@@ -2601,7 +2762,7 @@ def control_game(event):
       # ver edificios.
       if x < 0 and pos in nation.map and pos.blocked == 0:
         menu_building(pos, nation)
-        pos.update()
+        pos.update(nation)
       # quemar.
       elif x > -1:
         local_units[x].burn()
@@ -2638,7 +2799,7 @@ def control_game(event):
     if event.key == pygame.K_j:
       # unir.
       if len(unit) > 1:
-        join_units(unit, 1)
+        basics.join_units(unit, 1)
         sayland = 1
         unit = []
         x = -1
@@ -2746,7 +2907,7 @@ def control_game(event):
         x = 0
       elif x > -1:
         x = basics.selector(local_units, x, 'up')
-      basic_info(local_units[x])
+      local_units[x].basic_info()
     if event.key == pygame.K_PAGEDOWN:
       play_stop()
       if local_units == [] or pos.sight == 0:
@@ -2757,7 +2918,7 @@ def control_game(event):
         x = 0
       elif x > -1:
         x = basics.selector(local_units, x, 'down')
-      basic_info(local_units[x])
+      local_units[x].basic_info()
     if event.key == pygame.K_F5:
       sayland = 1
       menu_unit(nation.units)
@@ -2973,6 +3134,7 @@ def control_global(event):
       if event.key == pygame.K_d:
         sp.speak(f'defensa {round(pos.defense, 1)}.')
         sp.speak(f'{around_defense_t} {pos.around_defense}.')
+        sp.speak(f'{pos.defense_req= }')
       if event.key == pygame.K_t:
         sp.speak(f'{threat_t} {pos.threat}.')
         sp.speak(f'{around_threat_t} {pos.around_threat}.')
@@ -2994,6 +3156,7 @@ def control_global(event):
           '''
           sp.speak(msg)
     if event.key == pygame.K_z:
+      pos.update(nation)
       if pos in nation.map: sp.speak(f'{pos}')
     if event.key == pygame.K_x:
       sp.speak(f'{pos.cords}.')
@@ -3595,8 +3758,7 @@ def menu_building(pos, nation, sound='in1'):
           if isinstance(items[x], str) and pos.city and pos.nation == nation:
             building = create_building(pos.city, nation.av_buildings)
             if building:
-              if building.unique and has_name(pos.buildings, building.name):
-                error(msg='edificio único.', info=1)
+              if building.can_build() == 0:
                 continue
               pos.city.add_building(building, pos)
             items += [i for i in pos.buildings if i not in items]
@@ -3897,8 +4059,7 @@ def move_set(itm, goto):
     move_unit(itm)
 
 
-
-def move_unit(itm):
+def move_unit(itm, info=0):
   itm.update()
   logging.debug(f'move_unit a {itm}.')
   goto = itm.goto[0][1]
@@ -3907,21 +4068,23 @@ def move_unit(itm):
     itm.stopped = 1
     msg = f'{itm} {itm.nation}  detenido.'
     itm.log[-1].append(msg)
-    logging.debug(msg)
+    if info: logging.debug(msg)
     if itm.show_info:
       speak(msg=msg)
     return 0
   if itm.going == 0:
     if itm.check_ready() == 0:
-      logging.debug(f'go = 0.')
+      if info: logging.debug(f'go = 0.')
       return
   if isinstance(itm.goto[0], list):
     msg = f'{itm} ({itm.nation}) se moverá a {itm.goto[0][1]}., {itm.goto[0][1].cords}'
     itm.log[-1].append(msg)
-    logging.debug(msg)
-    # logging.debug(f'mp {itm.mp[0]} de {itm.mp[1]}, costo {itm.goto[0][0]}.')
-    if itm.group: logging.debug(f'lider, grupo {len(itm.group)}.')
-    elif itm.leader: logging.debug(f'sigue a {itm.leader}.')
+    if info: logging.debug(msg)
+    if info: logging.debug(f'mp {itm.mp[0]} de {itm.mp[1]}, costo {itm.goto[0][0]}.')
+    if itm.group: 
+      if info: logging.debug(f'lider, grupo {len(itm.group)}.')
+    elif itm.leader: 
+      if info: logging.debug(f'sigue a {itm.leader}.')
     while (itm.goto and itm.mp[0] > 0 and itm.hp_total > 0
            and isinstance(itm.goto[0], list)):
       goto = itm.goto[0][1]
@@ -3934,22 +4097,22 @@ def move_unit(itm):
           ai_move_group(itm)
           return
         itm.going = 1
-        if roll_dice(1) >= 4: 
+        if basics.roll_dice(1) >= 4: 
           itm.group.sort(key=lambda x: x.rng, reverse=True)
         for i in itm.group:
           if i.pos != itm.goto[0][1] and i.goto == []:
-            logging.debug(f'seguidor {i} se mueve')
+            if info: logging.debug(f'seguidor {i} se mueve')
             move_set(i, goto)
         moving_unit(itm)
       
   elif isinstance(itm.goto[0], str):
     if itm.goto[0] == 'attack':
+      del(itm.goto[0])
       auto_attack(itm)
       if itm.hp_total < 1: return
-      del(itm.goto[0])
     elif itm.goto[0] == 'gar':
       itm.garrison = 1
-      logging.debug(f'{itm} defiende {itm.pos}.')
+      if info: logging.debug(f'{itm} defiende {itm.pos}.')
       del(itm.goto[0])
     elif itm.goto[0] == 'set':
       placement = choice(itm.buildings)
@@ -3959,49 +4122,47 @@ def move_unit(itm):
 
 
 
-def moving_unit(itm):
-  logging.debug(f'mueve cerca {itm} {itm.id}.')
+def moving_unit(itm, info=0):
+  if info: logging.debug(f'mueve cerca {itm} {itm.id}.')
   if itm.goto == []: 
-    logging.debug(f'sin goto')
+    if info: logging.debug(f'sin goto')
     return
   
   mp = itm.mp[0]
   cost = itm.goto[0][0]
   goto = itm.goto[0][1]
-  logging.debug(f'mp {mp}, cost {cost}.')
+  if info: logging.debug(f'mp {mp}, cost {cost}.')
   # menor.
   if mp < cost:
-    # logging.debug(f'menor.')
+    if info: logging.debug(f'menor.')
     itm.goto[0][0] -= itm.mp[0]
     itm.mp[0] = 0
     if itm.ai == 0: loadsound('set4')
   # mayor
   elif mp >= cost:
-    # logging.debug(f'mayor.')
+    if info: logging.debug(f'mayor.')
     itm.mp[0] -= cost
     itm.set_hidden(goto)
-    logging.debug(f'hidden {itm.hidden}.')
+    if info: logging.debug(f'hidden {itm.hidden}.')
     if itm not in itm.pos.units: 
-      logging.debug(f'not in position.')
+      if info: logging.debug(f'not in position.')
     # chekeo de enemigos.
     if check_enemy(itm, goto, goto.is_city):
-      logging.debug(f'hay enemigos.')
+      if info: logging.debug(f'hay enemigos.')
       veredict = combat_menu(itm, goto)
-      #itm.revealed = 1
       itm.update()
-      logging.debug(f'hidden {itm.hidden}.')
+      if info: logging.debug(f'hidden {itm.hidden}.')
       if veredict == 0:
         itm.pos.update(itm.nation)
-        logging.debug(f'veredict {veredict}.')
+        if info: logging.debug(f'veredict {veredict}.')
         return
       
       if check_enemy(itm, goto, goto.is_city):
-        logging.debug(f'still enemies.')
+        if info: logging.debug(f'still enemies.')
         del(itm.goto[0])
         return
       
     unit_arrival(goto, itm)
-
 
 
 def naming(sound='back3'):
@@ -4112,17 +4273,16 @@ def nation_set_start_position(nation):
 
 
 def new_turn():
-  print(f'new_turn')
   global turns, sayland, ambient
   ambient = world.ambient
+  ambient.update()
   last_day_night = ambient.day_night[0]
-  
   [i.update(scenary) for i in world.nations]
   logging.debug(f'nuevo turno.')
   if world.turn > 0:
     if ambient.time[0] >= 6:
       ambient.time[0] = -1
-      if ambient.week >= 2:
+      if ambient.week >= 1:
         ambient.week = 0
         if ambient.month[0] >= 11:
           ambient.month[0] = -1
@@ -4130,7 +4290,7 @@ def new_turn():
         ambient.month[0] += 1
       ambient.week += 1
       
-    if ambient.month[0] in [12, 0, 1]:
+    if ambient.month[0] in [11, 0, 1]:
       ambient.season[0] = 0
     elif ambient.month[0] in [2, 3, 4]:
       ambient.season[0] = 1
@@ -4147,10 +4307,12 @@ def new_turn():
     elif ambient.season[0] in [1, 2]:
       ambient.day_night[0] = 0
       if ambient.time[0] >= 4: ambient.day_night[0] = 1
-  for n in world.nations:
-    n.start_turn()
   world.turn += 1
   world.ambient.update()
+  ambient = world.ambient
+  for n in world.nations:
+    n.start_turn()
+  
   [i.start_turn() for i in world.map]
   msg = f'{turn_t} {world.turn}.'
   logging.info(msg)
@@ -4158,14 +4320,13 @@ def new_turn():
   sp.speak(msg, 1)
   sleep(loadsound('notify14') * 0.2)
   if ambient.day_night[0] != last_day_night:
-    if ambient.day_night[0] == 0: sleep(loadsound('dawn01', channel=ch4) * 0.9)
-    if ambient.day_night[0]: sleep(loadsound('night01', channel=ch4) * 0.9)
+    if ambient.day_night[0] == 0: sleep(loadsound('dawn01', channel=ch4) / 2)
+    if ambient.day_night[0]: sleep(loadsound('night01', channel=ch4) / 2)
   gc.collect()
 
 
 
 def next_play():
-  print(f'next play')
   global nation, pos, players, sayland, unit, x
   unit = []
   x = -1
@@ -4203,46 +4364,47 @@ def next_play():
 
 
 
-def oportunist_attack(itm):
+def oportunist_attack(itm, info=0):
   logging.info(f'ataque de oportunidad de {itm}.')
   sq = itm.pos.get_near_tiles(1)
   [i.update(itm.nation) for i in sq]
   sq = [it for it in sq if it.soil.name in itm.soil and it.surf.name in itm.surf
             and it.threat > 0]
-  logging.debug(f'{len(sq)} casillas.')
+  if info: logging.debug(f'{len(sq)} casillas.')
   for s in sq:
     if roll_dice(2) >= 3 and itm.get_favland(s) == 0:
-      logging.debug(f'not favland.')
+      if info: logging.debug(f'not favland.')
       continue
     ranking = itm.ranking
-    logging.debug(f'{ranking=:}.')
+    if info: logging.debug(f'{ranking=:}.')
     if itm.comm: ranking *= 0.6
     if s.surf.name == forest_t and itm.forest_survival == 0: 
       ranking -= ranking * 0.2
-      logging.debug(f'reduce by forest.')
+      if info: logging.debug(f'reduce by forest.')
     if s.surf.name == swamp_t and itm.swamp_survival == 0: 
       ranking -= ranking * 0.2
-      logging.debug(f'reduce by swamp.')
+      if info: logging.debug(f'reduce by swamp.')
     if s.hill and itm.mountain_survival == 0: 
       ranking -= ranking * 0.2
-      logging.debug(f'reduce by mountain.')
+      if info: logging.debug(f'reduce by mountain.')
     rnd = randint(round(ranking * 0.9), round(ranking * 1.2))
     if itm.nation not in world.nations: 
       rnd *= 1.5
-      logging.debug(f'rnd increased by random unit.')
-    logging.debug(f'{rnd=:}, {s.threat=:}, {s.around_threat=:}')
+      if info: logging.debug(f'rnd increased by random unit.')
+    if info: logging.debug(f'{rnd=:}, {s.threat=:}, {s.around_threat=:}')
     if itm.fear in [5, 6]: fear = 1.5
     if itm.fear in [4, 3]: fear = 2
     if itm.fear <= 2: fear = 3
-    logging.debug(f'{rnd*fear=:}, {s.around_threat=:}.')
+    if info: logging.debug(f'{rnd*fear=:}, {s.around_threat=:}.')
     if rnd * fear < s.around_threat:
-      logging.debug(f'afraid.')
+      if info: logging.debug(f'afraid.')
       continue
     if rnd > s.threat and s.cost <= itm.mp[0]:
       msg = f'{itm} en {itm.pos} aprobecha y ataqua a {s}.'
-      logging.debug(msg)
+      if info: logging.debug(msg)
       itm.log[-1].append(msg)
       move_set(itm, s)
+      move_set(itm, 'attack')
       return 1
 
 
@@ -4255,13 +4417,13 @@ def play_sound(unit, sound, ch=0):
 
 
 
-def random_move(itm, scenary, sq=None, value=1):
+def random_move(itm, scenary, sq=None, value=1, info=0):
   logging.debug(f'movimiento aleatoreo para {itm} en {itm.pos}, {itm.pos.cords}.')
   done = 0
   if sq == None:
     sq = itm.pos.get_near_tiles(value)
     sq = [it for it in sq if itm.can_pass(it)]
-    logging.debug(f'{len(sq)} casillas iniciales.')
+    if info: logging.debug(f'{len(sq)} casillas iniciales.')
   if sq:
     done = 1
     fear = 0
@@ -4271,30 +4433,31 @@ def random_move(itm, scenary, sq=None, value=1):
     if itm.nation not in world.nations: sq.sort(key=lambda x: x.get_nearest_nation())
     map_update(itm.nation, sq)
     if randint(1, 100) < itm.sort_chance:
-      logging.debug(f'sorted.')
+      if info: logging.debug(f'sorted.')
       sort = 1
       [s.set_threat(itm.nation) for s in sq]
       if itm.populated_land:
-        logging.debug(f'casillas pobladas.')
+        if info: logging.debug(f'casillas pobladas.')
         sq.sort(key=lambda x: x.pop, reverse=True)
       set_favland(itm, sq)
     
-    logging.debug(f'{itm.ranking=:}.')
+    if info: logging.debug(f'{itm.ranking=:}.')
     rnd = randint(round(itm.ranking * 0.9), round(itm.ranking * 1.3))
     if itm.pos.surf.name == forest_t and itm.forest_survival == 0: rnd -= rnd * 0.3
     if itm.pos.hill and itm.mountain_survival == 0: rnd -= rnd * 0.3
     if itm.pos.surf.name == swamp_t and itm.swamp_survival == 0: rnd -= rnd * 0.3
     if commander_t in itm.traits: rnd -= rnd * 0.3
     if itm.nation not in world.nations: rnd *= 1.5
-    if roll_dice(1) <= itm.fear:
-      logging.debug(f'ordena por miedo')
+    if basics.roll_dice(1) <= itm.fear:
+      if info: logging.debug(f'ordena por miedo')
       fear = 1
-      sq.sort(key=lambda x: x.defense, reverse=True)
+      sq.sort(key=lambda x: x.city == None, reverse=True)
       sq.sort(key=lambda x: x.threat <= rnd, reverse=True)
       sq.sort(key=lambda x: x.around_threat <= rnd, reverse=True)
-      if roll_dice(1) >= 3: sq.sort(key=lambda x: x.food - x.food_need < itm.food)
+      if basics.roll_dice(1) >= 3: sq.sort(key=lambda x: x.food - x.food_need < itm.food)
+      sq.sort(key=lambda x: x.defense, reverse=True)
     if itm.scout:
-      # logging.debug(f'ordena para exploración')
+      if info:  logging.debug(f'ordena para exploración')
       fear = 1
       sq.sort(key=lambda x: x.has_city)
       sq.sort(key=lambda x: x.get_distance(itm.pos, itm.city.pos), reverse=True)
@@ -4306,24 +4469,24 @@ def random_move(itm, scenary, sq=None, value=1):
     sq.sort(key=lambda x: x != itm.pos, reverse=True)
     movstatus = f'fear {fear}, sort {sort}.'
     itm.log[-1].append(movstatus)
-    logging.debug(f'{len(sq)} casillas finales.')
+    if info: logging.debug(f'{len(sq)} casillas finales.')
     moved = 0
     for s in sq:
       if itm.fear in [6, 5]: fear = 1.5
       if itm.fear in [4, 3]: fear = 2
       if itm.fear in [2, 1]: fear = 3
-      logging.debug(f'{rnd*fear=:} {s.around_threat=:}.')
+      if info: logging.debug(f'{rnd*fear=:} {s.around_threat=:}.')
       if rnd * fear < s.around_threat and itm.fear >= 5: 
-        logging.debug(f'afraid.')
+        if info: logging.debug(f'afraid.')
         continue
-      logging.debug(f'rnd {rnd} amenaza {round(s.threat)} in {s}, {s.cords}.')
+      if info: logging.debug(f'rnd {rnd} amenaza {round(s.threat)} in {s}, {s.cords}.')
       if rnd >= s.threat:
         moved = 1
         move_set(itm, s)
         break
     if moved == 0:
       msg = f'no se mueve.!'
-      logging.debug(msg)
+      if info: logging.debug(msg)
       itm.log[-1].append(msg)
       itm.stopped = 1
   return done
@@ -4495,17 +4658,24 @@ def set_near_tiles(nation, scenary):
 
 
 
-def set_defend_pos(defense_need, itm, pos):
+def set_defend_pos(defense_need, itm, pos, info=0):
   '''sent unit to defend a position.'''
-  logging.debug(f'set_defend {itm}.')
+  if info: logging.debug(f'set_defend {itm}.')
+  if itm.ranking > defense_need*2 and itm.squads > 1: 
+    itm.split(1)
+    msg = f'divided.'
+    if info: logging.debug(msg)
+    itm.nation.devlog[-1] += [msg]
+    itm.log[-1] += [msg]
   itm.update()
   if itm.goto == [] and itm.pos == pos:
     move_set(itm, 'gar')
     defense_need -= itm.ranking
     msg = f'{itm} será guarnición.'
-    logging.debug(msg)
+    if info: logging.debug(msg)
+    itm.nation.devlog[-1] += [msg]
     itm.log[-1] += [msg]
-    logging.debug(f'necesita {round(defense_need,2)} defensa.')
+    if info: logging.debug(f'necesita {round(defense_need,2)} defensa.')
     return defense_need
   elif itm.goto == [] and itm.pos != pos:
     msg = f'{itm} defenderá {pos} {pos.cords}.'
@@ -4513,12 +4683,12 @@ def set_defend_pos(defense_need, itm, pos):
     move_set(itm, pos)
     move_set(itm, 'gar')
     defense_need -= itm.ranking
-    logging.debug(f'necesita {round(defense_need,2)} defensa.')
+    if info: logging.debug(f'necesita {round(defense_need,2)} defensa.')
     return defense_need
   elif itm.goto and  pos in itm.goto_pos:
-    logging.debug(f'{itm} se dirige a la ciudad.')
+    if info: logging.debug(f'{itm} se dirige a la ciudad.')
     defense_need -= itm.ranking
-    logging.debug(f'necesita {round(defense_need,2)} defensa.')
+    if info: logging.debug(f'necesita {round(defense_need,2)} defensa.')
     return defense_need
   else: return defense_need
 
@@ -4703,7 +4873,6 @@ def start():
 
 
 def start_turn(nation):
-  print(f'start_turn')
   global sayland
   sp.speak(f'{nation}.', 1)
   sp.speak(f'{ambient.day_night[1][ambient.day_night[0]]}.')
@@ -4725,7 +4894,8 @@ def start_turn(nation):
     city.update()
   
   # initial placement.
-  if nation.cities == []: nation_start_placement(nation)
+  if nation.cities == [] and world.turn == 1: 
+    nation_start_placement(nation)
   # Unidades.
   for uni in nation.units: uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'unidades.')
@@ -4741,7 +4911,7 @@ def start_turn(nation):
   nation.set_seen_nations()
 
   # otros.
-  sleep(loadsound('notify10'))
+  sleep(loadsound('notify10')/2)
   warning_enemy(nation, nation.map)
 
 
@@ -4901,7 +5071,7 @@ def train_unit(city, items, msg, sound='in1'):
 
 
 
-def unit_arrival(goto, itm):
+def unit_arrival(goto, itm, info=0):
   if itm.hp_total <= 0:
     logging.warning(f'arrival. {itm} no tiene salud.')
     return
@@ -4913,7 +5083,7 @@ def unit_arrival(goto, itm):
   itm.can_retreat = 1
   itm.going = 0
   msg = f'{itm} llega a ({goto}, {goto.cords}.'
-  logging.debug(msg)
+  if info: logging.debug(msg)
   itm.log[-1].append(msg)
   if itm.show_info and itm.goto == []: sleep(loadsound('walk_ft1') / 4)
   goto.pos_sight(itm.nation, itm.nation.map)
@@ -4972,7 +5142,7 @@ def unit_new_turn(itm):
 
 
 
-def unit_restoring(itm):
+def unit_restoring(itm, info=0):
   logging.debug(f'restaura {itm} id {itm.id}.')
   if itm.hp_total < 1:
     logging.warning(f'sin salud.')
@@ -4986,23 +5156,23 @@ def unit_restoring(itm):
     res = itm.hp_res + itm.hp_res_mod
     itm.hp_total += res
     if itm.hp_total > itm.hp * itm.units: itm.hp_total = itm.hp * itm.hp * itm.units
-    logging.debug(f'restaura {res} hp.')
+    if info: logging.debug(f'restaura {res} hp.')
     if itm.hp_total > itm.hp * itm.units: itm.hp_total = itm.hp * itm.units
 
   # Refit
   if itm.pos.nation and itm.sts + itm.sts_mod:
-    if itm.units < itm.initial_units:
+    if itm.units < itm.min_units*itm.squads:
       sts = itm.hp * (itm.sts + itm.sts_mod)
       itm.hp_total += sts
       msg = f'recovers {sts}.'
       itm.log[-1] += {msg}
-      logging.debug(msg)
+      if info: logging.debug(msg)
       reduction = round(itm.pop / itm.initial_units)
       itm.pos.city.reduce_pop(reduction)
   
   # mp.
   itm.mp[0] = itm.mp[1]
-  logging.debug(f'mp {itm.mp}.')
+  if info: logging.debug(f'mp {itm.mp}.')
 
   # poder.
   power_res = itm.power_res + itm.power_res_mod

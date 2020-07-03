@@ -57,11 +57,12 @@ class Spell:
     if self.gold and itm.nation.gold < self.gold: msg += f'{self.name} {needs_t} {self.gold} {gold_t}.'
     if self.target and target.type not in self.target: msg += f'not {self.target} selected.'
     if self.traits: pass
-    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f'{self.name} {needs_t} forest.'
+    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f'{self.name} {needs_t} {forest_t}.'
+    if self.tile_waste and itm.pos.soil.name != waste_t: msg += f'{self.name} {needs_t} {waste_t}.'
     if self.corpses and itm.pos.corpses == []: msg += f'{self.name} {needs_t} corpses.'
     if self.tile_pop and itm.pos.pop < self.tile_pop: msg += f'{self.name} {needs_t} {self.tile_pop} population.'
     if msg: 
-      sleep(loadsound('errn1')*0.5)
+      if itm.nation.show_info: sleep(loadsound('errn1')*0.5)
       return msg
     else: return None
 
@@ -83,7 +84,8 @@ class Spell:
           and target == None):
         units = [i for i in itm.pos.units 
                  if i.nation == itm.nation and i != itm]
-        target = basics.get_item(units, itm.nation)
+        target = basics.get_unit(units, itm.nation)
+        if target == None: return
     conditions = self.check_conditions(itm, target)
     if conditions != None: return conditions
     check = self.check_cost(itm)
@@ -172,6 +174,24 @@ class CastBloodRain(Spell):
                     and evt.name != Storm.name]
 
 
+class CastLocustSwarm(Spell):
+  name = 'cast locust swarm'
+  cast = 8
+  cost = 15
+  tile_waste = 1
+  type = spell_t
+  tags = ['plague']
+  def ai_run(self, itm):
+    self.init(itm)
+  def run(self, itm):
+    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
+    msg = f'spell {self.name} in {itm.pos} {itm.pos.cords}.'
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    pos = itm.pos
+    casting = LocustSwarm
+    pos.events += [casting(pos)]
+
 
 class CastMist(Spell):
   name = 'cast mist'
@@ -223,10 +243,10 @@ class CastRain(Spell):
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
     casting = Rain
-    casting.turns = randint(2, 4)
-    roll = basics.roll_dice(1)
-    if roll >= 5: casting.turns += 1 
-    if roll >= 6: casting.turns += 2 
+    casting.turns = randint(2, 3)
+    if itm.pos.ambient.sseason == winter_t: casting.turns += randint(2, 4)
+    if basics.roll_dice(1) == 6: casting.turns += 2
+    if itm.pos.soil.name == waste_t: casting.turns = randint(1,2)
     for s in sq:
       if all(i not in [Storm.name, Rain.name] for i in [ev.name for ev in s.events]):
         s.events += [casting(s)]
@@ -304,9 +324,10 @@ class CastStorm(Spell):
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
     casting = Storm
-    casting.turns = randint(2, 4)
-    roll = basics.roll_dice(1)
-    if roll >= 6: casting.turns += 2 
+    casting.turns = randint(2, 3)
+    if itm.pos.ambient.sseason == winter_t: casting.turns += randint(1, 2)
+    if roll >= 6: casting.turns += 2
+    if itm.pos.soil.name == waste_t: casting.turns = 1 
     for s in sq:
       if all(i not in [Storm.name] for i in [ev.name for ev in s.events]):
         s.events += [casting(s)]
@@ -362,7 +383,7 @@ class HealingMists(Spell):
 
 class HealingRoots(Spell):
   name = 'raices curativas.'
-  cast = 5
+  cast = 4
   cost = 15
   type = 'spell'
   tags = [health_t]
@@ -377,6 +398,7 @@ class HealingRoots(Spell):
     if units: self.init(itm, units[0])
 
   def run(self, itm, target):
+    if itm.nation.show_info: sleep(loadsound('spell42',channel=ch3))
     target.other_skills = [sk for sk in target.other_skills if sk.name != intoxicated_t]
     msg = f'{itm} has removed {intoxicated_t} {from_t} {target}.'
     logging.debug(msg)

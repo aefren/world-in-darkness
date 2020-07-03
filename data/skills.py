@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 from math import ceil, floor
-from numpy import mean
 from pdb import Pdb
 from random import randint, shuffle, choice, uniform
 from time import sleep, process_time
 
-from log_module import *
-import basics
-from data.lang.es import *
-from sound import *
+from numpy import mean
 
+from data.lang.es import *
+from log_module import *
+from sound import *
+import basics
 
 
 class Skill:
@@ -18,6 +18,10 @@ class Skill:
   effect = 'self'  # all, friend, enemy, self.
   cast = 6
   cost = 1
+  food = 1
+  res = 1
+  income = 1
+  unrest = 1
   index = 0
   nation = None
   show = 1
@@ -32,13 +36,12 @@ class Skill:
     self.itm = itm
     self.nation = self.itm.nation
 
+  def run_after_combat(self, itm):
+    pass
   def run(self, itm):
     pass
 
   def tile_run(self, itm):
-    pass
-
-  def run(self):
     pass
 
 
@@ -62,16 +65,16 @@ class Ambushment(Skill):
 
 class BattleBrothers(Skill):
   name = 'hermanos de batalla'
-  desc = '+1 resolve if 2 squads. +2 resolve if 3 squads.'
+  desc = '+1 resolve if 20 units. +2 resolve if 30 units.'
   effect = 'self'
   ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
-    if itm.squads >= 3: 
+    if itm.units >= 30: 
       itm.effects.append(self.name + str(2))
       itm.resolve_mod += 2
-    elif itm.squads >= 2:
+    elif itm.units >= 20:
       itm.effects.append(self.name + str(1)) 
       itm.resolve_mod += 1
 
@@ -80,7 +83,7 @@ class BattleFocus(Skill):
   name = 'Trance de batalla'
   desc = '++1 hit if unit mp is full.'
   effect = 'self'
-  ranking = 1.2
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -159,7 +162,7 @@ class BloodyFeast(Skill):
   name = 'fest�n nocturno'
   desc = '+2 hp restoration in night.'
   effect = 'self'
-  ranking = 1.2
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -183,7 +186,7 @@ class Charge(Skill):
   name = 'carga'
   desc = 'charge damage = 1'
   effect = 'self'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
@@ -196,7 +199,7 @@ class DarkPresence(Skill):
   desc = 'if death: in day: +2 res. '
   desc += 'if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.'
   effect = 'friend'
-  ranking = 1.3
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -220,7 +223,7 @@ class DarkVision(Skill):
   name = 'dark vision'
   desc = 'units won get night vision effects.'
   effect = 'self'
-  ranking = 1.3
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -247,18 +250,24 @@ class DeepestDarkness(Skill):
     print(f'done deepest')
 
 
-class DemonHunterL1(Skill):
+class DHLevels(Skill):
   name = 'demon hunter level 2'
   desc = ''
   effect = 'self'
   index = 1
-  type = 'after combat'
-  def run(self, itm):
-    if itm.demon_souls >= 10 and itm.level == 1:
-      itm.name += f' level 2'
+  type = 'generic'
+  def run_after_combat(self, itm):
+    if (itm.target.hp_total < 1
+        and malignant_t in itm.target.traits):
+      itm.demon_souls += sum(itm.target.deads)//itm.squads
+      print(f'deads {sum(itm.target.deads)}.')
+    if itm.demon_souls >= 20:
+      itm.name = 'demon unters level 2'
       itm.level = 2
-      itm.off += 1
-      itm.str += 1
+  def run(self, itm):
+    if itm.level == 2:
+      itm.off_mod += 1
+      itm.str_mod += 1
 
 
 class DesertSurvival(Skill):
@@ -273,17 +282,6 @@ class DesertSurvival(Skill):
     if itm.pos and itm.pos.soil.name == waste_t: 
       itm.effects.append(self.name)
       itm.stealth_mod += 2
-
-
-class DrainDemonSoul(Skill):
-  name = 'drain demon soul'
-  desc = 'catch the soul of a demon enemy if it is killed.'
-  ranking = 5
-  type = 'after combat'
-  def run(self, itm):
-    if death_t in itm.target.traits or demon_t in itm.target.traits_t:
-        itm.demon_souls += sum(itm.damage_done)
-      
 
 
 class Eclipse(Skill):
@@ -331,7 +329,7 @@ class FearAura(Skill):
   effect = 'enemy'
   desc = '-2 resolve, -2 moves, -1 off, -1 dfs.'
   name = fearaura_t
-  ranking = 1.5
+  ranking = 1.2
   type = 'generic'  
 
   def run(self, itm):
@@ -349,7 +347,7 @@ class Fly(Skill):
   effect = 'self'
   desc = 'unit can fly. enemy can not charge.'
   name = 'vuela'
-  ranking = 1.3
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -425,8 +423,6 @@ class ElusiveShadow(Skill):
   name = 'sombra elusiva'
   desc = '+3 stealth on day, +6 stealth on night.'
   effect = 'self'
-  ranking = 1.1
-  ranking = 3
   type = 'generic'
 
   def run(self, itm):
@@ -440,7 +436,7 @@ class Ethereal(Skill):
   name = 'et�reo'
   desc = 'Ignores enemy pn.'
   effect = 'self'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
@@ -452,7 +448,7 @@ class HeavyCharge(Skill):
   effect = 'self'
   desc = 'charge damage = 3'
   name = 'carga pesada'
-  ranking = 1.5
+  ranking = 1.3
   type = 'generic'
 
   def run(self, itm):
@@ -461,7 +457,7 @@ class HeavyCharge(Skill):
 
 
 class Storm(Skill):
-  name = 'heavy rain'
+  name = 'storm'
   desc = 'if unit is ranged -4 rng, -1 off.'
   effects = 'self'
   ranking = 1
@@ -470,11 +466,10 @@ class Storm(Skill):
   def run(self, itm):
     if itm.can_fly:
       itm.effects += [self.name] 
-      itm.moves_mod -= 4
+      itm.moves_mod -= 3
     if itm.rng + itm.rng_mod >= 5:
       itm.effects += [self.name]
-      itm.rng_mod -= 4
-      itm.off_mod -= 1
+      itm.off_mod -= 2
 
   def tile_run(self, itm):
     itm.raining = 1
@@ -513,7 +508,7 @@ class HoldPositions(Skill):
   effect = 'self'
   desc = '+2 dfs if unit mp is full.'
   name = 'hold positions'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
@@ -526,7 +521,7 @@ class HolyAura(Skill):
   name = fearaura_t
   desc = '-2 moves, - 1 dfs, -1 off, -1 resolve if enemy is death and malignant.'
   effect = 'enemy'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'  
 
   def run(self, itm):
@@ -559,7 +554,7 @@ class ImpalingRoots(Skill):
   effect = 'self'
   desc = ''
   name = 'impaling roots.'
-  # ranking = 1.5
+  # ranking = 1.3
   type = 'before attack'
 
   def run(self, itm):
@@ -573,12 +568,12 @@ class ImpalingRoots(Skill):
         if damage > target.hp_total: break
         off = 6
         off -= target.dfs + target.dfs_mod
-        hit = get_hit_mod(off)
+        hit = basics.get_hit_mod(off)
         logging.debug(f'hit {hit}.')
         if basics.roll_dice(1) >= hit:
           st = 6
           st -= target.res + target.res_mod
-          wound = get_wound_mod(st)
+          wound = basics.get_wound_mod(st)
           logging.debug(f'wound {wound}.')          
           if basics.roll_dice(1) >= wound:
             damage += 2
@@ -599,7 +594,7 @@ class Inspiration(Skill):
   name = 'inspiraci�n'
   desc = '+1 hit roll, +1 resolve.'
   effect = 'friend'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
@@ -611,9 +606,9 @@ class Inspiration(Skill):
 
 
 class Intoxicated(Skill):
-  effect = 'self'
-  desc = 'Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos.'
   name = intoxicated_t
+  desc = 'Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos.'
+  effect = 'self'
   turns = randint(5, 10)
   type = 2
 
@@ -630,6 +625,36 @@ class Intoxicated(Skill):
       itm.nation.log[-1] += [msg]
       itm.hp_total -= damage
       if itm.show_info: sleep(loadsound('spell34', channel=ch5) / 2)
+
+
+class LocustSwarm(Skill):
+  name = 'locust swarm'
+  desc = ''
+  effect = 'self'
+  food = 1
+  type = 'generic'
+  turns = 5
+  tags = ['plague']
+  def run(self, itm):
+    pass
+  def tile_run(self, itm):
+    self.turns -= 1
+    if itm.raining and itm.ambient.sseason in [spring_t, summer_t]: self.turns += randint(1,2)
+    elif itm.ambient.sseason == winter_t: self.turns -= 1
+    if basics.roll_dice(1) >= 5: self.food -= 0.1
+    needs = 6
+    if itm.ambient.sseason in [spring_t, summer_t]: needs -= 1
+    if basics.roll_dice(1) >= needs:
+      tiles = itm.get_near_tiles(1)
+      tiles = [t for t in tiles if t.soil.name not in [ocean_t]
+               and t != itm]
+      shuffle(tiles)
+      if self.name not in [ev.name for ev in tiles[0].events]:
+        event = LocustSwarm(tiles[0])
+        tiles[0].events += [event]
+      elif self.name in [ev.name for ev in tiles[0].events]:
+        for ev in tiles[0].events:
+          if ev.name == self.name: ev.turns += randint(1,3)
 
 
 class LongBow(Skill):
@@ -685,7 +710,7 @@ class MassSpears(Skill):
   effect = 'self'
   desc = '+1  off por cada 20 unidades hasta 3.. Anula la carga enemiga de caballer�a.'
   name = 'lanzas en masa'
-  ranking = 1.2
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -733,10 +758,10 @@ class Miasma(Skill):
   def run(self, itm):
     itm.effects += [self.name]
     roll = basics.roll_dice(1)
-    if roll >= 5:
+    if roll >= 3:
       if self.name not in [ev.name for ev in itm.pos.events]:
         sk = Miasma(itm.pos)
-        sk.turns = randint(5, 15)
+        sk.turns = randint(5, 10)
         itm.pos.events += [sk]
         msg = f'miasma in {itm.pos} {itm.pos.cords}.'
         if itm.pos.nation: itm.pos.nation.log[-1] += [msg]
@@ -746,6 +771,7 @@ class Miasma(Skill):
 
   def tile_run(self, itm):
     self.turns -= 1
+    if itm.ambient.sseason == winter_t: self.turns -= 1
     if itm.pop: 
       pop_death = randint(5, 15)
       msg = f'miasma: {deads_t} {pop_death*itm.pop//100} in {itm} {itm.cords}.'
@@ -774,6 +800,7 @@ class Miasma(Skill):
         sk.turns = turns        
         if Intoxicated.name not in [s.name for s in unit.skills]: 
           unit.other_skills += [sk]
+          if unit.nation.show_info: sleep(loadsound('notify28'))
 
 
 class mist(Skill):
@@ -810,7 +837,6 @@ class NightFerocity(Skill):
   name = 'ferocidad nocturna'
   desc = 'if night: +1 att, +1 moves.'
   effect = 'self'
-  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
@@ -825,7 +851,6 @@ class NightSurvival(Skill):
   name = 'sobreviviente nocturno'
   desc = '+5 power_restoration, +2 hp restoration.'
   effect = 'self'
-  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -872,15 +897,18 @@ class Organization(Skill):
 
 class PikeSquare (Skill):
   effect = 'self'
-  desc = '+1 att if 2squads, +2 att if 3 squads. Enemy can not charge.'
+  desc = '+1 att if 20 units, +2 att if 30 units. Enemy can not charge.'
   name = 'formaci�n de picas'
-  ranking = 1.2
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
-    if itm.units >= 40:
+    if itm.units >= 20:
       itm.effects.append(self.name) 
       itm.att_mod += 1
+    if itm.units >= 30:
+      itm.effects.append(self.name) 
+      itm.att_mod += 2
     if itm.target: 
       itm.target.can_charge = 0
 
@@ -894,7 +922,9 @@ class PyreOfCorpses(Skill):
 
   def run(self, itm):
     for cr in itm.pos.corpses:
-      cr.deads[0] -= (itm.units//2) // cr.hp
+      cleaning = itm.hp_total//2
+      cr.deads[0] -= cleaning//cr.hp
+      cr.deads[0] = int(cr.deads[0])
 
 
 class Raid(Skill):
@@ -912,24 +942,23 @@ class Rain(Skill):
   name = 'raining'
   desc = ''
   effects = 'self'
-  ranking = 1
   type = 'generic'
 
   def run(self, itm):
     if itm.can_fly:
       itm.effects += [self.name] 
-      itm.moves_mod -= 2
+      itm.moves_mod -= 1
     if itm.rng + itm.rng_mod > 5:      
       itm.effects += [self.name]
       itm.off_mod -= 1
 
   def tile_run(self, itm):
+    self.turns -= 1
     itm.raining = 1
     itm.flood += 1
     roll = basics.roll_dice(1)
     if roll >= 5: itm.flood += 1
     if roll >= 6: itm.flood += 1
-    self.turns -= 1
     if itm.soil.name == waste_t: self.turns -= 2
     for ev in itm.events:
       if 'miasma' in ev.tags: ev.turns -= 1
@@ -940,10 +969,9 @@ class Regroup(Skill):
   name = 'reagruparse'
   desc = 'if a combat ends with a victory, all retreats are recovered.'
   effect = 'self'
-  ranking = 1.1
   type = 'after combat'
 
-  def run(self, itm):
+  def run_after_combat(self, itm):
     if itm.target and itm.target.hp_total < 1:
       itm.hp_total += sum(itm.fled) * itm.hp
       msg = f'{itm.name} recupera {sum(itm.fled)} unidades huidas.' 
@@ -956,7 +984,7 @@ class ReadyAndWaiting(Skill):
   effect = 'self'
   desc = '+1 off +1 str if unit has his max mp'
   name = 'listos y esperando'
-  ranking = 1.3
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -971,7 +999,6 @@ class Refit(Skill):
   name = 'refuerzos'
   desc = '+2 sts if at friendly position and units less than maximum units.'
   effect = 'self'
-  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -997,32 +1024,28 @@ class SermonOfCourage(Skill):
 
 class ShadowHunter(Skill):
   name = 'cazador de sombras'
-  desc = '+2 damage, +2 str if enemy is death.'
+  desc = '+2 sacred damage.'
   effect = 'self'
-  ranking = 1.3
+  ranking = 1.2
   type = 'generic'
 
   def run(self, itm):
-    if itm.target and death_t in itm.target.traits:
-      itm.effects.append(self.name)
-      itm.damage_sacred_mod += 2
-      itm.moves_mod += 1
-      itm.str_mod += 2
-
+    itm.effects.append(self.name)
+    itm.damage_sacred_mod += 2
 
 
 class SkeletonLegion(Skill):
-  effect = 'self'
-  desc = '+1 att if 2 squads, +2 if 3 squads.'
   name = 'legion de esqueletos'
-  ranking = 1.2
+  desc = '+1 att if 2 squads, +2 if 3 squads.'
+  effect = 'self'
+  ranking = 1.1
   type = 0
 
   def run(self, itm):
-    if itm.squads >= 3:
+    if itm.units >= 30:
       itm.effects.append(self.name + str(2)) 
       itm.att_mod += 2
-    elif itm.squads >= 2:
+    elif itm.units >= 20:
       itm.effects.append(self.name + str(1)) 
       itm.att_mod += 1
 
@@ -1032,7 +1055,7 @@ class Skirmisher(Skill):
   name = 'retirada'
   desc = 'units gain half moves in distanse on combat.'
   effect = 'self'
-  ranking = 1.3
+  ranking = 1.2
   type = 'after attack'
 
   def run(self, itm):
@@ -1045,13 +1068,12 @@ class Skirmisher(Skill):
       itm.battlelog += [f'{itm} go back {dist}.']
 
 
-
 class Spread(Skill):
   effect = 'self'
   desc = 'resucita y une enemigos caidos a la unidad.'
   cast = 4
   name = 'Plaga zombie'
-  ranking = 10
+  ranking = 1.1
   type = 'after attack'
 
   def run(self, itm):
@@ -1070,20 +1092,20 @@ class Spread(Skill):
 
 class Surrounded(Skill):
   effect = 'self'
-  desc = '+1 off, str if 2 squads. +2 off, str if 3 squads.. +3 off, str if 4 squads.'
+  desc = '+1 off, str if 20 units. +2 off, str if 30 units.. +3 off, str if 40 units.'
   name = 'rodeados'
   type = 'generic'
 
   def run(self, itm):
-    if itm.squads >= 4:
+    if itm.units >= 40:
       itm.effects.append(self.name + str(3))
       itm.off_mod += 3
       itm.str_mod += 3
-    elif itm.squads >= 3:
+    elif itm.units >= 30:
       itm.effects.append(self.name + str(2))
       itm.off_mod += 2
       itm.str_mod += 2
-    elif itm.squads >= 2:
+    elif itm.units >= 20:
       itm.effects.append(self.name + str(1))
       itm.off_mod += 1
       itm.str_mod += 1
@@ -1091,10 +1113,10 @@ class Surrounded(Skill):
 
 
 class Scavenger(Skill):
-  effect = 'self'
-  desc = '+1 res, +1 str if corpses on field.'
   name = 'carro�a'
-  ranking = 1.2
+  desc = '+1 res, +1 str if corpses on field.'
+  effect = 'self'
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
@@ -1109,7 +1131,7 @@ class Scream(Skill):
   effect = 'selv'
   desc = 'if roll >= 4 enemy morale check fails..'
   name = 'grito ardiente'
-  ranking = 1.5
+  ranking = 1.3
   type = 'before attack'
 
   def run(self, itm):
@@ -1164,14 +1186,14 @@ class SecondSun(Skill):
 
 class SwampSurvival(Skill):
   effect = 'selv'
-  desc = '+3 stealth in swams.'
+  desc3 = '+3 stealth in swams.'
   name = 'sobreviviente del pantano'
   ranking = 1.1
   type = 'generic'
 
   def run(self, itm):
     itm.swamp_survival = 1
-    if itm.pos and itm.pos.name == swamp_t:
+    if itm.pos and itm.pos.surf.name == swamp_t:
       itm.effects += [self.name]
       itm.stealth_mod += 3
 
@@ -1239,7 +1261,7 @@ class Trample(Skill):
   name = 'trample'
   desc = 'units kill enemies by trampling.'
   effect = 'self'
-  ranking = 1.5
+  ranking = 1.3
   type = 'after attack'
 
   def run(self, itm):
@@ -1313,7 +1335,8 @@ class ToxicClaws(Skill):
 
   def run(self, itm):
     if (itm.target and sum(itm.damage_done)
-        and death_t not in itm.target.traits):
+        and death_t not in itm.target.traits 
+        and poisonres_t not in itm.target.traits):
       logging.debug(f'{self.name} damage done {itm.damage_done}.')
       if basics.roll_dice(1) >= 3:
         sk = Intoxicated(itm.target)
@@ -1327,9 +1350,9 @@ class ToxicClaws(Skill):
 
 
 class VigourMourtis(Skill):
-  effect = 'friend'
-  desc = '+1 hit roll si la unidad es death'
   name = 'vigor mortis'
+  desc = '+1 hit roll si la unidad es death'
+  effect = 'friend'
   ranking = 1.2
   type = 'generic'
 
@@ -1358,7 +1381,7 @@ class WarCry(Skill):
   name = 'war cry'
   desc = '+1 resolve if unit is human .'
   effect = 'friend'
-  ranking = 1.2
+  ranking = 1.1
   type = 'generic'
 
   def run(self, itm):

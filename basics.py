@@ -9,29 +9,30 @@ from sound import *
 
 
 
-def ai_join_units(itm):
+def ai_join_units(itm, info=0):
   if itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group or itm.goto: return
-  logging.info(f'join units {itm} ({itm.units}).')
+  if info: logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   dice = roll_dice(1)
-  needs = ceil(itm.ranking / 30)
-  if itm.pos.around_threat * 1.3 > itm.pos.defense: needs -= 2
+  #needs = ceil(itm.ranking / 30)
+  needs = itm.squads + 1
+  if itm.pos.around_threat * 1.5 > itm.pos.defense: needs -= 2
   if itm.rng + itm.rng_mod > 5: needs -= 2
   if itm.garrison and itm.pos.around_threat < itm.pos.defense: needs += 2
   if itm.pos.food_need > itm.pos.food: needs += 3
-  logging.debug(f'dice {dice} needs {needs}.')
+  if info: logging.debug(f'dice {dice} needs {needs}.')
   if dice >= needs:
     for i in itm.pos.units:
       if (i == itm or i.garrison != itm.garrison or i.settler or i.comm
           or i.name != itm.name or i.can_join == 0 or i.hp_total < 1
           or i.goal or i.leader != itm.leader or i.group):
         continue
-      logging.debug(f'{i}.')
+      if info: logging.debug(f'{i}.')
       i.update()
       dice = roll_dice(1)
       needs = ceil(i.ranking / 20)
       if itm.pos.around_threat * 1.3 > itm.ranking: needs -= 2
-      logging.debug(f'dice {dice} needs {needs}.')
+      if info: logging.debug(f'dice {dice} needs {needs}.')
       if dice >= needs:
         join_units([itm, i])
 
@@ -65,7 +66,7 @@ def get_hit_mod(num):
 
 
 
-def get_item(items, nation=None, sound=None):
+def get_unit(items, nation=None, sound=None):
   if items == []: 
     loadsound('errn1')
     return None
@@ -75,7 +76,7 @@ def get_item(items, nation=None, sound=None):
   while True:
     sleep(0.1)
     if say:
-      sp.speak(f'{items[x]}.',1)
+      items[x].basic_info()
       say = 0
 
     for event in pygame.event.get():
@@ -91,6 +92,8 @@ def get_item(items, nation=None, sound=None):
       if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
         loadsound('set6')
         return items[x]
+      if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+        return
 
 
 def get_wound_mod(num):
@@ -123,7 +126,6 @@ def join_units(units, info=0):
     unit.hp_total += i.hp_total
     unit.mp[0] = min(unit.mp[0], i.mp[0])
     unit.pop += i.pop
-    unit.squads += i.squads
     unit.other_skills += i.other_skills
     msg = f'{i} has joined.'
     unit.log[-1] += [msg]
