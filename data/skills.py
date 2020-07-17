@@ -641,10 +641,10 @@ class LocustSwarm(Skill):
     self.turns -= 1
     if itm.raining and itm.ambient.sseason in [spring_t, summer_t]: self.turns += randint(1,2)
     elif itm.ambient.sseason == winter_t: self.turns -= 1
-    if basics.roll_dice(1) >= 5: self.food -= 0.1
-    needs = 6
-    if itm.ambient.sseason in [spring_t, summer_t]: needs -= 1
-    if basics.roll_dice(1) >= needs:
+    if basics.roll_dice(2) >= 10: self.food -= 0.1
+    needs = 11
+    if itm.ambient.sseason in [spring_t, summer_t]: needs -= 2
+    if basics.roll_dice(2) >= needs:
       tiles = itm.get_near_tiles(1)
       tiles = [t for t in tiles if t.soil.name not in [ocean_t]
                and t != itm]
@@ -690,7 +690,7 @@ class LordOfBones(Skill):
 
 class LordOfBlodd(Skill):
   effect = 'friend'
-  desc = '+1 dfs, +1 moves, +1 off, +1 resolve if unit is ghoul.'
+  desc = '+1 att, +1 moves, +1 resolve if unit is ghoul.'
   name = 'se�or de sangre'
   ranking = 1.2
   type = 'generic'
@@ -699,9 +699,8 @@ class LordOfBlodd(Skill):
     if (itm.nation == self.nation and itm != self.itm 
         and itm.name in [ghouls_t]):
       itm.effects.append(self.name)
-      itm.dfs_mod += 1
+      itm.att_mod += 1
       itm.moves_mod += 1
-      itm.off_mod += 1
       itm.resolve_mod += 1
 
 
@@ -903,10 +902,10 @@ class PikeSquare (Skill):
   type = 'generic'
 
   def run(self, itm):
-    if itm.units >= 20:
+    if itm.squads >= 2:
       itm.effects.append(self.name) 
       itm.att_mod += 1
-    if itm.units >= 30:
+    if itm.squads >= 3:
       itm.effects.append(self.name) 
       itm.att_mod += 2
     if itm.target: 

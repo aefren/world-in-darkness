@@ -1,9 +1,9 @@
-from data.items import HolyEmpire, Walachia, WoodElves, Hell, Wild
+exec('from data.items import HolyEmpire, Walachia, WoodElves, Hell, Nature, Orcs, Wild')
 exec('from data.items import *')
 
 
 #difficulty.
-DIFFICULTY = 20
+DIFFICULTY = 25
 DIFFICULTY_TYPE = 'dynamic'
 
 #factions.
@@ -14,7 +14,7 @@ HOLY.ai = 1
 TRANS = Walachia()
 TRANS.ai = 1
 
-NATIONS = [ELF, HOLY, TRANS]
+NATIONS = [HOLY, ELF, TRANS]
 
 #Random factions.
-RANDOM_FACTIONS = [Hell(), Wild()]
+RANDOM_FACTIONS = [Hell(), Nature(), Orcs(), Wild()]

@@ -176,7 +176,7 @@ class CastBloodRain(Spell):
 
 class CastLocustSwarm(Spell):
   name = 'cast locust swarm'
-  cast = 8
+  cast = 10
   cost = 15
   tile_waste = 1
   type = spell_t
@@ -449,7 +449,7 @@ class PoisonCloud(Spell):
 class RaiseDead(Spell):
   name = raise_dead_t
   cast = 6
-  cost = 10
+  cost = 8
   ranking = 10
   type = 'spell34'
   tags = ['reanimating']
@@ -460,7 +460,7 @@ class RaiseDead(Spell):
     self.run(itm)
 
   def run(self, itm):
-    if itm.pos.corpses == [] or itm.power < self.cost:
+    if itm.pos.corpses == []:
       if itm.show_info: sleep(loadsound('errn1'))
       msg = f'{itm} no puede lanzar hechiso {self.name}'
       logging.debug(msg)
@@ -468,7 +468,6 @@ class RaiseDead(Spell):
       return
     
     logging.info(f'{self.name}. ({itm}).')
-    itm.power -= self.cost
     roll1 = roll_dice(2)
     tile = itm.pos
     
