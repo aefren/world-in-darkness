@@ -945,7 +945,7 @@ def ai_add_settler(nation):
       logging.debug(f'pop {in_t} {ct} {ct.pop}.')
       logging.debug(f'defense_percent {ct.defense_total_percent}. de ')
       logging.debug(f'seen threat {ct.seen_threat}.')
-      if ct.seen_threat > 30 * ct.defense_total // 100: 
+      if ct.seen_threat > 60 * ct.defense_total // 100: 
         logging.debug(f'high threat.')
         continue
       if ct.production == []:
@@ -1530,7 +1530,8 @@ def ai_garrison(nation, info=0):
       msg = f'ranking {rnd}.'
       nation.devlog[-1] += [msg]
       if info: logging.debug(msg)
-      moves = max([i.moves + i.moves_mod for i in s.units if i.hidden == 0])
+      moves = max(i.moves + i.moves_mod for i in s.units if i.hidden == 0 and i.nation != uni.nation)
+      rng = max(i.rng+i.rng_mod for i in s.units if i.hidden == 0 and i.nation != uni.nation)
       if info: logging.debug(f'rnd inicial {rnd}.')
       if s.around_threat: 
         rnd *= 0.8
@@ -1582,9 +1583,20 @@ def ai_garrison(nation, info=0):
         msg = f'reduced by hight moves to {rnd}.'
         nation.devlog[-1] += {msg}
         if info: logging.debug(msg)
+      if (rng >= 6 and uni.rng + uni.rng_mod < rng 
+          and uni.shield == None and uni.armor == None):
+        rnd *= 0.6
+        msg = f'reduced by rng{rnd}.'
+        nation.devlog[-1] += {msg}
+        if info: logging.debug(msg)
       if s.nation != nation: 
         rnd *= 0.8
-        msg = f'reduced by other nation tile to {rnd}.'
+        msg = f'reduced by not nation tile.'
+        nation.devlog[-1] += {msg}
+        if info: logging.debug(msg)
+      if s.nation != nation and s.nation:
+        rnd *= 0.8
+        msg = f'reduced by other nation tile to {rnd} and nation.'
         nation.devlog[-1] += {msg}
         if info: logging.debug(msg)
       max_ranking = max(i.ranking for i in s.units if i.revealed)
@@ -1629,6 +1641,7 @@ def ai_garrison(nation, info=0):
       local_defense = sum(i.ranking for i in uni.pos.units if uni.garrison)
       if s.nation == uni.nation: local_defense *= 0.5
       moves = max([i.moves + i.moves_mod for i in s.units if i.hidden == 0])
+      rng = max(i.rng + i.rng_mod for i in s.units if i.hidden == 0 and i.nation != uni.nation)
       if info: logging.debug(f'rnd inicial {rnd}.')
       if s.around_threat: 
         rnd *= 0.8
@@ -1682,7 +1695,12 @@ def ai_garrison(nation, info=0):
         if info: logging.debug(msg)
       if s.nation != nation: 
         rnd *= 0.8
-        msg = f'reduced by other nation tile to {rnd}.'
+        msg = f'reduced by not nation tile.'
+        nation.devlog[-1] += {msg}
+        if info: logging.debug(msg)
+      if s.nation != nation and s.nation:
+        rnd *= 0.8
+        msg = f'reduced by other nation tile to {rnd} and nation.'
         nation.devlog[-1] += {msg}
         if info: logging.debug(msg)
       max_ranking = max(i.ranking for i in s.units if i.revealed)
@@ -1733,7 +1751,8 @@ def ai_garrison(nation, info=0):
       if info: logging.debug(msg)
       local_defense = sum(i.ranking for i in uni.pos.units if uni.garrison)
       if s.nation == uni.nation: local_defense *= 0.5
-      moves = max([i.moves + i.moves_mod for i in s.units if i.hidden == 0])
+      moves = max(i.moves + i.moves_mod for i in s.units if i.hidden == 0 and i.nation != uni.nation)
+      rng = max(i.rng + i.rng_mod for i in s.units if i.hidden == 0 and i.nation != uni.nation)
       if info: logging.debug(f'rnd inicial {rnd}.')
       if s.around_threat: 
         rnd *= 0.8
@@ -1785,9 +1804,20 @@ def ai_garrison(nation, info=0):
         msg = f'reduced by hight moves to {rnd}.'
         nation.devlog[-1] += {msg}
         if info: logging.debug(msg)
+      if (rng >= 6 and uni.rng + uni.rng_mod < rng 
+          and uni.shield == None and uni.armor == None):
+        rnd *= 0.6
+        msg = f'reduced by rng{rnd}.'
+        nation.devlog[-1] += {msg}
+        if info: logging.debug(msg)
       if s.nation != nation: 
         rnd *= 0.8
-        msg = f'reduced by other nation tile to {rnd}.'
+        msg = f'reduced by not nation tile.'
+        nation.devlog[-1] += {msg}
+        if info: logging.debug(msg)
+      if s.nation != nation and s.nation:
+        rnd *= 0.8
+        msg = f'reduced by other nation tile to {rnd} and nation.'
         nation.devlog[-1] += {msg}
         if info: logging.debug(msg)
       max_ranking = max(i.ranking for i in s.units if i.hidden == 0)
@@ -1828,7 +1858,7 @@ def ai_hero_move(nation):
     if uni.goto: 
       for r in range(len(uni.goto)-1, 0, -1):
         if len(uni.goto[r]) > 1: goto = uni.goto[r][1]
-      if goto and goto.threat + goto.threat == 0:
+      if goto and oto.threat + goto.threat == 0:
         msg = f'stops moving to {goto} {goto.cords}.'
         logging.debug(msg)
         uni.log[-1] += [msg]
@@ -2231,6 +2261,7 @@ def ai_protect_tiles(nation, info=1):
   nation.tiles.sort(key=lambda x: x.city.capital, reverse=True)
   nation.tiles.sort(key=lambda x: x.around_threat+x.threat, reverse=True)
   nation.tiles.sort(key=lambda x: x.is_city and x.around_threat+x.threat, reverse=True)
+  nation.tiles.sort(key=lambda x: x.city.capital and x.is_city and x.around_threat+x.threat, reverse=True)
   for t in nation.tiles:
     if t.blocked: continue
     defense_needs = t.around_threat * 1.3
@@ -2264,6 +2295,9 @@ def ai_protect_tiles(nation, info=1):
             nation.devlog[-1] += [f'breaks unit checking by 80% defense.'] 
             break
           nation.devlog[-1] += [f'{u}, garrison {u.garrison}']
+          if s.is_city and s.city.capital and s.around_threat + s.threat:
+            nation.devlog[-1] += [f'breaks by threat in capital.']
+            continue
           if t.is_city and t.around_threat+t.threat == 0 and u.pos.around_threat+u.pos.threat and u.garrison: 
             nation.devlog[-1] += [f'breaks by threat.']
             continue
@@ -2537,9 +2571,8 @@ def check_position(itm):
   logging.debug(f'checking position.')
   if itm.pos.is_city and itm.nation != itm.pos.nation and itm.hidden == 0:
     if check_enemy(itm, itm.pos, is_city=1) == None: 
-      if itm.nation in world.nations and itm.pos.defense >= 50 * itm.pos.pop / 100: take_city(itm)
-      elif itm.nation not in world.nations and itm.pos.defense >= 100 * itm.pos.pop / 100: take_city(itm) 
-
+      if itm.nation in world.nations and itm.pos.defense >= 50 * itm.pos.city.pop / 100: take_city(itm)
+      elif itm.nation not in world.nations and itm.pos.defense >= 100 * itm.pos.city.pop / 100: take_city(itm) 
 
 
 def combat_log(units):
@@ -2597,7 +2630,7 @@ def combat_menu(itm, pos, target=None, dist=0):
   _units.sort(key=lambda x: x.units, reverse=True)
   _units.sort(key=lambda x: x.rng >= 6, reverse=True)
   _units.sort(key=lambda x: x.comm)
-  _units.sort(key=lambda x: x.mp[0] >= 0, reverse=True)
+  _units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
   logging.debug(f'distancia inicial {dist}.')
   go = 1
   if target == None: target = _units[0]
@@ -3332,8 +3365,9 @@ def control_global(event):
   if event.type == pygame.KEYDOWN:
     if x > -1 and mapeditor == 0 :
       if event.key == pygame.K_5:
-        sp.speak(f'{local_units[x].garrison}.',1)
-        sp.speak(f'{local_units[x].scout}.')
+        sp.speak(f' garrison {local_units[x].garrison}.',1)
+        sp.speak(f'scout {local_units[x].scout}.')
+        if local_units[x].goal: sp.speak(f'goal {local_units[x].goal[0], local_units[x].goal[1].cords}.')
     if x == -1 and mapeditor == 0 :
       if event.key == pygame.K_1:
         sp.speak(f'{food_t} {pos.food_need} {of_t} {pos.food}.', 1)
@@ -4028,6 +4062,10 @@ def menu_city(itm, sound='in1'):
 
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_F1:
+          sp.speak(f'defense total {itm.defense_total}.',1)
+          sp.speak(f'defense total percent {itm.defense_total_percent}.')
+          sp.speak(f'seen threat {itm.seen_threat}.')
         if event.key == pygame.K_UP:
           x = basics.selector(lista, x, go="up")
           say = 1
@@ -5159,16 +5197,19 @@ def take_city(itm):
   itm.pos.nation.log[-1].append(msg)
   logging.info(msg)
   city = itm.nation.av_cities[0](itm.nation, itm.pos)
-  city.set_name()
+  #city.set_name()
+  city.name = itm.pos.city.name
   city.tiles = itm.pos.city.tiles
   itm.pos.city.nation.cities.remove(itm.pos.city)
+  itm.pos.buildings.remove(itm.pos.city)
   for t in itm.pos.city.tiles:
     t.nation = itm.nation
     t.city = city
-    t.pop -= randint(30, 50) * t.pop // 100
-    t.unrest += randint(50, 100)
+    t.pop -= randint(20, 40) * t.pop // 100
+    t.unrest += randint(40, 80)
     for b in t.buildings:
-      if b.name not in [bu.name for bu in itm.nation.av_cities]: b.resource_cost[0] = -1
+      if b.name in [bu.name for bu in itm.nation.av_cities]: 
+        b.nation = itm.nation
   itm.pos.city = city
   itm.pos.buildings += [city]
   city.update()

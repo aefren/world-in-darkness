@@ -309,7 +309,9 @@ class City:
   def check_building(self):
     logging.debug(f'check building {self}.')
     for bu in self.buildings:
-      if bu.resource_cost[0] < bu.resource_cost[1]: 
+      if bu.nation != bu.nation:
+        bu.cost[1] -= 20*bu.cost[1]/100
+      if bu.resource_cost[0] < bu.resource_cost[1] and bu.nation == self.nation: 
         bu.resource_cost[0] += self.resource_total
         if bu.resource_cost[0] >= bu.resource_cost[1]:
           bu.resource_cost[0] = bu.resource_cost[1]
@@ -359,8 +361,10 @@ class City:
     for i in self.units:
       if i.garrison and i.pos == self.pos: i.city = self 
     self.defense_total = sum(i.ranking for i in units 
-                             if i.scout == 0 and i.settler == 0)
-    if self.defense: self.defense_total_percent = round(self.defense_total * 100 / self.defense)
+                             if i.scout == 0 and i.settler == 0 and i.goal == None and i.leader == None)
+    if self.pos.defense_req: self.defense_total_percent = round(self.defense_total * 100 / self.pos.defense_req)
+    if self.nation.defense_total_percent > self.defense_total_percent: 
+      self.defense_total_percent += 20*self.nation.defense_total_percent/100
     for t in self.tiles:
       t.update(self.nation)
       self.hostile_ranking += t.threat
@@ -568,7 +572,7 @@ class City:
     _mounted = [i for i in units if mounted_t in i.traits]
     _sacred = [i for i in units if sacred_t in i.traits]
     _undead = [i for i in units if undead_t in i.traits]
-    if self.defense_total_percent < 200 and self.nation.score < self.nation.attack_factor * 3:
+    if self.defense_total_percent < 200 and self.nation.defense_total_percent < 300:
       logging.debug(f'defensivo.')
       if roll_dice(1) >= 3: units.sort(key = lambda x: x.rng + x.rng_mod, reverse = True)
       if self.around_threat >= self.defense / 2: units.sort(key = lambda x: x.resource_cost <= self.resource_total, reverse = True)
@@ -596,7 +600,7 @@ class City:
       if _units: return _units
     if self.seen_sacred_rnk * 1.5 > self.units_undead_rnk:
       if info: logging.debug(f'human')
-      _units = [i for i in _units if human_t in i.traits and levy_t not in i.traits]
+      _units = [i for i in units if human_t in i.traits and levy_t not in i.traits]
       _units.sort(key = lambda x: x.ranking, reverse = True)
       if _units: return units
     if info: logging.debug(f'av anticav {len(_anticav)}.')
@@ -970,8 +974,10 @@ class Nation:
         city.tiles.sort(key = lambda x: x.po)
         for t in city.tiles:
           if t.city.buildings_food == []: rate = 0
-          elif t.city.capital: rate = 60
+          elif t.city.capital: rate =60 
           elif t.city.capital == 0: rate = 80
+          if t.public_order >= 80: rate += 20
+          t.food_rate = rate
           print(f'{rate= }, {t.pop*100/t.food= }.')
           if rate <= t.pop*100/t.food or city.nation.gold >= b.gold*10:
             t.update(self)
@@ -1225,13 +1231,14 @@ class Nation:
   def set_tiles_defense(self):
     for t in self.tiles:
       t.defense_req = t.income*0.025
-      if t.corpses: t.defense_req *= 1.3
+      if t.corpses: t.defense_req *= 1.5
       if t.buildings: 
         t.defense_req += 30*len(t.buildings)
       if t.surf.name in [forest_t, swamp_t]: 
         t.defense_req += 20
       if t.hill:
         t.defense_req += 20
+      if t.around_nations: t.defense_req += 40
   def start_turn(self):
     if self.pos: world = self.pos.world
     else: world = self.world
@@ -1333,6 +1340,7 @@ class Nation:
     self.score = round(self.score)
     self.upkeep = round(self.upkeep)
     if self.cities:
+      [ct.get_defense_info() for ct in self.cities]
       self.defense_pred = sum(it.defense_pred for it in self.cities)/len(self.cities)
       self.defense_total = sum(it.defense_total for it in self.cities)/len(self.cities)
       self.defense_total_percent = sum(it.defense_total_percent for it in self.cities)/len(self.cities)
@@ -1562,14 +1570,15 @@ class Unit:
     self.group = []
 
   def burn(self, cost = 0):
-    if (self.pos.buildings
+    buildings = [b for b in self.pos.buildings if b.nation != self.nation]
+    if (buildings
         and self.mp[0] >= cost and self.can_burn and self.pos.nation != self.nation): 
       if [i for i in self.pos.units
           if i.nation == self.pos.nation]:
         return
       self.pos.update(self.pos.nation)
       
-      building = choice(self.pos.buildings)
+      building = choice(buildings)
       self.update()
       damage = self.damage * self.att
       damage *= self.units
@@ -1639,21 +1648,19 @@ class Unit:
     for i in self.group:
       if i.pos == self.pos or self.pos in i.goto_pos: 
         self.group_score -= i.ranking
-    sq = [s for s in self.pos.get_near_tiles(2) if s.around_threat+s.threat == 0]
+    sq = [s for s in self.pos.get_near_tiles(3) if s.around_threat+s.threat == 0]
     units = [] 
     for s in sq:
       for u in s.units:
-        if u.comm == 0: units += [u]
+        if (u.comm == 0 and u.goto == [] and u.goal == None): units += [u]
     if same_mp: units = [i for i in units if i.mp[1] >= self.mp[1]] 
     shuffle(units)
+    units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
     if self.rng+self.rng_mod <= 6:
-      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key = lambda x: x.rng >= 6, reverse = True)
     elif self.rng >= 6:
-      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key = lambda x: x.off+x.off_mod, reverse = True)
     if self.settler:
-      units.sort(key = lambda x: x.pos.get_distance(self.pos, x.pos))
       units.sort(key = lambda x: x.mp[1] == self.mp[1], reverse = True)
       units.sort(key = lambda x: x.ranking, reverse = True)
     
@@ -1661,9 +1668,9 @@ class Unit:
     if len(units) == 0:
       logging.debug(f'no puede crear grupo')
       return
-    
+    self.log[-1] += [f'creates group of {self.group_base}. on {self.pos} {self.pos.cords}.']
     for i in units:
-      if i == self: continue
+      if i == self or i.pos.around_threat + i.pos.threat or i.nation != self.nation: continue
       logging.debug(f'score {self.group_score}.')
       logging.debug(f'encuentra a {i}')
       if self.group_score > 0 and i not in self.group:
@@ -1672,6 +1679,8 @@ class Unit:
         logging.debug(f'{i} se une con {i.ranking} ranking.')
         self.group_score -= i.ranking
         logging.debug(f'quedan {self.group_score}.')
+        self.log[-1] += [f'{i} on {i.pos} {i.pos.cords} added.']
+        i.log[-1] += [f'added to {self} group on {self.pos} {self.pos.cords}.']
         if self.group_score < 0:
           self.group_base = 0
           logging.debug(f'grupo creado.') 
@@ -1786,12 +1795,12 @@ class Unit:
             say = 1
             loadsound('s1')
           if event.key == pygame.K_PAGEUP:
-            x -= 5
+            x -= 10
             say = 1
             if x < 0: x = 0
             loadsound('s1')
           if event.key == pygame.K_PAGEDOWN:
-            x += 5
+            x += 10
             say = 1
             if x >= len(lista): x = len(lista) - 1
             loadsound('s1')
@@ -4040,7 +4049,7 @@ class Flagellants(Human):
 
 
 class RebornOnes(Human):
-  name = 'los renacidos'
+  name = 'renacidos'
   units = 20
   min_units = 10
   max_squads = 10
@@ -5395,7 +5404,7 @@ class FellBats(Undead):
   mp = [4, 4]
   moves = 7
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, Fly, NightFerocity, NightSurvival]
+  global_skills = [DarkVision, ElusiveShadow, Fly, Helophobia, NightFerocity, NightSurvival]
 
   dfs = 4
   res = 3
@@ -5430,14 +5439,14 @@ class Ghouls(Human):
   pop = 30
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 3
+  hp = 2
   mp = [2, 2]
   moves = 5
   resolve = 5
   global_skills = [DarkVision, Furtive, Scavenger]
 
   dfs = 3
-  res = 2
+  res = 3
   hres = 0
   arm = 0
   armor = None
@@ -5781,12 +5790,12 @@ class VampireLord(Undead):
   pop = 35
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 18
+  hp = 12
   hp_res = 2
   mp = [2, 2]
   moves = 9
   resolve = 10
-  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, NightFerocity, NightSurvival]
+  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, Helophobia, LordOfBlodd, NightFerocity, NightSurvival]
 
   dfs = 6
   res = 5
@@ -5823,11 +5832,11 @@ class Vargheist(Undead):
   pop = 60
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 12
+  hp = 8
   mp = [2, 2]
   moves = 9
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival, TheBeast]
+  global_skills = [DarkVision, ElusiveShadow, FearAura, Fly, Helophobia, NightFerocity, NightSurvival, TheBeast]
 
   dfs = 3
   res = 5
@@ -5867,14 +5876,14 @@ class VladDracul(Undead):
   pop = 100
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 30
+  hp = 24
   mp = [2, 2]
   moves = 12
   resolve = 10
   power = 20
   power_max = 60
   power_res = 5
-  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
+  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, Helophobia, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
 
   dfs = 7
   res = 7
@@ -5920,7 +5929,7 @@ class VarGhul(Undead):
   mp = [2, 2]
   moves = 6
   resolve = 6
-  global_skills = [DarkVision, Scavenger, LordOfBlodd, NightFerocity, NightSurvival, Trample]
+  global_skills = [DarkVision, Helophobia, LordOfBlodd, NightFerocity, NightSurvival, Scavenger, Trample]
 
   dfs = 4
   res = 4

@@ -12,7 +12,7 @@ ELF.ai = 1
 HOLY = HolyEmpire()
 HOLY.ai = 1
 TRANS = Walachia()
-TRANS.ai = 1
+TRANS.ai = 0
 
 NATIONS = [HOLY, ELF, TRANS]
 

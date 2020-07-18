@@ -549,6 +549,24 @@ class Exaltation(Skill):
       itm.hit_rolls_mod += 1
 
 
+class Helophobia(Skill):
+  name = 'helophobia.'
+  desc = '-2 dfs, -2 moves, -2 off, -1 res, -2 str if night.'
+  effect = 'self'
+  ranking = 1
+  type = 'generic'
+
+  def run(self, itm):
+    if itm.pos and itm.pos.day_night == 0:
+      itm.effects += [self.name]
+      if itm.att + itm.att_mod > 2: itm.att_mod -= 2
+      itm.damage_mod -= 1
+      itm.dfs_mod -= 2
+      itm.moves_mod -= 2
+      itm.off_mod -= 2
+      itm.res_mod -= 1
+      itm.str_mod -= 2
+
 
 class ImpalingRoots(Skill):
   effect = 'self'
@@ -1091,20 +1109,20 @@ class Spread(Skill):
 
 class Surrounded(Skill):
   effect = 'self'
-  desc = '+1 off, str if 20 units. +2 off, str if 30 units.. +3 off, str if 40 units.'
+  desc = '+1 off, str if 3 squads. +2 off, str if 7 squads. +3 off, str if 10 squads.'
   name = 'rodeados'
   type = 'generic'
 
   def run(self, itm):
-    if itm.units >= 40:
+    if itm.squads >= 10:
       itm.effects.append(self.name + str(3))
       itm.off_mod += 3
       itm.str_mod += 3
-    elif itm.units >= 30:
+    elif itm.squads >= 7:
       itm.effects.append(self.name + str(2))
       itm.off_mod += 2
       itm.str_mod += 2
-    elif itm.units >= 20:
+    elif itm.squads >= 3:
       itm.effects.append(self.name + str(1))
       itm.off_mod += 1
       itm.str_mod += 1
