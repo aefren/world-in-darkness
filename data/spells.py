@@ -127,8 +127,26 @@ class BlessingWeapons(Spell):
 
 
 class BloodHeal(Spell):
+  name = 'blood heal'
   desc = 'sacrifica un número aleatoreo de población para curarse.'
+  cast = 6
+  cost = 10
+  type = 'spell'
 
+  tile_pop = 20
+  tags = ['restoration']
+
+  def ai_run(self, itm):
+    if itm.hp_total < itm.hp*itm.units: self.init(itm)
+    
+  def run(self, itm):
+    if itm.nation.show_info: sleep(loadsound('spell42',channel=ch3))
+    itm.pos.pop -= 20
+    msg = f'{itm} recovers 5 hp.'
+    itm.hp_total += 5
+    itm.update()
+    logging.debug(msg)
+    itm.log[-1] += [msg]
 
 
 class BreathOfTheDesert(Spell):
@@ -383,13 +401,13 @@ class HealingMists(Spell):
 
 class HealingRoots(Spell):
   name = 'raices curativas.'
+  desc = 'removes target poison effects.'
   cast = 4
   cost = 15
   type = 'spell'
-  tags = [health_t]
 
   target = ['beast', 'cavalry', 'civil', 'infantry']
-  tags = ['healing']
+  tags = ['healer']
 
   def ai_run(self, itm):
     units = [i for i in itm.pos.units if i.nation == itm.nation
@@ -612,7 +630,7 @@ class SummonAwakenTree(Spell):
   tile_forest = 1
 
   def ai_run(self, itm):
-    self.init(itm)
+    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(AwakenTree, itm.nation.name)
@@ -650,7 +668,7 @@ class SummonDraugr(Spell):
   tile_forest = 1
 
   def ai_run(self, itm):
-    self.init(itm)
+    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Draugr, itm.nation.name)
@@ -670,7 +688,7 @@ class SummonDriads(Spell):
   tags = ['summon']
 
   def ai_run(self, itm):
-    self.init(itm)
+    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Driads, itm.nation.name)
@@ -721,7 +739,7 @@ class SummonForestBears(Spell):
   type = 'spell'
 
   def ai_run(self, itm):
-    if itm.pos.surf and itm.pos.surf == forest_t: self.init(itm)
+    if itm.pos.surf and itm.pos.surf == forest_t and itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(ForestBears, itm.nation.name)
@@ -739,7 +757,7 @@ class SummonFalcons(Spell):
   tags = ['summon']
 
   def ai_run(self, itm):
-    self.init(itm)
+    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Falcons, itm.nation.name)
@@ -775,7 +793,7 @@ class SummonSpectralInfantry(Spell):
   tags = ['summon']
 
   def ai_run(self, itm):
-    self.init(itm)
+    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(SpectralInfantry, itm.nation.name)

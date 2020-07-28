@@ -201,6 +201,7 @@ class DarkPresence(Skill):
   effect = 'friend'
   ranking = 1.1
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if (itm.nation == self.nation
@@ -331,6 +332,7 @@ class FearAura(Skill):
   name = fearaura_t
   ranking = 1.2
   type = 'generic'  
+  tags = ['fear aura']
 
   def run(self, itm):
     if death_t not in itm.traits and itm != self.itm:
@@ -405,7 +407,7 @@ class ForestTerrain(Skill):
 
 class ForestWalker(Skill):
   name = 'morador del bosque'
-  desc = '+1 resolve, +1 off, +1 dfs if unit is into forest.'
+  desc = '+1 resolve, +1 off, +1 dfs, +1 moves if unit is into forest.'
   effect = 'self'
   ranking = 1.1
   type = 'generic'
@@ -414,6 +416,7 @@ class ForestWalker(Skill):
     if itm.pos and itm.pos.surf.name == forest_t:
       itm.effects.append(self.name)
       itm.dfs_mod += 1
+      itm.moves_mod += 1
       itm.off_mod += 1
       itm.resolve_mod += 1 
 
@@ -523,6 +526,7 @@ class HolyAura(Skill):
   effect = 'enemy'
   ranking = 1.2
   type = 'generic'  
+  tags = ['holy aura']
 
   def run(self, itm):
     if death_t in itm.target.traits or malignant_t in itm.target.traits:
@@ -603,7 +607,7 @@ class ImpalingRoots(Skill):
         target.hp_total -= damage
         target.update()
         target.deads[-1] += target.c_units - target.units
-        itm.battlelog += [f'{self.name} ({itm}) {kills_t} {target.deads[-1]}.']
+        itm.temp_log += [f'{self.name} ({itm}) {kills_t} {target.deads[-1]}.']
         logging.debug(f'hiere on {damage}.')
 
 
@@ -614,6 +618,7 @@ class Inspiration(Skill):
   effect = 'friend'
   ranking = 1.2
   type = 'generic'
+  tags = [ 'leader']
 
   def run(self, itm):
     if itm.nation == self.nation and itm != self.itm:
@@ -695,6 +700,7 @@ class LordOfBones(Skill):
   desc = '+1 att, +1 dfs, +1 off.'
   ranking = 1.2
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if (itm.nation == self.nation and itm != self.itm 
@@ -712,6 +718,7 @@ class LordOfBlodd(Skill):
   name = 'se�or de sangre'
   ranking = 1.2
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if (itm.nation == self.nation and itm != self.itm 
@@ -747,6 +754,7 @@ class MastersEye(Skill):
   effect = 'friend'
   ranking = 1.3
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if itm != self.itm and itm.nation == self.nation:
@@ -901,6 +909,7 @@ class Organization(Skill):
   effect = 'friend'
   ranking = 1.2
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if (itm.nation == self.nation
@@ -1031,6 +1040,7 @@ class SermonOfCourage(Skill):
   effect = 'friend'
   ranking = 1.1
   type = 'generic'
+  tags = ['leader']
 
   def run(self, itm):
     if itm != self.itm and human_t in itm.traits and sacred_t in itm.traits: 
@@ -1082,7 +1092,7 @@ class Skirmisher(Skill):
       dist = ceil(dist / 2)
       itm.dist += dist
       itm.target.dist += dist
-      itm.battlelog += [f'{itm} go back {dist}.']
+      itm.temp_log += [f'{itm} go back {dist}.']
 
 
 class Spread(Skill):
@@ -1096,14 +1106,19 @@ class Spread(Skill):
   def run(self, itm):
     if death_t not in itm.target.traits:
       deads = sum(itm.target.deads)
+      raised = 0
       for i in range(deads):
         roll = basics.roll_dice(2)
         if roll >= self.cast:
           itm.hp_total += itm.hp
           itm.raised[-1] += 1
+          raised += 1
           itm.target.deads[-1] -= 1
           if itm.target.deads[-1] < 0: itm.target.deads[-1] = 0
           logging.debug(f'reanima {itm.raised[-1]}.')
+      
+      if raised:
+        itm.temp_log += [f'{raised_t} {raised} {zombies_t}.']
 
 
 
@@ -1131,7 +1146,7 @@ class Surrounded(Skill):
 
 class Scavenger(Skill):
   name = 'carro�a'
-  desc = '+1 res, +1 str if corpses on field.'
+  desc = '+1 moves, +1 res, +1 str if corpses on field.'
   effect = 'self'
   ranking = 1.1
   type = 'generic'
@@ -1139,6 +1154,7 @@ class Scavenger(Skill):
   def run(self, itm):
     if itm.pos and itm.pos.corpses:
       itm.effects += {self.name}
+      itm.moves_mod += 1
       itm.res_mod += 1
       itm.str_mod += 1
 
@@ -1282,21 +1298,24 @@ class Trample(Skill):
   type = 'after attack'
 
   def run(self, itm):
-    if itm.target.size < itm.size and itm.target.can_fly == 0:
+    if itm.target.size < itm.size and itm.target.can_fly == 0 and itm.target.hp_total >= 1:
       _damage = 0
       for r in range(itm.units):
         damage = randint(1, itm.damage+itm.damage_mod)
-        needs = basics.get_hit_mod((itm.off+itm.off_mod)-(itm.target.off+itm.target.off_mod))
+        needs = basics.get_hit_mod((itm.off+itm.off_mod)-(itm.target.dfs+itm.target.dfs_mod))
         if basics.roll_dice(1) >= needs:
           _damage += damage
       
       if _damage:
-        killed = _damage
-        if killed > itm.target.units: killed = itm.target.units  
-        msg = f'{itm} tramples {killed} {itm.target}.'
+        damage = _damage
+        if damage > itm.target.hp_total: damage = itm.target.hp_total
+        units = itm.target.units
+        itm.target.hp_total -= damage
+        itm.target.update()
+        units -= itm.target.units
+        msg = f'{itm} tramples {units}.'
         logging.debug(msg)
-        itm.battlelog += [msg]
-        itm.target.hp_total -= killed
+        itm.temp_log += [msg]
 
 
 
@@ -1340,7 +1359,7 @@ class ToxicArrows(Skill):
           itm.target.other_skills += [sk]
           msg = [f'{itm.target} {is_t} intoxicated by {itm}. {sk.turns}']
           itm.target.log[-1] += [msg]
-          itm.battlelog += [msg]
+          itm.temp_log += [msg]
 
 
 class ToxicClaws(Skill):
@@ -1351,7 +1370,7 @@ class ToxicClaws(Skill):
   type = 'after attack'
 
   def run(self, itm):
-    if (itm.target and sum(itm.damage_done)
+    if (itm.target and sum(itm.damage_done) and itm.target.hp_total >= 1
         and death_t not in itm.target.traits 
         and poisonres_t not in itm.target.traits):
       logging.debug(f'{self.name} damage done {itm.damage_done}.')
@@ -1362,7 +1381,7 @@ class ToxicClaws(Skill):
           itm.target.other_skills += [sk]
           msg = [f'{itm.target} {is_t} intoxicated by {itm}. {sk.turns}']
           itm.target.log[-1] += [msg]
-          itm.battlelog += [msg]
+          itm.temp_log += [msg]
 
 
 

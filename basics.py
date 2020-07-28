@@ -22,7 +22,6 @@ def ai_join_units(itm, count=1, info=0):
       continue
     if info: logging.debug(f'{i}.')
     i.update()
-    print(f'{itm}, {i}, {count= }.')
     join_units([itm, i.split()])
     count -= 1
     if count == 0: break
