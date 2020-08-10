@@ -344,11 +344,24 @@ class FearAura(Skill):
       itm.str_mod -= 1
 
 
+class FeedingFrenzy(Skill):
+  name = 'feeding frenzy'
+  desc = '+2 damage, +1 moves +2 str..'
+  effect = 'self'
+  ranking = 1.1
+  type = 'generic'
+
+  def run(self, itm):
+    itm.damage_mod += 2
+    itm.moves_mod += 1
+    itm.res_mod += 1
+    itm.str_mod += 2 
+
 
 class Fly(Skill):
-  effect = 'self'
-  desc = 'unit can fly. enemy can not charge.'
   name = 'vuela'
+  desc = 'unit can fly. enemy can not charge.'
+  effect = 'self'
   ranking = 1.1
   type = 'generic'
 
@@ -554,8 +567,8 @@ class Exaltation(Skill):
 
 
 class Helophobia(Skill):
-  name = 'helophobia.'
-  desc = '-2 dfs, -2 moves, -2 off, -1 res, -2 str if night.'
+  name = 'helophobia'
+  desc = '-2 att, -2 damage, -2 dfs, -2 moves, -2 off, -2 res, -2 str if night.'
   effect = 'self'
   ranking = 1
   type = 'generic'
@@ -564,11 +577,11 @@ class Helophobia(Skill):
     if itm.pos and itm.pos.day_night == 0:
       itm.effects += [self.name]
       if itm.att + itm.att_mod > 2: itm.att_mod -= 2
-      itm.damage_mod -= 1
+      if itm.damage + itm.damage_mod >= 2: itm.damage_mod -= 2
       itm.dfs_mod -= 2
       itm.moves_mod -= 2
       itm.off_mod -= 2
-      itm.res_mod -= 1
+      itm.res_mod -= 2
       itm.str_mod -= 2
 
 
@@ -640,7 +653,7 @@ class Intoxicated(Skill):
     sk.turns = self.turns
     if sk.name not in [s.name for s in itm.global_skills]:
       itm.global_skills += [sk]
-    damage = randint(0, 8)
+    damage = randint(5, 25)
     if damage and itm.hp_total > 0:
       if damage > itm.hp_total: damage = itm.hp_total
       msg = f'{itm} loses {damage//itm.hp} by {self.name} in {itm.pos}. ({itm.pos.cords})'
@@ -714,7 +727,7 @@ class LordOfBones(Skill):
 
 class LordOfBlodd(Skill):
   effect = 'friend'
-  desc = '+1 att, +1 moves, +1 resolve if unit is ghoul.'
+  desc = '+1 att, +1 moves, +1 resolve if unit is blood drinker.'
   name = 'se�or de sangre'
   ranking = 1.2
   type = 'generic'
@@ -722,7 +735,7 @@ class LordOfBlodd(Skill):
 
   def run(self, itm):
     if (itm.nation == self.nation and itm != self.itm 
-        and itm.name in [ghouls_t]):
+        and blood_drinker_t in itm.traits):
       itm.effects.append(self.name)
       itm.att_mod += 1
       itm.moves_mod += 1
@@ -797,13 +810,13 @@ class Miasma(Skill):
   def tile_run(self, itm):
     self.turns -= 1
     if itm.ambient.sseason == winter_t: self.turns -= 1
-    if itm.pop: 
-      pop_death = randint(5, 15)
+    if itm.pop and basics.roll_dice(2) >= 10: 
+      pop_death = randint(15, 40)
       msg = f'miasma: {deads_t} {pop_death*itm.pop//100} in {itm} {itm.cords}.'
       if itm.city: msg += f' ({itm.city})'
       logging.debug(msg)
       itm.nation.log[-1] += [msg]
-      corpse = choice(itm.nation.units_rebels)(itm.nation)
+      corpse = choice([cr for cr in itm.nation.units_rebels if poisonres_t not in cr.traits])(itm.nation)
       corpse.deads = [pop_death * itm.pop // 100]
       corpse.units=0
       corpse.hp_total = 0
@@ -811,8 +824,8 @@ class Miasma(Skill):
       itm.units += [corpse]
       if itm.nation.show_info: sleep(loadsound('notify23',channel=ch4)//1.5)
     units = [u for u in itm.units if poisonres_t not in u.traits
-               and death_t not in u.traits]
-    roll = basics.roll_dice(1)+sum(u.units for u in itm.units)//20
+               and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
+    roll = basics.roll_dice(1)
     if roll >= 6 and units:
       if units:
         unit = choice(units)
@@ -854,13 +867,13 @@ class Night(Skill):
       if itm.dark_vision == 0:
         itm.dfs_mod -= 1
         itm.off_mod -= 1
-        if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 5
+        if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 4
 
 
 
 class NightFerocity(Skill):
   name = 'ferocidad nocturna'
-  desc = 'if night: +1 att, +1 moves.'
+  desc = 'if night: +1 att, +2 damage, +1 moves.'
   effect = 'self'
   type = 'generic'
 
@@ -868,6 +881,7 @@ class NightFerocity(Skill):
     if itm.pos and itm.pos.day_night:
       itm.effects.append(self.name) 
       itm.att_mod += 1
+      itm.damage_mod += 2
       itm.moves_mod += 1
 
 
@@ -923,7 +937,7 @@ class Organization(Skill):
 
 class PikeSquare (Skill):
   effect = 'self'
-  desc = '+1 att if 20 units, +2 att if 30 units. Enemy can not charge.'
+  desc = '+1 att if 20 units, +2 att if 40 units. Enemy can not charge.'
   name = 'formaci�n de picas'
   ranking = 1.1
   type = 'generic'
@@ -932,7 +946,7 @@ class PikeSquare (Skill):
     if itm.squads >= 2:
       itm.effects.append(self.name) 
       itm.att_mod += 1
-    if itm.squads >= 3:
+    elif itm.squads >= 3:
       itm.effects.append(self.name) 
       itm.att_mod += 2
     if itm.target: 
@@ -1273,9 +1287,9 @@ class TheBeast(Skill):
   type = 2
 
   def run(self, itm):
-    if itm.pos and basics.roll_dice(2) >= 6 and itm.pos.day_night:
+    if itm.pos and basics.roll_dice(2) >= 10 and itm.pos.day_night:
       if itm.pos.pop:
-        deads = randint(2, 5) * itm.units
+        deads = randint(6, 25) * itm.units
         if deads > itm.pos.pop: deads = itm.pos.pop
         itm.pos.pop -= deads
         if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
@@ -1302,6 +1316,7 @@ class Trample(Skill):
       _damage = 0
       for r in range(itm.units):
         damage = randint(1, itm.damage+itm.damage_mod)
+        damage *= randint(1, itm.size-itm.target.size)
         needs = basics.get_hit_mod((itm.off+itm.off_mod)-(itm.target.dfs+itm.target.dfs_mod))
         if basics.roll_dice(1) >= needs:
           _damage += damage

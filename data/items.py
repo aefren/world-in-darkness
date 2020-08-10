@@ -1178,10 +1178,10 @@ class Nation:
       nt.seen_tiles = [t for t in nt.seen_tiles if str(t.nation) == str(nt)]
     self.seen_nations = [nt for nt in self.seen_nations if nt.seen_tiles]
     for t in self.map:
-      if t.sight == 0: continue
+      if t.sight == 0 or t.nation == None: continue
       t.update(self)
-      if (t.nation != None and str(t.nation) != str(self) 
-          and str(t.nation) not in self.str_nations and t.sight):
+      if (str(t.nation) != str(self) 
+          and str(t.nation) not in self.str_nations):
         nt = t.nation.__class__()
         self.str_nations.append(str(t.nation))
         self.seen_nations.append(nt)
@@ -1190,20 +1190,14 @@ class Nation:
         
     for nt in self.seen_nations:
       nt.seen_units = []
-      seen_score = 0
       for t in self.map:
         if t.sight == 0: continue
         if str(t.nation) == str(nt): 
+          nt.score = t.nation.score
           if t not in nt.seen_tiles: nt.seen_tiles.append(t)
         for uni in t.units:
           if str(uni.nation) == str(nt) and uni.hidden == 0: 
-            seen_score += uni.ranking
             nt.seen_units.append(uni)
-      
-      nt.seen_score.insert(0, seen_score)
-      nt.max_score = max(nt.seen_score[:5])
-      nt.mean_score = mean(nt.seen_score[:10])
-      nt.last_score = seen_score
     
     self.nations_tiles = []
     for nt in self.seen_nations:
@@ -1216,7 +1210,6 @@ class Nation:
         logging.debug(f'unidades {len(nt.seen_units)}.')
         logging.debug(f'score {nt.mean_score}.')
 
-  
   def set_tiles_defense(self):
     for t in self.tiles:
       t.defense_req = t.income*0.025
@@ -1316,13 +1309,11 @@ class Nation:
     self.upkeep += sum(b.upkeep for b in self.cities)
     for i in self.units:
       if i.type == 'civil': continue
-      self.score += i.ranking
       self.upkeep += i.upkeep_total
       i.show_info = self.show_info
     
     self.income = round(self.income)
     self.raid_outcome = sum(ct.raid_outcome for ct in self.cities)
-    self.score = round(self.score)
     self.upkeep = round(self.upkeep)
     if self.cities:
       self.cities.sort(key = lambda x: x.capital, reverse = True)
@@ -1334,6 +1325,8 @@ class Nation:
       self.defense_total = sum(it.defense_total for it in self.cities)/len(self.cities)
       self.defense_total_percent = sum(it.defense_total_percent for it in self.cities)/len(self.cities)
       self.defense_mean = int(mean([i.defense_total_percent for i in self.cities]))
+      self.score = round(sum(ct.defense_min for ct in self.cities))
+      self.score += round(sum(ct.defense_total for ct in self.cities)/20)
     
     if self.cities: self.pos = self.cities[0].pos
     else: self.pos = None
@@ -1806,6 +1799,34 @@ class Unit:
             return
 
 
+  def join_units(self, units, info=0):
+    if info: logging.info(f'join_units.')
+    units.sort(key=lambda x: x.history.turns,reverse=True)
+    name = units[0].name
+    for i in units:
+      if i.name != name or i.can_join == 0: return
+      if FeedingFrenzy.name in [s.name for s in i.skills]: return
+    unit = units[0]
+    if unit.squads == unit.max_squads: return
+    for i in units[1:]:
+      if i.squads + unit.squads > unit.max_squads: 
+        item = i.split(unit.max_squads - unit.squads)
+        print(f'divided.')
+      elif i.squads + unit.squads <= unit.max_squads: item = i
+      if unit.squads + item.squads > unit.max_squads: return
+      unit.demon_souls = item.demon_souls
+      unit.history.kills_record += item.history.kills_record
+      unit.history.raids += item.history.raids
+      unit.hp_total += item.hp_total
+      unit.mp[0] = min(unit.mp[0], item.mp[0])
+      unit.pop += item.pop
+      unit.other_skills += item.other_skills
+      msg = f'{item} has joined.'
+      unit.log[-1] += [msg]
+      item.hp_total = 0
+    unit.update()
+    unit.pos.update()
+
   def launch_event(self):
     pass
 
@@ -1987,7 +2008,7 @@ class Unit:
     self.ranking_off_l += ['pn', self.ranking_off]
     self.ranking_off *= 1 + (self.moves + self.moves_mod) / 20
     self.ranking_off_l += ['moves', self.ranking_off]
-    self.ranking_off = round(self.ranking_off/8)
+    self.ranking_off = round(self.ranking_off/20)
   
     self.ranking_dfs = self.hp_total
     self.ranking_dfs_l = ['hp', self.ranking_dfs]
@@ -2016,7 +2037,7 @@ class Unit:
     if self.shield: 
       self.ranking_dfs *= 1.5 + (self.shield.dfs) / 10
       self.ranking_dfs_l += ['shield', self.ranking_dfs]
-    self.ranking_dfs = round(self.ranking_dfs/12)
+    self.ranking_dfs = round(self.ranking_dfs/20)
 
 
     self.ranking = self.ranking_dfs + self.ranking_off
@@ -2029,7 +2050,7 @@ class Unit:
     if self.resolve + self.resolve_mod >= 6: self.ranking *= 1.3
     if self.size >= 4: self.ranking *= 1.2
     elif self.size >= 5: self.ranking *= 1.3
-    elif self.size >= 6: self.ranking *= 1.4
+    elif self.size >= 6: self.ranking *= 1.5
     for sk in self.skills:
       self.ranking *= sk.ranking
     self.ranking = round(self.ranking)
@@ -2156,7 +2177,7 @@ class Unit:
       self.pos.units.append(unit)
       if self.show_info: sp.speak(f'{self}.')
       units += [unit]
-    if len(units) > 1: basics.join_units(units)
+    if len(units) > 1: self.join_units(units)
     return units[0]
 
   def start_turn(self):
@@ -2640,13 +2661,13 @@ class DemonHunters(Elf):
   resource_cost = 25
   food = 3
   pop = 25
-  terrain_skills = [Burn, DesertSurvival, ForestSurvival, MountainSurvival, SwampSurvival]
+  terrain_skills = [Burn, DarkVision, DesertSurvival, ForestSurvival, MountainSurvival, SwampSurvival]
 
-  hp = 5
+  hp = 18
   mp = [2, 2]
   moves = 6
   resolve = 7
-  global_skills = [DarkVision, DHLevels, ForestWalker, Furtive, ShadowHunter]
+  global_skills = [DHLevels, ForestWalker, Furtive, ShadowHunter]
 
   dfs = 5
   res = 2
@@ -2655,7 +2676,7 @@ class DemonHunters(Elf):
   armor = None
 
   att = 1
-  damage = 2
+  damage = 4
   off = 4
   str = 3
   pn = 0
@@ -2683,16 +2704,16 @@ class Druid(Elf):
   resource_cost = 22
   food = 3
   pop = 20
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [DarkVision, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 7
   power = 30
   power_max = 30
   power_res = 5
-  global_skills = [DarkVision, ForestWalker, Furtive]
+  global_skills = [ForestWalker, Furtive]
 
   dfs = 4
   res = 2
@@ -2701,7 +2722,7 @@ class Druid(Elf):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 3
   off = 4
   str = 3
   pn = 0
@@ -2727,16 +2748,16 @@ class KeeperOfTheGrove (Elf):
   resource_cost = 30
   food = 3
   pop = 20
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [DarkVision, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 7
   power = 0
   power_max = 30
   power_res = 3
-  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses, Refit, Regroup]
+  global_skills = [ForestWalker, Furtive, PyreOfCorpses, Refit, Regroup]
 
   dfs = 5
   res = 2
@@ -2745,7 +2766,7 @@ class KeeperOfTheGrove (Elf):
   armor = MediumArmor()
 
   att = 2
-  damage = 2
+  damage = 4
   off = 5
   str = 4
   pn = 0
@@ -2771,16 +2792,16 @@ class PriestessOfTheMoon(Elf):
   resource_cost = 35
   food = 6
   pop = 30
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [DarkVision, ForestSurvival]
 
-  hp = 8
+  hp = 26
   mp = [4, 4]
   moves = 8
   resolve = 8
   power = 0
   power_max = 60
   power_res = 5
-  global_skills = [DarkVision, ForestWalker, Furtive, Inspiration, PyreOfCorpses]
+  global_skills = [ForestWalker, Furtive, Inspiration, PyreOfCorpses]
 
   dfs = 7
   res = 4
@@ -2789,7 +2810,7 @@ class PriestessOfTheMoon(Elf):
   armor = None
 
   att = 3
-  damage = 2
+  damage = 4
   rng = 20
   off = 7
   str = 5
@@ -2818,7 +2839,7 @@ class AwakenTree(Elf):
   pop = 30
   terrain_skills = [ForestSurvival]
 
-  hp = 15
+  hp = 50
   mp = [2, 2]
   moves = 4
   resolve = 10
@@ -2832,7 +2853,7 @@ class AwakenTree(Elf):
   armor = None
 
   att = 3
-  damage = 4
+  damage = 7
   rng = 5
   mrng = 20
   off = 6
@@ -2862,13 +2883,13 @@ class BladeDancers(Elf):
   resource_cost = 24
   food = 3
   pop = 45
-  terrain_skills = [Burn, ForestSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [DarkVision, ForestWalker, PyreOfCorpses, Regroup]
+  global_skills = [ForestWalker, PyreOfCorpses, Regroup]
 
   dfs = 4
   res = 2
@@ -2877,7 +2898,7 @@ class BladeDancers(Elf):
   armor = None
 
   att = 3
-  damage = 2
+  damage = 4
   rng = 1
   off = 5
   str = 3
@@ -2906,13 +2927,13 @@ class Driads(Elf):
   resource_cost = 30
   food = 3
   pop = 10
-  terrain_skills = [Burn, ForestSurvival]
+  terrain_skills = [Burn, DarkVision, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [DarkVision,ForestWalker, Furtive]
+  global_skills = [ForestWalker, Furtive]
 
   dfs = 4
   res = 3
@@ -2921,7 +2942,7 @@ class Driads(Elf):
   armor = None
 
   att = 2
-  damage = 3
+  damage = 5
   rng = 1
   off = 5
   str = 4
@@ -2948,13 +2969,13 @@ class EternalGuard(Elf):
   resource_cost = 25
   food = 4
   pop = 60
-  terrain_skills = [Burn, ForestSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [DarkVision, ForestWalker, PyreOfCorpses, Refit, Regroup]
+  global_skills = [ForestWalker, PyreOfCorpses, Refit, Regroup]
 
   dfs = 4
   res = 2
@@ -2963,7 +2984,7 @@ class EternalGuard(Elf):
   armor = HeavyArmor()
 
   att = 2
-  damage = 2
+  damage = 3
   rng = 2
   off = 4
   str = 4
@@ -2992,13 +3013,13 @@ class Falcons(Elf):
   resource_cost = 18
   food = 3
   pop = 20
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [Fly, ForestSurvival]
 
-  hp = 1
+  hp = 3
   mp = [4, 4]
   moves = 10
   resolve = 6
-  global_skills = [Fly, ForestWalker]
+  global_skills = [ForestWalker]
 
   dfs = 4
   res = 1
@@ -3007,7 +3028,7 @@ class Falcons(Elf):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   rng = 1
   off = 4
   str = 3
@@ -3033,7 +3054,7 @@ class ForestBears(Unit):
   pop = 20
   terrain_skills = [ForestSurvival]
 
-  hp = 5
+  hp = 16
   mp = [2, 2]
   moves = 6
   resolve = 6
@@ -3046,7 +3067,7 @@ class ForestBears(Unit):
   armor = None
 
   att = 3
-  damage = 2
+  damage = 4
   rng = 1
   off = 4
   str = 5
@@ -3074,13 +3095,13 @@ class ForestEagle(Elf):
   resource_cost = 25
   food = 4
   pop = 10
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [Fly, ForestSurvival]
 
-  hp = 2
+  hp = 7
   mp = [3, 3]
   moves = 8
   resolve = 8
-  global_skills = [Fly, ForestWalker]
+  global_skills = [ForestWalker]
 
   dfs = 4
   res = 2
@@ -3089,7 +3110,7 @@ class ForestEagle(Elf):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 4
   rng = 1
   off = 5
   str = 3
@@ -3115,13 +3136,13 @@ class Earban(Elf):
   resource_cost = 35
   food = 6
   pop = 30
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [Fly, ForestSurvival, MountainSurvival]
 
-  hp = 9
+  hp = 30
   mp = [4, 4]
   moves = 8
   resolve = 10
-  global_skills = [Fly, ForestWalker]
+  global_skills = [ForestWalker]
 
   dfs = 5
   res = 3
@@ -3130,7 +3151,7 @@ class Earban(Elf):
   armor = None
 
   att = 5
-  damage = 3
+  damage = 5
   rng = 1
   off = 5
   str = 5
@@ -3156,7 +3177,7 @@ class ForestGiant(Unit):
   pop = 15
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 6
+  hp = 20
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -3169,7 +3190,7 @@ class ForestGiant(Unit):
   armor = None
 
   att = 2
-  damage = 3
+  damage = 5
   rng = 1
   off = 4
   str = 5
@@ -3201,7 +3222,7 @@ class ForestGuard(Elf):
   pop = 20
   terrain_skills = [Burn, ForestSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 6
@@ -3214,7 +3235,7 @@ class ForestGuard(Elf):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   rng = 1
   off = 3
   str = 3
@@ -3245,7 +3266,7 @@ class ForestRider(Elf):
   pop = 30
   terrain_skills = [Burn, ForestSurvival, Raid]
 
-  hp = 4
+  hp = 14
   mp = [4, 4]
   moves = 8
   resolve = 8
@@ -3259,7 +3280,7 @@ class ForestRider(Elf):
   shield = Shield()
 
   att = 2
-  damage = 3
+  damage = 5
   rng = 3
   off = 4
   str = 5
@@ -3292,7 +3313,7 @@ class ElvesSettler(Human):
   pop = 300
   terrain_skills = [ForestSurvival]
 
-  hp = 1
+  hp = 4
   mp = [2, 2]
   moves = 3
   resolve = 4
@@ -3332,7 +3353,7 @@ class Huntress(Elf):
   pop = 20
   terrain_skills = [Burn, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 6
@@ -3345,7 +3366,7 @@ class Huntress(Elf):
   armor = None
 
   att = 1
-  damage = 2
+  damage = 3
   rng = 10
   off = 5
   str = 4
@@ -3374,13 +3395,13 @@ class WoodArcher(Elf):
   resource_cost = 28
   food = 2
   pop = 30
-  terrain_skills = [Burn, ForestSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses,Refit, Regroup]
+  global_skills = [ForestWalker, Furtive, PyreOfCorpses,Refit, Regroup]
 
   dfs = 2
   res = 2
@@ -3389,7 +3410,7 @@ class WoodArcher(Elf):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 3
   rng = 20
   off = 4
   str = 3
@@ -3418,13 +3439,13 @@ class SistersFromTheDeepth(Elf):
   resource_cost = 22
   food = 2
   pop = 30
-  terrain_skills = [Burn, ForestSurvival]
+  terrain_skills = [Burn, DarkVision, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [DarkVision, ForestWalker, Furtive, PyreOfCorpses, Regroup]
+  global_skills = [ForestWalker, Furtive, PyreOfCorpses, Regroup]
 
   dfs = 2
   res = 2
@@ -3465,7 +3486,7 @@ class WildHuntsmen(Elf):
   pop = 30
   terrain_skills = [Burn, ForestSurvival, Raid]
 
-  hp = 5
+  hp = 16
   mp = [3, 3]
   moves = 6
   resolve = 6
@@ -3478,7 +3499,7 @@ class WildHuntsmen(Elf):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 4
   rng = 1
   off = 4
   str = 4
@@ -3788,7 +3809,7 @@ class Legatus(Human):
   terrain_skills = []
   tags = ['commander']
 
-  hp = 3
+  hp = 10
   mp = [4, 4]
   moves = 6
   resolve = 8
@@ -3803,7 +3824,7 @@ class Legatus(Human):
   defensive_skills = []
 
   att = 2
-  damage = 2
+  damage = 3
   off = 4
   str = 4
   pn = 0
@@ -3830,7 +3851,7 @@ class Augur(Unit):
   food = 3
   pop = 40
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 7
@@ -3846,7 +3867,7 @@ class Augur(Unit):
   armor = None
 
   att = 1
-  damage = 1
+  damage = 2
   off = 3
   str = 3
   pn = 0
@@ -3874,7 +3895,7 @@ class Aquilifer(Human):
   unique = 1
   tags = ['commander']
 
-  hp = 3
+  hp = 15
   mp = [2, 2]
   moves = 7
   resolve = 8
@@ -3888,7 +3909,7 @@ class Aquilifer(Human):
   shield = Shield()
 
   att = 3
-  damage = 2
+  damage = 3
   off = 5
   str = 4
   pn = 0
@@ -3913,7 +3934,7 @@ class Flamen(Human):
   food = 3
   pop = 40
 
-  hp = 3
+  hp = 15
   mp = [2, 2]
   moves = 5
   resolve = 8
@@ -3956,7 +3977,7 @@ class PontifexMaximus(Unit):
   food = 5
   pop = 80
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 8
@@ -4001,7 +4022,7 @@ class Settler(Human):
   food = 1
   pop = 400
 
-  hp = 1
+  hp = 3
   mp = [2, 2]
   moves = 3
   resolve = 2
@@ -4080,7 +4101,7 @@ class RebornOnes(Human):
   pop = 40
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -4136,7 +4157,7 @@ class Velites(Human):
   shield = Shield()
 
   att = 2
-  damage = 2
+  damage = 3
   off = 3
   str = 3
   pn = 0
@@ -4161,7 +4182,7 @@ class ImperialGuard(Human):
   pop = 60
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 7
@@ -4174,7 +4195,7 @@ class ImperialGuard(Human):
   armor = HeavyArmor()
 
   att = 2
-  damage = 3
+  damage = 4
   off = 5
   str = 4
   pn = 0
@@ -4188,7 +4209,7 @@ class Hastati(Human):
   name = 'hastati'
   units = 40
   min_units = 20
-  max_squads = 4
+  max_squads = 8
   type = 'infantry'
   traits = [human_t]
   size = 2
@@ -4199,7 +4220,7 @@ class Hastati(Human):
   pop = 60
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -4213,7 +4234,7 @@ class Hastati(Human):
 
   att = 1
   rng = 2
-  damage = 3
+  damage = 4
   off = 4
   str = 4
   pn = 1
@@ -4228,7 +4249,7 @@ class Principes(Human):
   name = 'principes'
   units = 20
   min_units = 10
-  max_squads = 4
+  max_squads = 6
   type = 'infantry'
   traits = [human_t]
   size = 2
@@ -4239,7 +4260,7 @@ class Principes(Human):
   pop = 50
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -4253,7 +4274,7 @@ class Principes(Human):
 
   att = 1
   rng = 3
-  damage = 4
+  damage = 5
   off = 5
   str = 4
   pn = 2
@@ -4270,7 +4291,7 @@ class Halberdier(Human):
   name = 'halberdier'
   units = 10
   min_units = 10
-  max_squads = 5
+  max_squads = 6
   type = 'infantry'
   traits = [human_t]
   size = 2
@@ -4281,7 +4302,7 @@ class Halberdier(Human):
   pop = 23
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 6
@@ -4294,7 +4315,7 @@ class Halberdier(Human):
   armor = MediumArmor()
 
   att = 2
-  damage = 3
+  damage = 5
   off = 4
   str = 4
   pn = 2
@@ -4319,7 +4340,7 @@ class Inquisitors(Human):
   food = 4
   pop = 40
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 7
@@ -4332,7 +4353,7 @@ class Inquisitors(Human):
   armor = LightArmor()
 
   att = 2
-  damage = 1
+  damage = 3
   off = 3
   str = 3
   pn = 0
@@ -4359,7 +4380,7 @@ class SacredWarriors(Human):
   pop = 50
   global_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 7
@@ -4373,7 +4394,7 @@ class SacredWarriors(Human):
   shield = Shield()
 
   att = 2
-  damage = 2
+  damage = 3
   off = 4
   str = 4
   pn = 0
@@ -4389,7 +4410,7 @@ class KnightsTemplar (Human):
   name = knights_templar_t
   units = 20
   min_units = 10
-  max_squads = 4
+  max_squads = 6
   type = 'infantry'
   traits = [human_t, sacred_t]
   size = 2
@@ -4400,7 +4421,7 @@ class KnightsTemplar (Human):
   pop = 55
   global_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 7
@@ -4413,7 +4434,7 @@ class KnightsTemplar (Human):
   armor = MediumArmor()
 
   att = 1
-  damage = 3
+  damage = 5
   rng = 2
   off = 4
   str = 4
@@ -4441,7 +4462,7 @@ class Sagittarii(Human):
   pop = 40
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 6
@@ -4454,7 +4475,7 @@ class Sagittarii(Human):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   rng = 15
   off = 3
   str = 2
@@ -4480,7 +4501,7 @@ class CrossBowMen(Human):
   food = 3
   pop = 30
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -4494,7 +4515,7 @@ class CrossBowMen(Human):
   armor = None
 
   att = 1
-  damage = 4
+  damage = 6
   rng = 10
   off = 5
   str = 5
@@ -4520,7 +4541,7 @@ class Arquebusier(Human):
   food = 3
   pop = 30
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -4533,7 +4554,7 @@ class Arquebusier(Human):
   armor = None
 
   att = 1
-  damage = 3
+  damage = 5
   rng = 15
   off = 5
   str = 5
@@ -4559,7 +4580,7 @@ class Musket(Human):
   food = 3
   pop = 30
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -4572,7 +4593,7 @@ class Musket(Human):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 3
   rng = 20
   off = 5
   str = 5
@@ -4599,7 +4620,7 @@ class Equites(Human):
   pop = 60
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 14
   mp = [4, 4]
   moves = 8
   resolve = 6
@@ -4613,7 +4634,7 @@ class Equites(Human):
   shield = None
 
   att = 2
-  damage = 2
+  damage = 4
   off = 4
   str = 4
   pn = 0
@@ -4644,7 +4665,7 @@ class Equites2(Human):
   pop = 70
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 16
   mp = [3, 3]
   moves = 7
   resolve = 8
@@ -4657,7 +4678,7 @@ class Equites2(Human):
   armor = HeavyArmor()
 
   att = 1
-  damage = 3
+  damage = 5
   off = 5
   str = 5
   pn = 1
@@ -4684,13 +4705,13 @@ class Gryphon(Unit):
   resource_cost = 20
   food = 4
   pop = 20
-  terrain_skills = []
+  terrain_skills = [DarkVision, Fly]
 
-  hp = 5
+  hp = 14
   mp = [4, 4]
   moves = 8
   resolve = 8
-  global_skills = [Fly]
+  global_skills = []
 
   dfs = 4
   res = 4
@@ -4699,7 +4720,7 @@ class Gryphon(Unit):
   armor = None
 
   att = 2
-  damage = 3
+  damage = 5
   rng = 1
   off = 5
   str = 5
@@ -4725,13 +4746,13 @@ class GryphonRiders(Unit):
   resource_cost = 22
   food = 6
   pop = 30
-  terrain_skills = [Burn, Raid]
+  terrain_skills = [Burn, DarkVision, Fly, Raid]
 
-  hp = 6
+  hp = 24
   mp = [2, 2]
   moves = 7
   resolve = 7
-  global_skills = [Fly, ShadowHunter]
+  global_skills = [ShadowHunter]
 
   dfs = 5
   res = 4
@@ -4740,7 +4761,7 @@ class GryphonRiders(Unit):
   armor = None
 
   att = 3
-  damage = 3
+  damage = 5
   rng = 1
   off = 5
   str = 5
@@ -4855,7 +4876,7 @@ class Cemetery(Building):
   level = 1
   city_unique = 1
   size = 6
-  gold = 10000
+  gold = 8000
   own_terrain = 1
   tags = [military_t]
 
@@ -4920,7 +4941,7 @@ class HallsOfTheDead (Building):
   level = 1
   city_unique = 1
   size = 4
-  gold = 9000
+  gold = 8000
   own_terrain = 1
   tags = [military_t]
 
@@ -5037,7 +5058,7 @@ class Pit(Building):
   name = 'fosa'
   level = 1
   local_unique = 1
-  size = 4
+  size = 5
   gold = 1500
   food = 2
   own_terrain = 1
@@ -5056,7 +5077,7 @@ class FuneraryDungeon(Pit, Building):
   name = 'mazmorra funeraria'
   level = 2
   base = Pit
-  gold = 6000
+  gold = 5000
   food = 3
   resource = 2
   tags = [food_t, resource_t]
@@ -5082,12 +5103,13 @@ class Adjule(Unit):
   resource_cost = 18
   food = 0
   pop = 25
+  terrain_skills = [DarkVision, DesertSurvival, NightSurvival]
 
-  hp = 6
+  hp = 14
   mp = [3, 3]
   moves = 7
   resolve = 10
-  global_skills = [DarkVision, DesertSurvival, NightFerocity, NightSurvival, Regroup]
+  global_skills = [NightFerocity, Regroup]
 
   dfs = 2
   res = 4
@@ -5096,7 +5118,7 @@ class Adjule(Unit):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 4
   str = 4
   pn = 0
@@ -5130,13 +5152,13 @@ class WailingLady(Undead):
   resource_cost = 30
   food = 0
   pop = 30
-  terrain_skills = []
+  terrain_skills = [DarkVision, Fly, ]
 
-  hp = 6
+  hp = 15
   mp = [2, 2]
   moves = 8
   resolve = 10
-  global_skills = [DarkVision, Ethereal, FearAura, Fly, NightFerocity]
+  global_skills = [Ethereal, FearAura, NightFerocity]
 
   dfs = 3
   res = 6
@@ -5147,7 +5169,7 @@ class WailingLady(Undead):
   att = 2
   rng = 1
   mrng = 10
-  damage = 3
+  damage = 4
   off = 5
   str = 6
   pn = 3
@@ -5172,14 +5194,14 @@ class Bats(Unit):
   upkeep = 2
   resource_cost = 15
   food = 2
-  pop = 30
-  terrain_skills = [ForestSurvival]
+  pop = 20
+  terrain_skills = [DarkVision, ForestSurvival, Fly]
 
-  hp = 1
+  hp = 4
   mp = [4, 4]
   moves = 4
   resolve = 3
-  global_skills = [DarkVision, Fly, NightSurvival]
+  global_skills = [NightSurvival]
 
   dfs = 2
   res = 1
@@ -5207,20 +5229,20 @@ class BlackKnights(Undead):
   min_units = 5
   max_squads = 6
   type = 'cavalry'
-  traits = [death_t, malignant_t]
-  size = 2
+  traits = [death_t, mounted_t, malignant_t]
+  size = 3
   gold = 1400
-  upkeep = 70
+  upkeep = 80
   resource_cost = 22
   food = 0
-  pop = 25
-  terrain_skills = [Burn]
+  pop = 35
+  terrain_skills = [DarkVision, Burn, NightSurvival]
 
-  hp = 5
-  mp = [3, 3]
+  hp = 18
+  mp = [4, 4]
   moves = 7
   resolve = 10
-  global_skills = [DarkVision, FearAura, NightFerocity, NightSurvival]
+  global_skills = [FearAura, NightFerocity, NightSurvival]
 
   dfs = 4
   res = 5
@@ -5228,7 +5250,7 @@ class BlackKnights(Undead):
   arm = 1
   armor = HeavyArmor()
 
-  att = 2
+  att = 3
   damage = 3
   off = 5
   str = 4
@@ -5258,12 +5280,13 @@ class BloodKnights(Undead):
   resource_cost = 25
   food = 0
   pop = 20
+  terrain_skills = [DarkVision, NightSurvival]
 
-  hp = 7
+  hp = 20
   mp = [2, 2]
   moves = 7
   resolve = 10
-  global_skills = [DarkVision, FearAura, NightFerocity, NightSurvival]
+  global_skills = [FearAura, NightFerocity]
 
   dfs = 6
   res = 5
@@ -5273,7 +5296,7 @@ class BloodKnights(Undead):
   shield = Shield()
 
   att = 2
-  damage = 4
+  damage = 5
   off = 7
   str = 6
   pn = 2
@@ -5299,12 +5322,13 @@ class CryptHorrors (Undead):
   resource_cost = 18
   food = 0
   pop = 0
+  terrain_skills = [DarkVision, Fly, NightSurvival]
 
-  hp = 5
+  hp = 15
   mp = [2, 2]
   moves = 5
   resolve = 10
-  global_skills = [DarkVision, FearAura, Fly, NightFerocity, NightSurvival]
+  global_skills = [FearAura, NightFerocity]
 
   dfs = 4
   res = 5
@@ -5313,7 +5337,7 @@ class CryptHorrors (Undead):
   armor = None
 
   att = 3
-  damage = 3
+  damage = 4
   off = 4
   str = 4
   pn = 0
@@ -5338,13 +5362,13 @@ class DireWolves(Undead):
   resource_cost = 22
   food = 0
   pop = 25
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
-  hp = 6
+  hp = 24
   mp = [3, 3]
   moves = 6
   resolve = 10
-  global_skills = [BloodyBeast, DarkVision, FearAura, NightFerocity, NightSurvival]
+  global_skills = [BloodyBeast, FearAura, NightFerocity]
 
   dfs = 3
   res = 5
@@ -5373,20 +5397,23 @@ class Draugr(Unit):
   min_units = 5
   max_squads = 20
   type = 'infantry'
-  traits = [death_t, malignant_t]
+  traits = [death_t, malignant_t, blood_drinker_t]
   size = 4
   gold = 520
   upkeep = 20
   resource_cost = 18
   food = 2
   pop = 30
-  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+  terrain_skills = [DarkVision, Burn, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 5
+  hp = 20
   mp = [2, 2]
+  power = 1
+  power_max = 1
+  power_res = 1
   moves = 6
   resolve = 7
-  global_skills = [DarkVision, Scavenger, NightFerocity, Regroup, Trample]
+  global_skills = [Scavenger, NightFerocity, Regroup, Trample]
 
   dfs = 4
   res = 4
@@ -5394,7 +5421,7 @@ class Draugr(Unit):
   arm = 2
 
   att = 2
-  damage = 2
+  damage = 3
   off = 4
   str = 4
   pn = 0
@@ -5407,6 +5434,7 @@ class Draugr(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [Cannibalize]
     self.align = Hell
     Ground.__init__(self)
     self.corpses = [Skeletons]
@@ -5421,29 +5449,29 @@ class FellBats(Undead):
   min_units = 5
   max_squads = 10
   type = 'beast'
-  traits = [death_t, malignant_t]
+  traits = [death_t, malignant_t, blood_drinker_t]
   size = 2
   gold = 420
-  upkeep = 20
+  upkeep = 15
   resource_cost = 16
   food = 0
-  pop = 25
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  pop = 20
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 3
+  hp = 13
   mp = [4, 4]
   moves = 7
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, Fly, Helophobia, NightFerocity, NightSurvival]
+  global_skills = [ElusiveShadow, Fly, Helophobia, NightSurvival]
 
   dfs = 4
   res = 3
   hres = 1
   arm = 0
 
-  att = 2
-  damage = 1
-  off = 3
+  att = 3
+  damage = 3
+  off = 4
   str = 3
   pn = 0
   offensive_skills = [ToxicClaws]
@@ -5460,20 +5488,23 @@ class Ghouls(Human):
   min_units = 10
   max_squads = 10
   type = 'infantry'
-  traits = [human_t, malignant_t, poisonres_t]
+  traits = [human_t, malignant_t, poisonres_t, blood_drinker_t]
   size = 2
-  gold = 170
-  upkeep = 8
+  gold = 180
+  upkeep = 6
   resource_cost = 11
   food = 2
   pop = 20
-  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
+  power = 1
+  power_max = 1
+  power_res = 1
   moves = 5
   resolve = 5
-  global_skills = [DarkVision, Furtive, Scavenger]
+  global_skills = [Furtive, Scavenger]
 
   dfs = 3
   res = 3
@@ -5482,7 +5513,7 @@ class Ghouls(Human):
   armor = None
 
   att = 3
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
@@ -5494,6 +5525,7 @@ class Ghouls(Human):
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
+    self.spells = [Cannibalize]
     self.corpses = [Draugr]
 
 class Isaac(Unit):
@@ -5511,16 +5543,16 @@ class Isaac(Unit):
   resource_cost = 25
   food = 4
   pop = 30
-  terrain_skills = [Burn, Raid]
+  terrain_skills = [Burn, DarkVision, Raid]
 
-  hp = 8
+  hp = 30
   mp = [2, 2]
   moves = 7
   resolve = 8
   power = 20
   power_max = 40
   power_res = 5
-  global_skills = [DarkVision, LordOfBones]
+  global_skills = [LordOfBones]
 
   dfs = 4
   res = 2
@@ -5530,7 +5562,7 @@ class Isaac(Unit):
   shield = Shield()
 
   att = 2
-  damage = 2
+  damage = 4
   off = 5
   str = 4
   pn = 0
@@ -5562,7 +5594,7 @@ class Necromancer(Human):
   pop = 30
   terrain_skills = []
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -5611,13 +5643,13 @@ class GraveGuards(Undead):
   resource_cost = 18
   food = 0
   pop = 30
-  terrain_skills = [Burn]
+  terrain_skills = [Burn, DarkVision, NightSurvival]
 
-  hp = 5
+  hp = 25
   mp = [2, 2]
   moves = 6
   resolve = 10
-  global_skills = [DarkVision, FearAura, NightFerocity, NightSurvival]
+  global_skills = [FearAura, NightFerocity]
 
   dfs = 4
   res = 5
@@ -5656,7 +5688,7 @@ class Settler2(Human):
   pop = 250
   terrain_skills = [DesertSurvival]
 
-  hp = 1
+  hp = 3
   mp = [2, 2]
   moves = 3
   resolve = 2
@@ -5686,7 +5718,7 @@ class Skeletons(Undead):
   min_units = 10
   max_squads = 10
   type = 'infantry'
-  traits = [death_t]
+  traits = [death_t, mindless_t]
   size = 2
   gold = 400
   upkeep = 0
@@ -5695,7 +5727,7 @@ class Skeletons(Undead):
   pop = 30
   terrain_skills = [Burn]
 
-  hp = 4
+  hp = 13
   mp = [2, 2]
   moves = 5
   resolve = 10
@@ -5707,7 +5739,7 @@ class Skeletons(Undead):
   arm = 1
 
   att = 2
-  damage = 2
+  damage = 3
   off = 3
   str = 3
   pn = 0
@@ -5733,13 +5765,13 @@ class SpectralInfantry(Unit):
   resource_cost = 15
   food = 0
   pop = 45
-  terrain_skills = [Burn, Raid]
+  terrain_skills = [Burn, DarkVision, Raid]
 
-  hp = 4
+  hp = 13
   mp = [2, 2]
   moves = 6
   resolve = 10
-  global_skills = [DarkVision]
+  global_skills = []
 
   dfs = 3
   res = 4
@@ -5748,7 +5780,7 @@ class SpectralInfantry(Unit):
   armor = MediumArmor()
 
   att = 1
-  damage = 3
+  damage = 4
   off = 4
   str = 4
   pn = 0
@@ -5774,26 +5806,26 @@ class Vampire(Undead):
   resource_cost = 25
   food = 0
   pop = 15
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
-  hp = 6
+  hp = 20
   hp_res = 1
   mp = [2, 2]
   moves = 8
   resolve = 10
-  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, NightFerocity, NightSurvival]
+  global_skills = [ElusiveShadow, FearAura, Fly, NightFerocity]
 
   dfs = 5
   res = 4
   hres = 3
   arm = 0
-  armor = LightArmor()
+  armor = None
 
   att = 4
-  damage = 3
+  damage = 4
   off = 5
   str = 5
-  pn = 2
+  pn = 0
 
   populated_land = 1
 
@@ -5818,17 +5850,17 @@ class VampireLord(Undead):
   resource_cost = 25
   food = 0
   pop = 35
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, Fly, ForestSurvival, MountainSurvival, NightSurvival]
 
-  hp = 12
-  hp_res = 2
+  hp = 40
+  hp_res = 5
   power = 10
   power_max = 20
   power_res = 3
   mp = [2, 2]
   moves = 9
   resolve = 10
-  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, Helophobia, LordOfBlodd, NightFerocity, NightSurvival]
+  global_skills = [DarkPresence, ElusiveShadow, FearAura, Helophobia, LordOfBlodd]
 
   dfs = 6
   res = 5
@@ -5837,7 +5869,7 @@ class VampireLord(Undead):
   armor = MediumArmor()
 
   att = 5
-  damage = 4
+  damage = 6
   off = 6
   str = 5
   pn = 2
@@ -5863,22 +5895,22 @@ class Vargheist(Undead):
   resource_cost = 20
   food = 0
   pop = 60
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 8
-  hp_res = 4
+  hp = 27
+  hp_res = 6
   mp = [2, 2]
   moves = 9
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, FearAura, Fly, Helophobia, NightFerocity, NightSurvival, TheBeast]
+  global_skills = [ElusiveShadow, FearAura, Fly, Helophobia, NightSurvival, TheBeast]
 
-  dfs = 3
+  dfs = 4
   res = 5
   hres = 5
   arm = 2
 
   att = 6
-  damage = 4
+  damage = 6
   off = 5
   str = 7
   pn = 2
@@ -5908,26 +5940,26 @@ class VladDracul(Undead):
   resource_cost = 50
   food = 0
   pop = 100
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
-  hp = 24
-  hp_res = 4
+  hp = 60
+  hp_res = 7
   power = 20
   power_max = 60
-  power_res = 5
+  power_res = 10
   mp = [2, 2]
   moves = 12
   resolve = 10
-  global_skills = [DarkVision, DarkPresence, ElusiveShadow, FearAura, Fly, Helophobia, LordOfBlodd, MastersEye, NightFerocity, NightSurvival]
+  global_skills = [DarkPresence, ElusiveShadow, FearAura, Helophobia, LordOfBlodd, MastersEye]
 
-  dfs = 7
+  dfs = 8
   res = 7
   hres = 5
   arm = 3
   armor = LightArmor()
 
   att = 6
-  damage = 5
+  damage = 8
   off = 8
   str = 8
   pn = 3
@@ -5959,20 +5991,24 @@ class VarGhul(Undead):
   resource_cost = 20
   food = 5
   pop = 25
+  terrain_skills = [DarkVision, NightSurvival]
 
-  hp = 8
+  hp = 25
   mp = [2, 2]
+  power = 1
+  power_max = 1
+  power_res = 1
   moves = 6
   resolve = 6
-  global_skills = [DarkVision, Helophobia, LordOfBlodd, NightFerocity, NightSurvival, Scavenger, Trample]
+  global_skills = [LordOfBlodd, NightFerocity, Scavenger, Trample]
 
-  dfs = 4
+  dfs = 3
   res = 4
   hres = 1
   arm = 2
 
   att = 4
-  damage = 3
+  damage = 4
   off = 4
   str = 5
   offensive_skills = [ToxicClaws]
@@ -5982,6 +6018,7 @@ class VarGhul(Undead):
 
   def __init__(self, nation):
     super().__init__(nation)
+    self.spells = [Cannibalize]
     self.align = Hell
     self.corpses = [CryptHorrors]
     self.favhill = [0, 1]
@@ -5991,19 +6028,19 @@ class VarGhul(Undead):
 
 class Zombies(Undead, Ground):
   name = zombies_t
-  units = 30
+  units = 20
   min_units = 10
   max_squads = 20
   type = 'infantry'
-  traits = [death_t]
+  traits = [death_t, mindless_t]
   size = 2
-  gold = 200
+  gold = 150
   upkeep = 0
   resource_cost = 10
   food = 0
-  pop = 30
+  pop = 20
 
-  hp = 3
+  hp = 13
   mp = [2, 2]
   moves = 3
   resolve = 10
@@ -6015,7 +6052,7 @@ class Zombies(Undead, Ground):
   arm = 0
 
   att = 1
-  damage = 1
+  damage = 2
   off = 2
   str = 2
   pn = 0
@@ -6059,7 +6096,7 @@ class Fields(Building):
   level = 1
   local_unique = 1
   size = 6
-  gold = 2000
+  gold = 1500
   food = 2
   own_terrain = 1
   tags = [food_t]
@@ -6214,7 +6251,7 @@ class HolyEmpire(Nation):
   food_limit_builds = 3000
   food_limit_upgrades = 5000
   military_limit_upgrades = 3000
-  grouth_base = 5
+  grouth_base = 6
   grouth_rate = 200
   expansion = 1000
   public_order = 0
@@ -6295,7 +6332,7 @@ class WoodElves(Nation):
   food_limit_builds = 3000
   food_limit_upgrades = 5000
   military_limit_upgrades = 1000
-  grouth_base = 2
+  grouth_base = 3
   grouth_rate = 200
   public_order = 0
   expansion = 2500
@@ -6361,7 +6398,7 @@ class WoodElves(Nation):
     self.start_units = [ForestGuard, ForestGuard]
 
 
-class Walachia(Nation):
+class Wallachia(Nation):
   name = wallachia_t
   nick = nation_phrase2_t
   traits = [death_t, malignant_t, vampire_t]
@@ -6372,7 +6409,7 @@ class Walachia(Nation):
   food_limit_builds = 3000
   food_limit_upgrades = 4000
   military_limit_upgrades = 3000
-  grouth_base = 4
+  grouth_base = 5
   grouth_rate = 200
   expansion = 1500
   public_order = 0
@@ -6412,7 +6449,7 @@ class Walachia(Nation):
     self.unallow_around_ocean = 0
   
     # edificios iniciales disponibles.
-    self.av_buildings = [Cemetery, HallsOfTheDead, HuntingGround, Gallows, Pit, Quarry, SawMill]
+    self.av_buildings = [Cemetery, Fields, HallsOfTheDead, HuntingGround, Gallows, Pit, Quarry, SawMill]
     self.av_cities = [CursedHamlet]
     self.city_names = death_citynames
     # terrenos de comida.
@@ -6436,7 +6473,133 @@ class Walachia(Nation):
     self.start_units = [Zombies, Zombies, VampireLord]
 
 
-# unidades random.
+
+#Buildings.
+class BrigandLair(Building):
+  name = 'brigand lair'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Raiders]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+
+class CaveOfDarkRites(Building):
+  name = 'cave of dark rites'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Harpy, Necromancer]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+class CaveOfGhouls(Building):
+  name = 'cave of ghouls'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Ghouls, VarGhul]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+class NecromancersLair(Building):
+  name = 'Necromancers Lair'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Harpy, Necromancer, Skeletons]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+class OathStone(Building):
+  name = 'oath stone'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Ogres]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+class OpulentTomb(Building):
+  name = 'opulent tomb'
+  nation = wild_t
+  level = 1
+  city_unique = 1
+  size = 4
+  gold = 0
+  own_terrain = 0
+  tags = [military_t]
+  def __init__(self, nation, pos):
+    super().__init__(nation, pos)
+    self.av_units = [Vampire]
+    self.resource_cost = [0, 30]
+    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.surf = [none_t]
+    self.hill = [1]
+    self.upgrade = []
+
+
+
+
+
+
+
+
+
+
+
+# Units.
 class Archers(Human):
   name = archers_t
   units = 30
@@ -6452,7 +6615,7 @@ class Archers(Human):
   pop = 45
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 4
@@ -6496,13 +6659,13 @@ class Akhlut(Unit):
   resource_cost = 28
   food = 12
   pop = 25
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 9
+  hp = 30
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [DarkVision, Regroup]
+  global_skills = [Regroup]
 
   dfs = 3
   res = 5
@@ -6511,7 +6674,7 @@ class Akhlut(Unit):
   armor = None
 
   att = 3
-  damage = 3
+  damage = 5
   off = 5
   str = 5
   pn = 0
@@ -6544,13 +6707,13 @@ class BlackOrcs(Unit):
   resource_cost = 20
   food = 6
   pop = 40
-  terrain_skills = [Burn, Raid]
+  terrain_skills = [Burn, DarkVision,Raid]
 
-  hp = 7
+  hp = 24
   mp = [2, 2]
   moves = 7
   resolve = 8
-  global_skills = [DarkVision, BloodyBeast]
+  global_skills = [BloodyBeast]
 
   dfs = 3
   res = 4
@@ -6559,7 +6722,7 @@ class BlackOrcs(Unit):
   armor = HeavyArmor
 
   att = 3
-  damage = 2
+  damage = 5
   off = 5
   str = 5
   pn = 1
@@ -6591,13 +6754,13 @@ class Children_Of_The_Wind(Human):
   resource_cost = 16
   food = 3
   pop = 30
-  terrain_skills = {Burn, DesertSurvival, Raid}
+  terrain_skills = [Burn, DarkVision, DesertSurvival, Raid, MountainSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 6
-  global_skills = [DarkVision, DesertSurvival, Furtive,MountainSurvival]
+  global_skills = [Furtive]
 
   dfs = 3
   res = 2
@@ -6607,7 +6770,7 @@ class Children_Of_The_Wind(Human):
   shield = Shield()
 
   att = 2
-  damage = 2
+  damage = 4
   off = 5
   str = 3
   pn = 0
@@ -6677,13 +6840,13 @@ class Crocodile(Unit):
   resource_cost = 20
   food = 2
   pop = 10
-  terrain_skills = [SwampSurvival]
+  terrain_skills = [DarkVision, SwampSurvival]
 
-  hp = 5
+  hp = 25
   mp = [2, 2]
   moves = 6
   resolve = 4
-  global_skills = [Ambushment, DarkVision, Furtive]
+  global_skills = [Ambushment, Furtive]
 
   dfs = 3
   res = 4
@@ -6692,7 +6855,7 @@ class Crocodile(Unit):
   armor = None
 
   att = 3
-  damage = 3
+  damage = 5
   off = 5
   str = 5
   pn = 2
@@ -6725,20 +6888,20 @@ class DesertNomads(Human):
   pop = 30
   terrain_skills = [Burn, DesertSurvival, Raid]
 
-  hp = 4
+  hp = 14
   mp = [3, 3]
   moves = 8
   resolve = 5
 
   dfs = 2
-  res = 2
+  res = 3
   hres = 0
   arm = 1
   armor = None
   shield = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
@@ -6771,13 +6934,13 @@ class DevourerOfDemons(Unit):
   resource_cost = 50
   food = 0
   pop = 0
-  terrain_skills = [ForestSurvival, MountainSurvival, SwampSurvival]
+  terrain_skills = [DarkVision, Fly, ForestSurvival, MountainSurvival, SwampSurvival]
 
-  hp = 18
+  hp = 150
   mp = [2, 2]
   moves = 10
   resolve = 10
-  global_skills = [DarkVision, ElusiveShadow, Ethereal, FearAura, Fly, Trample]
+  global_skills = [ElusiveShadow, Ethereal, FearAura, Trample]
 
   dfs = 4
   res = 6
@@ -6786,7 +6949,7 @@ class DevourerOfDemons(Unit):
   armor = None
 
   att = 2
-  damage = 5
+  damage = 10
   off = 8
   str = 8
   pn = 2
@@ -6858,7 +7021,7 @@ class GiantBear(Unit):
   pop = 20
   terrain_skills = [ForestSurvival, MountainSurvival]
 
-  hp = 10
+  hp = 30
   mp = [2, 2]
   moves = 5
   resolve = 6
@@ -6871,7 +7034,7 @@ class GiantBear(Unit):
   armor = None
 
   att = 3
-  damage = 3
+  damage = 6
   rng = 1
   off = 5
   str = 5
@@ -6900,13 +7063,13 @@ class GiantWolves(Unit):
   resource_cost = 18
   food = 8
   pop = 15
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 4
+  hp = 13
   mp = [2, 2]
   moves = 6
   resolve = 4
-  global_skills = [DarkVision, BloodyBeast, Regroup]
+  global_skills = [BloodyBeast, Regroup]
 
   dfs = 3
   res = 4
@@ -6915,7 +7078,7 @@ class GiantWolves(Unit):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 4
   off = 4
   str = 5
   pn = 0
@@ -6950,7 +7113,7 @@ class Goblins(Unit):
   pop = 50
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, SwampSurvival, Raid]
 
-  hp = 1
+  hp = 4
   mp = [3, 3]
   moves = 6
   resolve = 4
@@ -6963,7 +7126,7 @@ class Goblins(Unit):
   armor = None
 
   att = 3
-  damage = 1
+  damage = 2
   rng = 10
   off = 3
   str = 2
@@ -6998,13 +7161,13 @@ class Harpy(Unit):
   resource_cost = 16
   food = 0
   pop = 45
-  terrain_skills = [ForestSurvival, MountainSurvival, Raid]
+  terrain_skills = [Fly, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 4
+  hp = 13
   mp = [4, 4]
   moves = 7
   resolve = 4
-  global_skills = [Fly, Furtive]
+  global_skills = [Furtive]
 
   dfs = 4
   res = 3
@@ -7013,7 +7176,7 @@ class Harpy(Unit):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 3
   str = 3
   pn = 0
@@ -7045,13 +7208,13 @@ class HellHounds(Undead):
   resource_cost = 30
   food = 0
   pop = 25
-  terrain_skills = [DesertSurvival, ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, DesertSurvival, ForestSurvival, MountainSurvival, NightSurvival]
 
-  hp = 8
+  hp = 28
   mp = [2, 2]
   moves = 6
   resolve = 10
-  global_skills = [DarkVision, BloodyBeast, NightFerocity, NightSurvival, Regroup]
+  global_skills = [BloodyBeast, NightFerocity, Regroup]
 
   dfs = 3
   res = 5
@@ -7060,7 +7223,7 @@ class HellHounds(Undead):
   armor = None
 
   att = 2
-  damage = 3
+  damage = 5
   off = 4
   str = 5
   pn = 0
@@ -7089,12 +7252,13 @@ class Hyenas(Unit):
   resource_cost = 15
   food = 4
   pop = 65
+  terrain_skills = [DarkVision, NightSurvival]
 
-  hp = 3
+  hp = 12
   mp = [2, 2]
   moves = 6
   resolve = 4
-  global_skills = [DarkVision, BloodyBeast, NightSurvival, Regroup]
+  global_skills = [BloodyBeast, Regroup]
 
   dfs = 3
   res = 3
@@ -7103,7 +7267,7 @@ class Hyenas(Unit):
   armor = None
 
   att = 1
-  damage = 3
+  damage = 5
   off = 4
   str = 4
   pn = 1
@@ -7139,7 +7303,7 @@ class Hunters(Human):
   pop = 12
   terrain_skills = [ForestSurvival, MountainSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 4
@@ -7153,7 +7317,7 @@ class Hunters(Human):
 
   att = 1
   rng = 10
-  damage = 3
+  damage = 4
   off = 3
   str = 3
   pn = 0
@@ -7187,7 +7351,7 @@ class NomadsRiders(Human):
   pop = 40
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 14
   mp = [4, 4]
   moves = 6
   resolve = 4
@@ -7198,9 +7362,9 @@ class NomadsRiders(Human):
   arm = 1
   armor = None
 
-  att = 1
+  att = 2
   rng = 15
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
@@ -7235,9 +7399,9 @@ class Orc_Archers(Unit):
   resource_cost = 12
   food = 3
   pop = 50
-  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 3
+  hp = 12
   mp = [2, 2]
   moves = 5
   resolve = 4
@@ -7250,7 +7414,7 @@ class Orc_Archers(Unit):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   rng = 15
   off = 3
   str = 4
@@ -7286,9 +7450,9 @@ class OrcWarriors(Unit):
   resource_cost = 10
   food = 3
   pop = 60
-  terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 4
+  hp = 14
   mp = [2, 2]
   moves = 6
   resolve = 4
@@ -7301,7 +7465,7 @@ class OrcWarriors(Unit):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 3
   str = 3
   pn = 0
@@ -7330,13 +7494,13 @@ class Levy(Human):
   traits = [human_t, levy_t]
   size = 2
   gold = 120
-  upkeep = 6
+  upkeep = 5
   resource_cost = 11
   food = 3
   pop = 30
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -7376,14 +7540,13 @@ class LizardMen(Human):
   resource_cost = 8
   food = 2
   pop = 30
-  terrain_skills = [Burn, Raid, SwampSurvival]
-  
+  terrain_skills = [Burn, DarkVision, Raid, SwampSurvival]
 
-  hp = 3
+  hp = 12
   mp = [2, 2]
   moves = 7
   resolve = 4
-  global_skills = [DarkVision]
+  global_skills = []
 
   dfs = 4
   res = 3
@@ -7393,7 +7556,7 @@ class LizardMen(Human):
   shield = None
 
   att = 2
-  damage = 2
+  damage = 3
   off = 4
   str = 3
   pn = 0
@@ -7422,13 +7585,13 @@ class LizardMenHeavyInfantry(Human):
   resource_cost = 18
   food = 2
   pop = 30
-  terrain_skills = [Burn, Raid, SwampSurvival]
+  terrain_skills = [Burn, DarkVision, Raid, SwampSurvival]
 
-  hp = 3
+  hp = 12
   mp = [2, 2]
   moves = 6
   resolve = 6
-  global_skills = [DarkVision]
+  global_skills = []
 
   dfs = 4
   res = 3
@@ -7466,13 +7629,14 @@ class Mandeha(Unit):
   resource_cost = 40
   food = 7
   pop = 30
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 18
+  hp = 80
+  hp_res = 12
   mp = [2, 2]
   moves = 6
   resolve = 10
-  global_skills = [DarkVision, DeepestDarkness, FearAura]
+  global_skills = [DeepestDarkness, FearAura]
 
   dfs = 5
   res = 8
@@ -7481,7 +7645,7 @@ class Mandeha(Unit):
   armor = None
 
   att = 3
-  damage = 4
+  damage = 8
   rng = 2
   off = 6
   str = 6
@@ -7516,7 +7680,7 @@ class Mammot(Unit):
   pop = 20
   terrain_skills = [Burn]
 
-  hp = 12
+  hp = 40
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -7529,7 +7693,7 @@ class Mammot(Unit):
   armor = None
 
   att = 2
-  damage = 3
+  damage = 5
   off = 4
   str = 5
   pn = 0
@@ -7600,33 +7764,34 @@ class MASTER(Unit):
 
 class Ogres(Unit):
   name = 'ogros'
-  units = 6
-  min_units = 3
+  units = 10
+  min_units = 5
   max_squads = 20
   type = 'beast'
   traits = [ogre_t]
   size = 3
-  gold = 460
-  upkeep = 22
-  resource_cost = 22
-  food = 8
+  gold = 560
+  upkeep = 18
+  resource_cost = 18
+  food = 6
   pop = 20
   terrain_skills = [Burn, Raid]
 
-  hp = 6
+  hp = 22
   mp = [2, 2]
   moves = 5
   resolve = 6
   global_skills = [BloodyBeast]
 
   dfs = 3
-  res = 4
+  res = 5
   hres = 2
   arm = 2
   armor = None
 
-  att = 2
-  damage = 2
+  att = 1
+  rng = 2
+  damage = 4
   off = 3
   str = 4
   pn = 0
@@ -7645,6 +7810,53 @@ class Ogres(Unit):
     self.favsurf = [none_t, forest_t]
 
 
+class PaleOnes(Unit):
+  name = 'pale ones'
+  units = 20
+  min_units = 10
+  max_squads = 6
+  type = 'beast'
+  traits = []
+  size = 2
+  gold = 340
+  upkeep = 14
+  resource_cost = 12
+  food = 1
+  pop = 25
+  terrain_skills = [DarkVision, Burn, MountainSurvival, Raid]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  resolve = 5
+  global_skills = []
+
+  dfs = 3
+  res = 3
+  hres = 1
+  arm = 0
+  armor = LightArmor
+
+  att = 2
+  damage = 3
+  off = 3
+  str = 3
+  pn = 0
+
+  fear = 5
+  populated_land = 0
+  sort_chance = 90
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeletons]
+    self.favhill = [1]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t]
+
+
 class PeasantLevies(Human):
   name = peasant_levies_t
   units = 40
@@ -7653,14 +7865,14 @@ class PeasantLevies(Human):
   type = 'infantry'
   traits = [human_t, levy_t]
   size = 2
-  gold = 120
+  gold = 100
   upkeep = 3
   resource_cost = 9
   food = 3
   pop = 50
   terrain_skills = [DesertSurvival]
 
-  hp = 3
+  hp = 9
   mp = [2, 2]
   moves = 5
   resolve = 4
@@ -7702,13 +7914,13 @@ class Raiders(Human):
   resource_cost = 14
   food = 3
   pop = 25
-  terrain_skills = [Burn, ForestSurvival, MountainSurvival, SwampSurvival, Raid]
+  terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, SwampSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 4
-  global_skills = [DarkVision, Furtive]
+  global_skills = [Furtive]
 
   dfs = 2
   res = 2
@@ -7750,20 +7962,20 @@ class Riders(Human):
   pop = 32
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 14
   mp = [4, 4]
   moves = 8
   resolve = 6
   global_skills = []
 
   dfs = 3
-  res = 2
+  res = 3
   hres = 0
   arm = 1
   armor = None
 
   att = 1
-  damage = 2
+  damage = 3
   off = 4
   str = 4
   pn = 0
@@ -7798,7 +8010,7 @@ class SlaveHunters(Human):
   pop = 0
   terrain_skills = [ForestSurvival, MountainSurvival, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 5
   resolve = 2
@@ -7811,7 +8023,7 @@ class SlaveHunters(Human):
 
   att = 1
   rng = 10
-  damage = 2
+  damage = 3
   off = 3
   str = 3
   pn = 0
@@ -7847,7 +8059,7 @@ class SlaveWarriors(Human):
   pop = 0
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 4
@@ -7860,7 +8072,7 @@ class SlaveWarriors(Human):
   shield = Shield()
 
   att = 1
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
@@ -7893,7 +8105,7 @@ class TheKnightsTemplar(Human):
   pop = 70
   terrain_skills = [Burn, Raid]
 
-  hp = 4
+  hp = 15
   mp = [3, 3]
   moves = 8
   resolve = 8
@@ -7906,7 +8118,7 @@ class TheKnightsTemplar(Human):
   armor = HeavyArmor()
 
   att = 2
-  damage = 2
+  damage = 4
   damage_charge_mod = 1
   off = 6
   str = 5
@@ -7926,40 +8138,40 @@ class TheKnightsTemplar(Human):
 
 class Troglodytes(Unit):
   name = 'troglodytes'
-  units = 15
+  units = 10
   min_units = 5
   max_squads = 10
   type = 'beast'
   traits = [troglodyte_t]
   size = 3
   gold = 540
-  upkeep = 18
-  resource_cost = 14
-  food = 5
-  pop = 20
-  terrain_skills = [Burn, MountainSurvival, Raid]
+  upkeep = 22
+  resource_cost = 18
+  food = 3
+  pop = 10
+  terrain_skills = [DarkVision, Burn, MountainSurvival, Raid]
 
-  hp = 6
+  hp = 30
   mp = [2, 2]
   moves = 5
-  resolve = 4
-  global_skills = []
+  resolve = 6
+  global_skills = [Trample]
 
   dfs = 2
   res = 3
-  hres = 1
-  arm = 1
+  hres = 2
+  arm = 0
   armor = None
 
   att = 2
-  damage = 2
+  damage = 5
   off = 3
-  str = 4
+  str = 5
   pn = 0
 
-  fear = 2
+  fear = 1
   populated_land = 1
-  sort_chance = 90
+  sort_chance = 98
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -7986,7 +8198,7 @@ class Troll(Unit):
   pop = 10
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
-  hp = 12
+  hp = 30
   mp = [2, 2]
   moves = 5
   resolve = 5
@@ -7999,7 +8211,7 @@ class Troll(Unit):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 4
   off = 4
   str = 5
   pn = 0
@@ -8031,13 +8243,13 @@ class Wargs(Unit):
   resource_cost = 18
   food = 6
   pop = 30
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
-  hp = 5
+  hp = 16
   mp = [2, 2]
   moves = 7
   resolve = 5
-  global_skills = [BloodyBeast, DarkVision, Furtive,Regroup]
+  global_skills = [BloodyBeast, Furtive,Regroup]
 
   dfs = 3
   res = 3
@@ -8046,7 +8258,7 @@ class Wargs(Unit):
   armor = None
 
   att = 2
-  damage = 2
+  damage = 4
   off = 4
   str = 4
   pn = 0
@@ -8082,7 +8294,7 @@ class Warriors(Human):
   pop = 25
   terrain_skills = [Burn, Raid]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 6
   resolve = 6
@@ -8094,7 +8306,7 @@ class Warriors(Human):
   armor = None
 
   att = 2
-  damage = 1
+  damage = 2
   off = 4
   str = 3
   pn = 0
@@ -8110,6 +8322,52 @@ class Warriors(Human):
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t, none_t]
 
+class WeetOnes(Unit):
+  name = 'weet ones'
+  units = 20
+  min_units = 10
+  max_squads = 6
+  type = 'beast'
+  traits = []
+  size = 3
+  gold = 380
+  upkeep = 14
+  resource_cost = 14
+  food = 1
+  pop = 30
+  terrain_skills = [DarkVision, Burn, SwampSurvival, Raid]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  resolve = 5
+  global_skills = []
+
+  dfs = 3
+  res = 3
+  hres = 1
+  arm = 0
+  armor = None
+
+  att = 2
+  damage = 3
+  off = 3
+  str = 3
+  pn = 0
+
+  fear = 7
+  populated_land = 0
+  sort_chance = 90
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Nature
+    Ground.__init__(self)
+    self.soil += [coast_t]
+    self.corpses = [Skeletons]
+    self.favhill = [0]
+    self.favsoil = [coast_t, swamp_t]
+    self.favsurf = [none_t]
 
 class Wolves(Unit):
   name = wolves_t
@@ -8124,13 +8382,13 @@ class Wolves(Unit):
   resource_cost = 14
   food = 4
   pop = 40
-  terrain_skills = [ForestSurvival]
+  terrain_skills = [DarkVision, ForestSurvival]
 
-  hp = 3
+  hp = 10
   mp = [2, 2]
   moves = 7
   resolve = 4
-  global_skills = [DarkVision, Furtive, NightFerocity, Regroup]
+  global_skills = [Furtive, NightFerocity, Regroup]
 
   dfs = 3
   res = 3
@@ -8139,7 +8397,7 @@ class Wolves(Unit):
   armor = None
 
   att = 1
-  damage = 1
+  damage = 2
   off = 3
   str = 4
   pn = 0
@@ -8198,6 +8456,7 @@ class Orcs(Nation):
 class Wild(Nation):
   name = wild_t
   show_info = 0
+  gold = 3000
 
   def __init__(self):
     super().__init__()

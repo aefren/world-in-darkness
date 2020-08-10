@@ -175,7 +175,7 @@ class CastBloodRain(Spell):
     itm.log[-1] += [msg]
     logging.debug(msg)
     dist = 2
-    roll = roll_dice(1)
+    roll = basics.roll_dice(1)
     if roll >= 6: dist += 4
     elif roll >= 5: dist += 2
     pos = itm.pos
@@ -190,6 +190,42 @@ class CastBloodRain(Spell):
         s.events += [casting(s)]
         s.events = [evt for evt in s.events if evt.name != Rain.name
                     and evt.name != Storm.name]
+
+
+
+class Cannibalize(Spell):
+  name = 'cannibalize'
+  cast = 1
+  cost = 0
+  type = spell_t
+  tags = ['feeding', 'cannibalize']
+  def ai_run(self, itm):
+    if FeedingFrenzy.name not in [s.name for s in itm.skills]: self.run(itm) 
+  def run(self, itm):
+    if (FeedingFrenzy.name not in [s.name for s in itm.skills] 
+        and itm.pos.corpses):
+      corpses = sum(sum(i.deads) for i in itm.pos.corpses)
+      sk = FeedingFrenzy(itm)
+      if corpses >= itm.units: 
+        sk.turns = 5
+        times = itm.units
+        for cr in itm.pos.corpses:
+          if times <= 0: break
+          if cr.units < 1: continue
+          cr.units -= 1
+          times -= 1
+      elif corpses >= 50*itm.units/100: 
+        sk.turns = 3
+        itm.pos.corpses = []
+      else: 
+        sk.turns = 2
+        itm.pos.corpses = [] 
+      itm.other_skills += [sk]
+      itm.log[-1] += [f'{itm} cannivalizes {corpses} {corpses_t}']
+      if itm.show_info: sleep(loadsound('spell37')//2)
+    else:
+      itm.log[-1] += [f'can not cannivalize'] 
+      if itm.show_info: loadsound('errn1')
 
 
 class CastLocustSwarm(Spell):

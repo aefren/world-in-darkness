@@ -9,6 +9,7 @@ from sound import *
 
 
 
+
 def ai_join_units(itm, count=1, info=0):
   if (itm.can_join == 0 or itm.hp_total < 1 or itm.goal or itm.group 
       or itm.goto or len(itm.pos.units) <= 1 or itm.squads >= itm.max_squads): return
@@ -22,7 +23,7 @@ def ai_join_units(itm, count=1, info=0):
       continue
     if info: logging.debug(f'{i}.')
     i.update()
-    join_units([itm, i.split()])
+    itm.join_units([itm, i.split()])
     count -= 1
     if count == 0: break
 
@@ -50,7 +51,7 @@ def get_hit_mod(num):
   if num >= 4: return 2
   elif num >= 1: return 3
   elif num >= -2: return 4
-  elif num >= -6: return 5 
+  elif num >= -5: return 5 
   else: return 6
 
 
@@ -102,36 +103,6 @@ def get_unrest_mod(num):
   if num <= -20: return 4
   if num <= -30: return  5
   if num < -50: return 6
-
-
-
-def join_units(units, info=0):
-  if info: logging.info(f'join_units.')
-  units.sort(key=lambda x: x.history.turns,reverse=True)
-  name = units[0].name
-  for i in units:
-    if i.name != name or i.can_join == 0: return
-  unit = units[0]
-  if unit.squads == unit.max_squads: return
-  for i in units[1:]:
-    if i.squads + unit.squads > unit.max_squads: 
-      item = i.split(unit.max_squads - unit.squads)
-      print(f'divided.')
-    elif i.squads + unit.squads <= unit.max_squads: item = i
-    if unit.squads + item.squads > unit.max_squads: return
-    unit.demon_souls = item.demon_souls
-    unit.history.kills_record += item.history.kills_record
-    unit.history.raids += item.history.raids
-    unit.hp_total += item.hp_total
-    unit.mp[0] = min(unit.mp[0], item.mp[0])
-    unit.pop += item.pop
-    unit.other_skills += item.other_skills
-    msg = f'{item} has joined.'
-    unit.log[-1] += [msg]
-    item.hp_total = 0
-  unit.update()
-  unit.pos.update()
-
 
 
 def roll_dice(time=1):
