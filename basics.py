@@ -112,7 +112,7 @@ def roll_dice(time=1):
 
 def selector(item, x, go = '', wrap = 0, sound = 's1', snd = 1):
   if len(item) == 0:
-    sleep(loadsound('errn1', channel = ch4))
+    sleep(loadsound('errn2', channel = ch4))
     return x
   if go == 'up':
     if x == 0 and wrap == 1:
@@ -121,7 +121,7 @@ def selector(item, x, go = '', wrap = 0, sound = 's1', snd = 1):
       return x
 
     if x == 0 and wrap == 0:
-      sleep(loadsound('errn1', channel = ch4) * 0.5)
+      sleep(loadsound('errn2', channel = ch4) * 0.5)
       return x
     else:
       x -= 1
@@ -135,7 +135,7 @@ def selector(item, x, go = '', wrap = 0, sound = 's1', snd = 1):
       return x
 
     if x == len(item) - 1 and wrap == 0:
-      sleep(loadsound('errn1', channel = ch4) * 0.5)
+      sleep(loadsound('errn2', channel = ch4) * 0.5)
       return x
     else:
       x += 1

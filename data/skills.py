@@ -145,13 +145,18 @@ class BloodyBeast(Skill):
 
   def run(self, itm):
     if itm.pos and itm.pos.pop:
-      if basics.roll_dice(1) > 4:
+      if basics.roll_dice(2) >= 10:
         deads = randint(1, itm.units)
         deads *= itm.att + itm.att_mod
         deads *= itm.damage + itm.damage_mod
         if deads > itm.pos.pop: deads = itm.pos.pop
         itm.pos.pop -= deads
         if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
+        corpses = choice(itm.pos.nation.population_type)
+        corpses.deads = [deads]
+        corpses.units = 0
+        corpses.hp_total = 0
+        itm.pos.units += [corpses]
         if itm.pos.nation.show_info : sleep(loadsound('spell33') * 0.5)
         msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'
         itm.pos.nation.log[-1].append(msg)
@@ -811,17 +816,19 @@ class Miasma(Skill):
     self.turns -= 1
     if itm.ambient.sseason == winter_t: self.turns -= 1
     if itm.pop and basics.roll_dice(2) >= 10: 
-      pop_death = randint(15, 40)
-      msg = f'miasma: {deads_t} {pop_death*itm.pop//100} in {itm} {itm.cords}.'
+      pop_death = randint(10, 30)
+      deads = pop_death * itm.pop // 100
+      msg = f'miasma: {deads_t} {deads} in {itm} {itm.cords}.'
       if itm.city: msg += f' ({itm.city})'
       logging.debug(msg)
       itm.nation.log[-1] += [msg]
-      corpse = choice([cr for cr in itm.nation.units_rebels if poisonres_t not in cr.traits])(itm.nation)
-      corpse.deads = [pop_death * itm.pop // 100]
-      corpse.units=0
-      corpse.hp_total = 0
-      itm.pop -= pop_death * itm.pop / 100
-      itm.units += [corpse]
+      corpse = choice([cr for cr in itm.nation.population_type if poisonres_t not in cr.traits])
+      itm.add_corpses(corpse, deads)
+      #corpse.deads = [pop_death * itm.pop // 100]
+      #corpse.units=0
+      #corpse.hp_total = 0
+      #itm.units += [corpse]
+      itm.pop -= deads
       if itm.nation.show_info: sleep(loadsound('notify23',channel=ch4)//1.5)
     units = [u for u in itm.units if poisonres_t not in u.traits
                and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
@@ -1292,6 +1299,7 @@ class TheBeast(Skill):
         deads = randint(6, 25) * itm.units
         if deads > itm.pos.pop: deads = itm.pos.pop
         itm.pos.pop -= deads
+        if deads > 0: itm.pos.add_corpses(choice(itm.pos.nation.population_type), deads)
         if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
         if itm.pos.nation.show_info : sleep(loadsound('spell33') * 0.5)
         msg = f'{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}.'

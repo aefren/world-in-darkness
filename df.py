@@ -11,6 +11,7 @@ from time import sleep, time
 
 import natsort
 import numpy as np
+import pygame
 from pygame.time import get_ticks as ticks
 
 dev_mode = 1
@@ -140,21 +141,12 @@ class Terrain:
       name += f' {self.soil.name}.'
     return name
 
-  def add_random_buildings(self, buildings, count=5):
-    while count > 0:
-      tile = choice([t for t in self.scenary if t.nation == None])
-      building = choice(buildings)
-      if building.nation == hell_t: building = building(Hell, tile)
-      if building.nation == nature_t: building = building(Nature, tile)
-      if building.nation == orcs_t: building = building(Orcs, tile)
-      if building.nation == wild_t: building = building(Wild, tile)
-      tile.update()
-      if City.check_tile_req(building, tile):
-        print(f'{building} added in {tile} {tile.cords}.')
-        tile.buildings += [building]
-        count -= 1
-      
-      
+  
+  def add_corpses(self,corpse, number):
+    corpse.deads = [number]
+    corpse.units = 0
+    corpse.hp_total = 0
+    self.units += [corpse]
   def add_ghouls(self):
     roll = basics.roll_dice(2)
     if self.units: roll -= 1
@@ -249,7 +241,7 @@ class Terrain:
   def play_ambient(self):
     if self.hill: loadsound('terra_hill5', vol=(0.5, 0.5))
     if self.surf.name == forest_t: loadsound('terra_forest1', channel=ch1)
-    elif self.surf.name == swamp_t: loadsound('terra_swamp2', channel=ch1, vol=(0.5, 0.5))
+    elif self.surf.name == swamp_t: loadsound('terra_swamp1', channel=ch1, vol=(0.5, 0.5))
     elif self.soil.name == waste_t: loadsound('terra_waste1', channel=ch2)
     elif self.soil.name == grassland_t: loadsound('terra_grass1', channel=ch2)
     elif self.soil.name == plains_t: loadsound('terra_plains1', channel=ch2)
@@ -515,7 +507,9 @@ class Terrain:
     if self.corpses:
       self.add_miasma()
       self.add_ghouls()
-      for cr in self.corpses: cr.deads[0] -= randint(2, 5) // cr.hp 
+      for cr in self.corpses:
+        reducing = randint(5, 30) // cr.hp
+        cr.deads[0] -= reducing
 
   def stats_buildings(self):
     for b in self.buildings:
@@ -734,13 +728,15 @@ class Volcano(Terrain):
 
 
 class World:
+  buildings = []
   difficulty = 100
   difficulty_type = 'simple'  # simple, dynamic.
   difficulty_change = 100
   east = 0
   events = []
   ext = None
-  height = 0
+  height  = 0
+  log = []
   name = 'Unnamed'
   nations = []
   nations_score = 0
@@ -758,20 +754,16 @@ class World:
     tries = 100
     while tries > 0 and num > 0:
       tries -= 1
-      tiles = [i for i in self.map
-               if i.nation == None and i.get_nearest_nation() <= 6]
-      nat = choice(self.random_nations)
-      self.random_nations += [self.random_nations.pop()]
-      item = choice(nat.av_units)(nat)
-      tiles = [i for i in tiles if item.get_favland(i)]
-      if tiles == []: continue
+      building = choice(self.buildings)
+      print(f'adding unit from {building}.')
+      item = choice(building.av_units)
+      print(f'adding {item}.')
+      item = item(building.nation)
+      item.city = building
       if info: 
         logging.debug(f'agregará {item}.')
-        logging.debug(f'nearest nation distance {tiles[0].get_nearest_nation()}.')
-      if item.pref_corpses: tiles.sort(key=lambda x: len(x.corpses), reverse=True) 
-      tile = tiles[0]
+      tile = building.pos
       go = 1
-      if tile.nation: go = 0
       
       # si listo.
       item.update()
@@ -784,8 +776,28 @@ class World:
         tile.units.append(item)
         self.units.append(item)
         num -= item.ranking
+        self.log[-1] += [f'{item} {added_t} {in_t} {tile} {tile.cords}.']
         if info: logging.info(f'{item}. ranking {item.ranking}.')
 
+  def add_random_buildings(self, value):
+    while value:
+      tile = choice([t for t in self.map if t.get_nearest_nation() <= 6])
+                      
+      building = choice(self.random_buildings)
+      for nt in self.random_nations:
+        if nt.name == building.nation: building = building(nt, tile)
+      tile.update()
+      if City.check_tile_req(building, tile) and len(tile.buildings) < 3:
+        msg = f'{building} added in {tile} {tile.cords}.'
+        print(msg)
+        self.log[-1] += [msg]
+        building.size = 0
+        building.resource_cost[0] = building.resource_cost[1]
+        tile.buildings += [building]
+        self.buildings += [building]
+        value -= 1
+        #print(f'{building} added in {tile} {tile.cords}.')
+        #print(f'{self.buildings_value= }, {len(self.buildings)= }.')
   def clean_nations(self):
     global PLAYING
     [nt.update(nt.map) for nt in self.nations]
@@ -893,8 +905,12 @@ class World:
     self.cnation = self.nations[self.player_num]
     [it.autokill() for it in self.units]
     self.season_events()
+    
+    self.buildings = []
     self.units = []
     for t in scenary:
+      for b in t.buildings:
+        if b.nation in self.random_nations: self.buildings += [b]
       for uni in t.units:
         if uni.nation in self.random_nations: self.units.append(uni)
     self.nations_score = sum(n.score for n in self.nations)
@@ -982,11 +998,12 @@ def ai_add_settler(nation):
 
 
 def ai_add_explorer(nation):
-  logging.info(f'agregar exploradores de {nation}')
+  logging.info(f'ai_add_explorer {nation}. {world.turn= }.')
   for uni in nation.units_scout:
     distanse_limit = uni.mp[1] + uni.nation.explore_range
-    if uni.pos.get_distance(uni.pos, uni.city.pos) >= distanse_limit - 1 and basics.roll_dice(2) > 10: 
+    if uni.pos.get_distance(uni.pos, uni.city.pos) >= distanse_limit - 1 and basics.roll_dice(2) >= 10: 
       uni.scout = 0
+      uni.log[-1] += [f'randomly stops exploring.']
   nation.update(nation.map)
   if nation.units_free == []: return
   if nation.units_scout:
@@ -1005,13 +1022,12 @@ def ai_add_explorer(nation):
     logging.debug(f'defense_total_percent {ct.defense_total_percent}. defense_total_percent {ct.defense_total_percent}.')
     logging.debug(f'initial units {len(ct.units)}.')
     if ct.defense_total_percent > 200:
-      units = [i for i in ct.units if i.garrison == 0
-               and i.comm == 0 and i.can_join and i.ranking <= 50
-               and i.settler == 0 and i.group == [] and i.leader == None]
+      units = [i for i in ct.nation.get_free_units()
+               if i.city == ct]
       logging.debug(f'final units {len(units)}.')
       units.sort(key=lambda x: x.units)
       units.sort(key=lambda x: x.ranking)
-      units.sort(key=lambda x: x.mp[1] >= 2 or x.can_fly, reverse=True)
+      units.sort(key=lambda x: x.mp[1] >= 2 or (x.can_fly or x.forest_survival or x.mountain_survival or x.swamp_survival), reverse=True)
       if units: 
         units[0].scout = 1
         msg = f'{units[0]} es explorador.'
@@ -1348,7 +1364,7 @@ def ai_expand_city(city):
 
 
 def ai_explore(nation, scenary, info=0):
-  logging.info('exploración.')
+  logging.info('ai_explore {nation}. {world.turn= }..')
   if info:sp.speak(f' explorando.', 1)
   units = [it for it in nation.units if it.goto == [] and it.mp[0] > 0
            and it.ai and (it.scout or it.auto_explore)]
@@ -1505,7 +1521,7 @@ def ai_free_units(nation, scenary, info=1):
         uni.log[-1] += [msg]
         move_set(uni, uni.city.pos)
         return
-      [it.set_around(nation, scenary) for it in sq]
+      [it.set_around(nation) for it in sq]
       shuffle(sq)
       sq.sort(key=lambda x: x.around_forest, reverse=True)
       sq.sort(key=lambda x: x.around_hill, reverse=True)
@@ -2083,6 +2099,7 @@ def ai_play(nation):
   # ingresos.
   nation.set_income()
   print(f'{nation} nation.set_income {time()-init}.')
+  nation.set_hidden_buildings()
   
   # ciudades.
   for ct in nation.cities:
@@ -2114,9 +2131,9 @@ def ai_play(nation):
   # parametros de casillas cercanas.
   set_near_tiles(nation, scenary)
   # initial placement.
-  if nation.cities == [] and world.turn == 1: 
-    nation_start_placement(nation)
-  nation.update(nation.map)
+  #if nation.cities == [] and world.turn == 1: 
+    #nation_start_placement(nation)
+  #nation.update(nation.map)
   # colonos.
   logging.debug(f'colonos {len([i for i in nation.units if i.settler])}.')
   [set_settler(it, scenary) for it in nation.units if it.settler and it.goto == []]
@@ -2162,8 +2179,8 @@ def ai_play(nation):
   ai_add_explorer(nation)
   print(f'ai_add_explorer {time()-init}.')
   # explorar
-  # ai_explore(nation, scenary)
-  # print(f'ai_explore {time()-init}.')
+  ai_explore(nation, scenary)
+  print(f'ai_explore {time()-init}.')
   # atacar.
   ai_attack(nation)
   print(f'ai_attack {time()-init}.')
@@ -2424,9 +2441,8 @@ def ai_random():
   global world
   logging.debug('ai_random')
   sp.speak(f'randoms.')
-  for nt in world.nations:
-    [ct.check_events() for ct in nt.cities]
   world.update(scenary)
+  world.add_random_buildings(world.buildings_value - len(world.buildings))
   
   if world.difficulty_type == 'dynamic': 
     difficulty = world.difficulty * sum(i.score for i in world.nations) / 100 
@@ -2452,7 +2468,6 @@ def ai_random():
         oportunist_attack(uni)
       unit_attrition(uni)
       ai_action_random(uni)
-
 
 
 def ai_set_free_units(nation, req=0):
@@ -2560,12 +2575,13 @@ def ai_unit_cast(nation):
       for spl in spells:
         if uni.power < min_power: break
         if spl.name in banned: continue
-        print(spl.name)
+        #print(spl.name)
         init = spl.ai_run(uni)
         if init != None: 
           uni.log[-1] += [init]
           logging.debug(init)
           banned += [spl.name]
+          break
 
 
 
@@ -2829,6 +2845,7 @@ def combat_menu(itm, pos, target=None, dist=0):
           logging.info(msg)
           target.log[-1].append(msg)
           target.nation.log[-1].append(msg)
+          target.pos.world.log[-1] += [msg]
           itm.nation.log[-1].append(msg)
           if gold_itm:
             msg1 = f'gana {gold_itm} {gold_t}.'
@@ -2846,6 +2863,7 @@ def combat_menu(itm, pos, target=None, dist=0):
           itm.log[-1].append(msg)
           itm.nation.log[-1].append(msg)
           target.nation.log[-1].append(msg)
+          target.pos.world.log[-1] += [msg]
           if gold_target:
             msg1 = f'gana {gold_target} {gold_t}.'
             itm.nation.gold += gold_target
@@ -3091,6 +3109,9 @@ def control_game(event):
           combat_menu(local_units[x], pos, target)
           x = -1
           sayland = 1
+    if  ctrl and event.key == pygame.K_b:
+      pos.buildings += [BrigandLair(Wild, pos)]
+      return
     if event.key == pygame.K_b:
       # ver edificios.
       if x < 0 and pos in nation.map and pos.blocked == 0:
@@ -3197,6 +3218,9 @@ def control_game(event):
       if get_item2([0, 1], ['no', 'si'], 'Eliminar unidad',):
         local_units[x].disband()
         sayland = 1
+    if  ctrl and event.key == pygame.K_TAB:
+      view_log(world.log)
+      return
     if event.key == pygame.K_TAB:
       view_log(nation.log)
     if event.key == pygame.K_HOME:
@@ -3445,6 +3469,7 @@ def control_global(event):
       if event.key == pygame.K_5:
         sp.speak(f' garrison {local_units[x].garrison}.', 1)
         sp.speak(f'scout {local_units[x].scout}.')
+        sp.speak(f'revealed value {local_units[x].revealed_val}.')
         if local_units[x].goal: sp.speak(f'goal {local_units[x].goal[0], local_units[x].goal[1].cords}.')
     if x == -1 and mapeditor == 0 :
       if event.key == pygame.K_1:
@@ -3475,10 +3500,7 @@ def control_global(event):
       if event.key == pygame.K_t:
         sp.speak(f'{threat_t} {pos.threat}.')
         sp.speak(f'{around_threat_t} {pos.around_threat}.')
-      if event.key == pygame.K_v:
-        sp.speak(f'valor {pos.food_value}, {pos.res_value}.', 1)
-        sp.speak(f'{pos.mean}.')
-      if event.key == pygame.K_w:
+      if event.key == pygame.K_l:
         if pos in nation.map:
           msg = f'''
           {ocean_t} {pos.around_coast},
@@ -3492,6 +3514,10 @@ def control_global(event):
           {glacier_t} {pos.around_glacier}.
           '''
           sp.speak(msg)
+      if event.key == pygame.K_v:
+        sp.speak(f'valor {pos.food_value}, {pos.res_value}.', 1)
+        sp.speak(f'{pos.mean}.')
+      
     if event.key == pygame.K_z:
       pos.update(nation)
       if pos in nation.map: sp.speak(f'{pos}')
@@ -4034,8 +4060,9 @@ def map_update(nation, scenary, editing=0):
 def menu_building(pos, nation, sound='in1'):
   [i.update(nation) for i in nation.map]
   pos.pos_sight(nation, nation.map)
-  items = [i for i in pos.buildings]
+  items = [i for i in pos.buildings if i.nation == nation or nation in i.nations]
   items.insert(0, f'{build_t}')
+  if pos.city: pos.city.update()
   sleep(loadsound(sound) / 2)
   say = 0
   sp.speak(f'{buildings_t}.')
@@ -4043,7 +4070,7 @@ def menu_building(pos, nation, sound='in1'):
   while True:
     sleep(0.01)
     if say:
-      items = [i for i in pos.buildings]
+      items = [i for i in pos.buildings if i.nation == nation or nation in i.nations]
       items.insert(0, f'{build_t}')
       if x >= len(items): x = len(items) - 1
       if isinstance(items[x], str): sp.speak(f'{items[x]}.')
@@ -4085,6 +4112,14 @@ def menu_building(pos, nation, sound='in1'):
         if event.key == pygame.K_END:
           x = len(items) - 1
           say = 1
+        
+        if event.key == pygame.K_DELETE:
+          if items[x].type == city_t or items[x].resource_cost[0] == items[x].resource_cost[1]:
+            loadsound('errn1')
+            continue
+          items[x].pos.buildings.remove(items[x])
+          items[x].nation.gold += items[x].gold
+          sleep(loadsound('set7')//2)
         if event.key == pygame.K_RETURN:
           # construir.
           if isinstance(items[x], str) and pos.city and pos.nation == nation:
@@ -4223,6 +4258,10 @@ def menu_nation(nation, sound='book_open01'):
         if event.key == pygame.K_END:
           x = len(nations) - 1
           say = 1
+        if event.key == pygame.K_1:
+          sp.speak(f'scouts {len(nations[x].units_scout)}',1)
+        if event.key == pygame.K_2:
+          sp.speak(f'comms {len(nations[x].units_comm)}',1)
         if event.key == pygame.K_F12:
           sp.speak(f'pdb on.')
           Pdb().set_trace()
@@ -4656,6 +4695,7 @@ def new_turn():
       ambient.day_night[0] = 0
       if ambient.time[0] >= 4: ambient.day_night[0] = 1
   world.turn += 1
+  world.log += [[f'{turn_t} {world.turn}.']]
   world.ambient.update()
   ambient = world.ambient
   for n in world.nations:
@@ -4764,8 +4804,7 @@ def play_sound(unit, sound, ch=0):
     else: loadsound(sound)
 
 
-
-def random_move(itm, scenary, sq=None, value=1, info=0):
+def random_move(itm, scenary, sq=None, value=1, info=1):
   logging.debug(f'movimiento aleatoreo para {itm} en {itm.pos}, {itm.pos.cords}.')
   done = 0
   if sq == None:
@@ -4773,12 +4812,13 @@ def random_move(itm, scenary, sq=None, value=1, info=0):
     sq = [it for it in sq if itm.can_pass(it)]
     if info: logging.debug(f'{len(sq)} casillas iniciales.')
   if sq:
+    if itm.nation in world.random_nations: sq = [it for it in sq if it.get_distance(it,itm.city.pos) <= itm.mp[1]]
+    print(f'{len(sq)= }.')
     done = 1
     fear = 0
     move = 1
     sort = 0
     shuffle(sq)
-    if itm.nation not in world.nations: sq.sort(key=lambda x: x.get_nearest_nation())
     map_update(itm.nation, sq)
     if randint(1, 100) < itm.sort_chance:
       if info: logging.debug(f'sorted.')
@@ -4808,10 +4848,12 @@ def random_move(itm, scenary, sq=None, value=1, info=0):
       if info:  logging.debug(f'ordena para exploración')
       fear = 1
       sq.sort(key=lambda x: x.has_city)
-      sq.sort(key=lambda x: x.get_distance(itm.pos, itm.city.pos), reverse=True)
       if itm.can_fly: sq.sort(key=lambda x: x.hill, reverse=True)
-      sq.sort(key=lambda x: x.threat)
-      sq.sort(key=lambda x: x.around_threat)
+      if itm.forest_survival: sq.sort(key=lambda x: x.surf.name == forest_t, reverse=True)
+      elif itm.swamp_survival: sq.sort(key=lambda x: x.surf.name == swamp_t, reverse=True)
+      elif itm.mountain_survival: sq.sort(key=lambda x: x.hill, reverse=True)
+      if basics.roll_dice(1) >= 6: sq.sort(key=lambda x: x.hill, reverse=True)
+      sq.sort(key=lambda x: x.get_distance(x, itm.city.pos), reverse=True)
     
     # casillas finales.
     sq.sort(key=lambda x: x != itm.pos, reverse=True)
@@ -5075,7 +5117,7 @@ def set_settler(itm, scenary):
         
       if itm.group == []:
         logging.debug(f'sin grupo.')
-        itm.create_group(150)
+        itm.create_group(int(itm.ranking*1.5))
         [unit_join_group(i) for i in itm.group]
       if itm.check_ready() :
         [i.update(nation) for i in nation.tiles_far]
@@ -5098,6 +5140,7 @@ def game():
   global filter_expand
   global hell_nation, wild_nation
   global PLAYING
+  global alt, ctrl, shift
   
   # change()
   if startpos: pos = scenary[startpos]
@@ -5120,12 +5163,16 @@ def game():
   x = -1  # selector de unidades.
   y = 0  # selector de ciudades.
   if mapeditor == 0 and new_game == 1:
+    world.log = [[f'{turn_t} {world.turn}.']]
     # dificultad.
     world.ambient = ambient
     world.difficulty = DIFFICULTY
     world.difficulty_type = 'dynamic'
+    #Random Nations.
     world.random_nations = RANDOM_FACTIONS
-    shuffle(world.random_nations)
+    #BuildingsRandom .
+    world.random_buildings = random_buildings
+    world.buildings_value = buildings_value
     scenary = world.map
     Unit.ambient = world.ambient
     Nation.world = world
@@ -5137,7 +5184,9 @@ def game():
     for t in scenary: t.world = world
     
     nation_init()
-    scenary[0].add_random_buildings(buildings=random_buildings, count=5)
+    [nt.start_turn() for nt in world.nations]
+    [nation_start_placement(nt) for nt in world.nations]
+    world.add_random_buildings(world.buildings_value)
     new_turn()
     next_play()
   elif new_game == 0:
@@ -5164,6 +5213,10 @@ def game():
       world.nations = [n1]
     terrain_info(pos, world.nations[world.player_num])
     
+    pressed = list(pygame.key.get_pressed())
+    alt = pressed[308]
+    ctrl = pressed[305] or pressed[306]
+    shift = pressed[303] or pressed[304]
     for event in pygame.event.get():
       map_movement(event)
       control_global(event)
@@ -5191,7 +5244,6 @@ def start():
       if say:
         sp.speak(f'{items[x]}.', 1)      
         say = 0
-      
       for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
           if event.key == pygame.K_UP:
@@ -5236,6 +5288,7 @@ def start_turn(nation):
   else: scenary[0].pos_sight(nation, scenary)
   map_update(nation, nation.map)
   nation.update(nation.map)
+  nation.set_hidden_buildings()
   # ingresos.
   nation.set_income()
   # ciudades.
@@ -5252,7 +5305,7 @@ def start_turn(nation):
   if nation.cities == [] and world.turn == 1: 
     nation_start_placement(nation)
   # Unidades.
-  for uni in nation.units: uni.log.append([f'{turn_t} {world.turn}.'])
+  #for uni in nation.units: uni.log.append([f'{turn_t} {world.turn}.'])
   logging.debug(f'unidades.')
   for uni in nation.units:
     uni.start_turn()
@@ -5375,7 +5428,7 @@ def terrain_info(pos, nation):
           sp.speak(f'{cost} {gold_t}.')
         if pos.sight or pos in nation.nations_tiles: 
           if pos.buildings: sp.speak(f'{len(pos.buildings)} {buildings_t}.')
-          if pos.in_progress: loadsound('construction4', channel=ch4)
+          if pos.in_progress: loadsound('construction1', channel=ch4)
           if pos.events:
             for ev in pos.events:
               sp.speak(f'{ev.name}')
@@ -5445,15 +5498,17 @@ def unit_arrival(goto, itm, info=0):
   msg = f'{itm} llega a ({goto}, {goto.cords}.'
   if info: logging.debug(msg)
   itm.log[-1].append(msg)
-  if itm.show_info and itm.goto == []: sleep(loadsound('walk_ft1') / 4)
+  if itm.show_info and itm.goto == [] and itm.scout == 0: sleep(loadsound('walk_ft1') / 5)
   if itm.show_info: goto.pos_sight(itm.nation, itm.nation.map)
   pos.update(itm.nation)
   check_position(itm)
   itm.set_tile_attr()
   itm.burn()
   itm.raid()
+  [b.set_hidden(itm.nation) for b in itm.pos.buildings if b.type == building_t]
   [i.set_hidden(itm.pos) for i in itm.pos.units
    if i.nation != itm.nation and i.hidden] 
+  
 
 
 
@@ -5575,26 +5630,26 @@ def view_log(log, sound='book_open01', x=None):
           say = 1
           view_log(nation.devlog)
         if  event.key == pygame.K_LEFT:
-          x = basics.selector(log, x, 'up', sound='itm_book_pageturn_03')
+          x = basics.selector(log, x, 'up', sound='book_pageturn3')
           y = 0
           say = 1
         if  event.key == pygame.K_RIGHT:
-          x = basics.selector(log, x, 'down', sound='itm_book_pageturn_03')
+          x = basics.selector(log, x, 'down', sound='book_pageturn3')
           y = 0
           say = 1
         if  event.key == pygame.K_UP:
-          y = basics.selector(log[x], y, 'up', sound='itm_book_pageturn_01')
+          y = basics.selector(log[x], y, 'up', sound='book_pageturn1')
           say = 1
         if  event.key == pygame.K_DOWN:
-          y = basics.selector(log[x], y, 'down', sound='itm_book_pageturn_01')
+          y = basics.selector(log[x], y, 'down', sound='book_pageturn1')
           say = 1
         if  event.key == pygame.K_HOME:
           y = 0
-          loadsound('itm_book_pageturn_01')
+          loadsound('book_pageturn1')
           say = 1
         if  event.key == pygame.K_END:
           y = len(log[x]) - 1
-          loadsound('itm_book_pageturn_01')
+          loadsound('book_pageturn1')
           say = 1
         if  event.key == pygame.K_RETURN:
           if isinstance(log[x][y], list): view_log(log[x][y][1:], x=0)
@@ -5644,4 +5699,6 @@ new_game = 1
 startpos = None
 
 if mapeditor == 0: exec('from game_setup import *')  
+
+
 start()

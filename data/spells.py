@@ -200,28 +200,35 @@ class Cannibalize(Spell):
   type = spell_t
   tags = ['feeding', 'cannibalize']
   def ai_run(self, itm):
-    if FeedingFrenzy.name not in [s.name for s in itm.skills]: self.run(itm) 
+    if FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] and itm.pos.corpses: self.run(itm) 
   def run(self, itm):
-    if (FeedingFrenzy.name not in [s.name for s in itm.skills] 
+    itm.update()
+    if (FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] 
         and itm.pos.corpses):
       corpses = sum(sum(i.deads) for i in itm.pos.corpses)
       sk = FeedingFrenzy(itm)
       if corpses >= itm.units: 
         sk.turns = 5
+        sk.name += f' full' 
         times = itm.units
         for cr in itm.pos.corpses:
           if times <= 0: break
-          if cr.units < 1: continue
-          cr.units -= 1
-          times -= 1
+          for r in range(times):
+            if cr.deads[0] < 1: break
+            cr.deads[0] -= 1
+            times -= 1
+            if times < 1: break
       elif corpses >= 50*itm.units/100: 
         sk.turns = 3
+        sk.name += f' half'
         itm.pos.corpses = []
       else: 
-        sk.turns = 2
+        sk.turns = 1
+        sk.name += f' low'
         itm.pos.corpses = [] 
       itm.other_skills += [sk]
-      itm.log[-1] += [f'{itm} cannivalizes {corpses} {corpses_t}']
+      msg = f'{itm} cannivalizes {corpses} {corpses_t}'
+      itm.log[-1] += [msg]
       if itm.show_info: sleep(loadsound('spell37')//2)
     else:
       itm.log[-1] += [f'can not cannivalize'] 

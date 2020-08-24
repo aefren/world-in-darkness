@@ -2,22 +2,26 @@ exec('from data.items import HolyEmpire, Wallachia, WoodElves, Hell, Nature, Orc
 exec('from data.items import *')
 
 
-#difficulty.
-DIFFICULTY = 20
+#Difficulty.
+DIFFICULTY = 30
 DIFFICULTY_TYPE = 'dynamic'
+#Random Buildings.
+random_buildings = [BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls, 
+                    FightingPit, GoblinLair, HiddenForest, HyenasLair, 
+                    NecromancersLair, OathStone, OpulentTomb, TroglodyteCave,  
+                    TrollCave, UnderworldEntrance, WisperingWoods, WolfLair]
+buildings_value = 10
 
 #factions.
 ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
-HOLY.ai = 1
+HOLY.ai = 0
 TRANS = Wallachia()
-TRANS.ai = 0
+TRANS.ai = 1
 
 NATIONS = [HOLY, ELF, TRANS]
 
 #Random factions.
 RANDOM_FACTIONS = [Hell(), Nature(), Orcs(), Wild()]
 
-#random buildings.
-random_buildings = [BrigandLair]
