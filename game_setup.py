@@ -3,14 +3,15 @@ exec('from data.items import *')
 
 
 #Difficulty.
-DIFFICULTY = 30
+DIFFICULTY = 50
 DIFFICULTY_TYPE = 'dynamic'
 #Random Buildings.
 random_buildings = [BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls, 
                     FightingPit, GoblinLair, HiddenForest, HyenasLair, 
                     NecromancersLair, OathStone, OpulentTomb, TroglodyteCave,  
-                    TrollCave, UnderworldEntrance, WisperingWoods, WolfLair]
-buildings_value = 10
+                    TrollCave, UnderworldEntrance, WisperingWoods, WolfLair,
+                    WargsCave]
+buildings_value = 20
 
 #factions.
 ELF = WoodElves()

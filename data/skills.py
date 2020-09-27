@@ -970,8 +970,9 @@ class PyreOfCorpses(Skill):
   def run(self, itm):
     for cr in itm.pos.corpses:
       cleaning = itm.hp_total//2
-      cr.deads[0] -= cleaning//cr.hp
-      cr.deads[0] = int(cr.deads[0])
+      if cr.deads:
+        cr.deads[0] -= cleaning//cr.hp
+        cr.deads[0] = int(cr.deads[0])
 
 
 class Raid(Skill):

@@ -97,6 +97,7 @@ class Terrain:
   pop = 0
   public_order = 0
   raid_gain = 0
+  raided = 0
   raining = 0
   size = 0
   size_total = 10
@@ -394,12 +395,13 @@ class Terrain:
     if info: print(f'after buildings {self.public_order= }.')
     # From units.
     self.po = self.public_order
-    self.public_order += self.defense * 0.5
-    if info: print(f'after units defense {self.public_order= }.')
     if self.public_order: 
       self.public_order_unrest = self.unrest * 100 // abs(self.public_order)
       self.public_order -= self.public_order_unrest
       if info: print(f'after unrest {self.public_order= }.')
+    
+    if self.defense: self.public_order += (self.defense //10)/self.pop*100
+    if info: print(f'after units defense {self.public_order= }.')
     
     self.public_order_reduction = self.public_order_buildings * abs(self.public_order) / 100
     self.public_order += self.public_order_reduction
@@ -508,7 +510,8 @@ class Terrain:
       self.add_miasma()
       self.add_ghouls()
       for cr in self.corpses:
-        reducing = randint(5, 30) // cr.hp
+        reducing = randint(5, 20) // cr.hp
+        #Pdb().set_trace()
         cr.deads[0] -= reducing
 
   def stats_buildings(self):
@@ -570,13 +573,13 @@ class Terrain:
     
     # destruyendo edificios.
     for b in self.buildings:
-      if b.resource_cost[0] < 0:
+      if b.resource_cost[0] < 1:
         msg = f'{b} {destroyed_t} {in_t} {self} {self.cords}.'
-        self.nation.log[-1].append(msg)
+        if self.nation: self.nation.log[-1].append(msg)
         logging.debug(msg)
         sleep(loadsound('set8') / 2)
 
-    self.buildings = [b for b in self.buildings if b.resource_cost[0] >= 0]
+    self.buildings = [b for b in self.buildings if b.resource_cost[0] >= 1]
     self.bu = len(self.buildings)
     self.in_progress = 1 if [i for i in self.buildings
                              if i.resource_cost[0] < i.resource_cost[1]] else 0
@@ -755,9 +758,9 @@ class World:
     while tries > 0 and num > 0:
       tries -= 1
       building = choice(self.buildings)
-      print(f'adding unit from {building}.')
+      #print(f'adding unit from {building}.')
       item = choice(building.av_units)
-      print(f'adding {item}.')
+      #print(f'adding {item}.')
       item = item(building.nation)
       item.city = building
       if info: 
@@ -768,7 +771,7 @@ class World:
       # si listo.
       item.update()
       if go:
-        if item.units > 1: item.hp_total = randint(50, 90) * item.hp_total / 100
+        if item.units > 1: item.hp_total = randint(20, 80) * item.hp_total / 100
         item.update()
         item.pos = tile
         item.nation.update(item.nation.map)
@@ -815,6 +818,8 @@ class World:
       sp.speak(f'Victory!')
       PLAYING = False
 
+  def building_restoration(self):
+    for b in self.buildings: b.resource_cost[0] += b.resource_cost[1]*0.2
   def season_events(self):
     self.set_master()
     self.events_num = int((self.height + self.width) * 0.1)
@@ -955,6 +960,8 @@ def ai_action_random(itm, info=0):
           if info: logging.debug(f'no moves by randomness.')
           return 
         random_move(itm, scenary)
+        # cast spells.
+        if itm.spells: ai_unit_cast(itm.nation)
     if tries < 2:
       logging.debug(f'tries < 7.')
 
@@ -2443,6 +2450,7 @@ def ai_random():
   sp.speak(f'randoms.')
   world.update(scenary)
   world.add_random_buildings(world.buildings_value - len(world.buildings))
+  world.building_restoration()
   
   if world.difficulty_type == 'dynamic': 
     difficulty = world.difficulty * sum(i.score for i in world.nations) / 100 
@@ -2563,7 +2571,7 @@ def ai_train_comm(nation):
 
 def ai_unit_cast(nation):
   logging.info(f'commander cast.')
-  units = [i for i in nation.units if i.power > 0 and i.spells]
+  units = [i for i in nation.units if i.spells]
   for uni in units:
     banned = []
     spells = [sp(uni) for sp in uni.spells]
@@ -2837,6 +2845,7 @@ def combat_menu(itm, pos, target=None, dist=0):
           msg += i.battle_log
           i.log[-1] += [msg, msg2]
           i.nation.log[-1] += [msg, msg2]
+          if i.nation in i.pos.world.random_nations: i.pos.world.log[-1] += [msg, msg2]
           i.add_corpses(target.pos)
         if itm.hp_total < 1:
           if itm.pos != target.pos and itm in itm.pos.units: itm.pos.units.remove(itm)
@@ -3056,7 +3065,10 @@ def combat_post(itm, target):
       unit.hp_total = sum(i.fled) * unit.hp
       unit.log = i.log
       unit.pos = i.pos
+      unit.city = i.city
       unit.mp[0] = 0
+      unit.other_skills = i.other_skills
+      unit.level = i.level
       unit.update()
       logging.debug(f'{unit} huyen {sum(i.fled)}.')
       if unit.units < unit.min_units / 4: continue
@@ -4082,7 +4094,8 @@ def menu_building(pos, nation, sound='in1'):
           itm = items[x]
           time_cost = (itm.resource_cost[1] - itm.resource_cost[0]) / pos.city.resource_total
           time_cost = ceil(time_cost)
-          sp.speak(f'{in_t} {time_cost} {turns_t}.')
+          sp.speak(f'{int(items[x].resource_cost[0]/items[x].resource_cost[1]*100)}%.')
+          if items[x].nation == nation: sp.speak(f'{in_t} {time_cost} {turns_t}.')
       say = 0
 
     for event in pygame.event.get():
@@ -4698,10 +4711,12 @@ def new_turn():
   world.log += [[f'{turn_t} {world.turn}.']]
   world.ambient.update()
   ambient = world.ambient
+  
+  [i.start_turn() for i in world.map]
   for n in world.nations:
     n.start_turn()
   
-  [i.start_turn() for i in world.map]
+  
   msg = f'{turn_t} {world.turn}.'
   logging.info(msg)
   logging.info(f'{ambient.stime}, {ambient.smonth}, {ambient.syear}.')
@@ -4812,13 +4827,16 @@ def random_move(itm, scenary, sq=None, value=1, info=1):
     sq = [it for it in sq if itm.can_pass(it)]
     if info: logging.debug(f'{len(sq)} casillas iniciales.')
   if sq:
-    if itm.nation in world.random_nations: sq = [it for it in sq if it.get_distance(it,itm.city.pos) <= itm.mp[1]]
+    if itm.city and itm.nation in world.random_nations: sq = [it for it in sq if it.get_distance(it,itm.city.pos) <= itm.mp[1]]
     print(f'{len(sq)= }.')
     done = 1
     fear = 0
     move = 1
     sort = 0
     shuffle(sq)
+    if sq == []: 
+      move_set(itm, itm.city.pos)
+      return
     map_update(itm.nation, sq)
     if randint(1, 100) < itm.sort_chance:
       if info: logging.debug(f'sorted.')
@@ -5380,7 +5398,7 @@ def terrain_info(pos, nation):
         sleep(loadsound('nav1') * 0.3)
       elif pos.nation != nation:
         if pos.nation == None and pos.sight: sleep(loadsound('nav4') * 0.3)
-      if pos.name and pos.sight: sp.speak(f'{pos.name}.', 1)
+      #if pos.name and pos.sight: sp.speak(f'{pos.name}.', 1)
       if pos in nation.map:
         pos.play_ambient()
         
@@ -5427,8 +5445,12 @@ def terrain_info(pos, nation):
           cost = get_tile_cost(city, pos)
           sp.speak(f'{cost} {gold_t}.')
         if pos.sight or pos in nation.nations_tiles: 
-          if pos.buildings: sp.speak(f'{len(pos.buildings)} {buildings_t}.')
-          if pos.in_progress: loadsound('construction1', channel=ch4)
+          if pos.buildings:
+            buildings = [b for b in pos.buildings 
+                         if b.type == city_t or nation in b.nations or nation == b.nation ] 
+            if buildings: sp.speak(f'{len(buildings)} {buildings_t}.')
+          if pos.buildings and [b for b in pos.buildings if b.resource_cost[0] < b.resource_cost[1] and b.nation == nation]: 
+            loadsound('construction1', channel=ch4)
           if pos.events:
             for ev in pos.events:
               sp.speak(f'{ev.name}')
@@ -5508,7 +5530,6 @@ def unit_arrival(goto, itm, info=0):
   [b.set_hidden(itm.nation) for b in itm.pos.buildings if b.type == building_t]
   [i.set_hidden(itm.pos) for i in itm.pos.units
    if i.nation != itm.nation and i.hidden] 
-  
 
 
 
