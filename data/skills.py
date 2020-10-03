@@ -863,7 +863,7 @@ class mist(Skill):
 
 class Night(Skill):
   name = night_t
-  desc = '-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth.'
+  desc = "-1 off (-2 if unit is ranged), -1dfs (-2 if unit is ranged), -1 resolve,  +2 stealth."
   effect = 'all'
   type = 'generic'
 
@@ -874,7 +874,10 @@ class Night(Skill):
       if itm.dark_vision == 0:
         itm.dfs_mod -= 1
         itm.off_mod -= 1
-        if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 4
+        itm.resolve_mod -= 1
+        if itm.rng + itm.rng_mod > 5: 
+          itm.dfs_mod -= 1
+          itm.off_mod -= 1
 
 
 

@@ -154,6 +154,7 @@ class Building:
     upgrade.nation = self.nation
     upgrade.nations = self.nations
     upgrade.pos = self.pos
+    upgrade.resource_cost[0] = 1
     upgrade.size = self.size
     if self.pos.city: msg = [f'se actualizará {self} en {self.pos.city}, {self.pos} {self.pos.cords}.']
     else: msg = [f'se actualizará {self} en {self.pos} {self.pos.cords}.']
@@ -171,7 +172,7 @@ class Building:
     stealth = self.stealth
     if self.pos.day_night: stealth += 4
     roll = basics.roll_dice(3)
-    print(f'{visible= }, {stealth= }, {roll= }, {roll= }.')
+    #print(f'{visible= }, {stealth= }, {roll= }, {roll= }.')
     msg = f'stealth check for {self} in {self.pos} {self.pos.cords}. {visible= }, {stealth= }, {roll= }.'
     self.pos.world.log[-1] += [msg]
     if roll >= stealth - visible:
@@ -281,45 +282,57 @@ class City:
     [i.update(self.nation) for i in self.tiles]
 
     tiles = [i for i in self.tiles if i.blocked == 0
-             and i.soil.name != coast_t]
+             and i.soil.name in self.nation.all_terrains]
     shuffle(tiles)
     tiles.sort(key = lambda x: x.food, reverse = True)
-    grouth = ceil(number / (len(self.tiles) * 3))#avoid 0with ceil. if not add pop stops.
+    tiles.sort(key = lambda x: x.soil.name in self.nation.pop_pref_soil 
+               and x.surf.name in self.nation.pop_pref_surf 
+               and x.hill in self.nation.pop_pref_hill, reverse = True)
+    tiles.sort(key = lambda x: x.public_order, reverse = True)
+    grouth = ceil(number / (len(self.tiles) * 1.1))#avoid 0with ceil. if not add pop stops.
     msg = f'{self} crecerá {number}. grouth_total {grouth}.'
     self.nation.devlog[-1] += [msg]
     if info: logging.info(f'crecerá {number}. grouth_total {grouth}.')
-    for t in tiles: t.last_rnd = []
-    tries = 5000
-    while number > 0:
+    for t in tiles: t.last_grouth = []
+    tries = 10000
+    while number > 1:
       tries -= 1
       if tries < 0: 
         sp.speak(f'add pop stoped!', 1)
-        sleep(2)
+        sleep(1)
+        Pdb().set_trace()
       
       for t in tiles:
-        if grouth > number: grouth = number
-        rnd = 8
-        if t.hill not in self.nation.pop_pref_hill: rnd -= 2
-        if t.soil.name not in self.nation.pop_pref_soil: rnd -= 2
-        if t.surf.name not in self.nation.pop_pref_surf: rnd -= 2
-        if t.is_city: rnd += 2
-        rnd -= t.unrest // 10
-        rnd += len(t.buildings)
-        if t.pop >= 90*t.food/100: rnd -= 6
-        if t.pop >= 80*t.food/100: rnd -= 4
-        if t.pop >= 60*t.food/100: rnd -= 3
-        if rnd < 1: rnd = 1
-        if info: logging.debug(f'{t}, {t.is_city= }, {len(t.buildings)= }, {rnd= },')
-        roll = randint(1, 12)
-        t.last_rnd += [['rnd', rnd, 'roll', roll, 'pop', grouth]]
-        if info:  logging.debug(f'{t}. {rnd= }, {roll=:}. {ceil((t.food-t.pop)/50)}.')
+        if number < 1: break
+        building_mod = 0
+        overpopulated = 0
+        _grouth = grouth
+        if t.hill not in self.nation.pop_pref_hill: _grouth *= 0.1
+        if t.soil.name not in self.nation.pop_pref_soil: _grouth *= 0.4
+        if t.surf.name not in self.nation.pop_pref_surf: _grouth *= 0.2
+        if t.is_city: _grouth *= 1.1
+        buildings = [b for b in t.buildings if b.nation == self.nation
+                     and b.resource_cost[0] == b.resource_cost[1]]
+        if buildings: 
+          _grouth *= 1+(len(buildings)//10)
+          building_mod = 1+(len(buildings)//2)
+        if t.pop/t.food*100 >= 50: 
+          _grouth *= 0.5
+          overpopulated = 50
+        if t.pop/t.food*100 >= 80:
+          _grouth *= 0.3
+          overpopulated = 80
+        if t.pop/t.food*100 >= 90: 
+          _grouth *= 0.1
+          overpopulated = 90
+        _grouth = ceil(_grouth)
+        if _grouth <  1: _grouth = 1
+        if _grouth > number: _grouth = number
+        if info: logging.debug(f'{t}, {t.is_city= }, {len(t.buildings)= }, {_grouth= }.')
+        t.last_grouth += [["turn", t.world.turn, "grouth", grouth, "overpopulated", overpopulated, "building_mod", building_mod, "_grouth", _grouth, "number", number]]
         
-        try:
-          if rnd >= roll:
-              t.pop += grouth
-              number -= grouth
-        except:
-          logging.debug(f'error')
+        t.pop += _grouth
+        number -= _grouth
 
   def can_build(self):
     logging.debug(f'requicitos de {self}.')
@@ -440,8 +453,9 @@ class City:
   def reduce_pop(self, number, info = 0):
     logging.debug(f'reduce {number} de {self} ({self.pop} pop).')
     tiles = [i for i in self.tiles if i.blocked == 0]
-    reduce = number / 20
+    reduce = number / 6
     shuffle(tiles)
+    tiles.sort(key=lambda x: x.get_distance(x, self.pos))
     if info: logging.debug(f'reducirá {number}.')
     while number > 0:
       for t in tiles:
@@ -849,7 +863,7 @@ class Nation:
   city_req_pop_base = 1000
   pop_limit = 50
 
-  gold_rate = 1
+  gold_rate = 0.5
   income = 0
   military_percent = 0
   military_pop = 0
@@ -940,7 +954,7 @@ class Nation:
   def add_city(self, itm, unit):
     itm = itm(unit.nation, unit.pos)
     scenary = unit.pos.scenary
-    pop = unit.units * 2
+    pop = unit.units * 4
     pos = unit.pos
     itm.pop = pop
     pos.buildings.append(itm)
@@ -992,7 +1006,7 @@ class Nation:
           elif t.city.capital == 0: rate = 80
           if t.public_order >= 80: rate += 20
           t.food_rate = rate
-          if rate <= t.pop*100/t.food or city.nation.gold >= b.gold*10:
+          if rate <= t.pop/t.food*100 or city.nation.gold >= b.gold*10:
             t.update(self)
             if t.around_threat or t.threat: 
               logging.debug(f'threat')
@@ -1092,12 +1106,15 @@ class Nation:
     if city.grouth_total >= 4: factor *= 3
     if city.grouth_total >= 3: factor *= 2
     for b in buildings:
+      if b.pos.around_threat + b.pos.threat > b.pos.defense: continue
       count = 1
-      if b.pos.pop*100/b.pos.food < 80:
+      if b.pos.pop/b.pos.food*100 < 70:
         logging.debug(f'food not need.')
-        count = 0
+        b.pos.log = f"turn {b.pos.world.turn}, food not need."
+        continue
       if city.nation.gold - factor >= factor:
         logging.debug(f'factor True.')
+        b.pos.log = f'turn {b.pos.world.turn}, factor True.'
         count = 1
       
       if count == 0: continue
@@ -1195,7 +1212,7 @@ class Nation:
       if t.sight == 0: continue
       buildings += [bu for bu in t.buildings 
                     if bu.type == building_t]
-      [print(f'{b.name} {b.type}.') for b in buildings]
+      #[print(f'{b.name} {b.type}.') for b in buildings]
       buildings = [b for b in buildings if self != b.nation or self not in b.nations]
     
     [bu.set_hidden(self) for bu in buildings]
@@ -1258,6 +1275,7 @@ class Nation:
     for t in self.tiles:
       t.defense_req = t.income*0.025
       if t.corpses: t.defense_req += 40
+      buildings = [b for b in t.buildings if b.nation != self and self in b.nations]
       if t.buildings: 
         t.defense_req += 30*len(t.buildings)
       if t.surf.name in [forest_t, swamp_t]: 
@@ -1265,6 +1283,7 @@ class Nation:
       if t.hill:
         t.defense_req += 20
       if t.around_nations: t.defense_req += 40
+      if t.unrest > 15: t.defense_req += t.unrest //2
   def start_turn(self):
     if self.pos: world = self.pos.world
     else: world = self.world
@@ -1380,7 +1399,7 @@ class Nation:
     # expanding.
     self.expanding = 0
     if any(i for i in [ct.expanding for ct in self.cities]): self.expanding = 1
-    print(f'time {time()-init}.')
+    #print(f'time {time()-init}.')
 
 class Unit:
   name = str()
@@ -1589,7 +1608,7 @@ class Unit:
   def break_group(self):
     logging.debug(f'{self} rompe grupo.')
     loadsound('set1')
-    print(f'{self} breaks group in {self.pos} {self.pos.cords}.')
+    #print(f'{self} breaks group in {self.pos} {self.pos.cords}.')
     self.group_base = 0
     self.group_score = 0
     for i in self.group: 
@@ -1874,7 +1893,7 @@ class Unit:
     for i in units[1:]:
       if i.squads + unit.squads > unit.max_squads: 
         item = i.split(unit.max_squads - unit.squads)
-        print(f'divided.')
+        #print(f'divided.')
       elif i.squads + unit.squads <= unit.max_squads: item = i
       if unit.squads + item.squads > unit.max_squads: return
       unit.demon_souls = item.demon_souls
@@ -2403,26 +2422,26 @@ class Hall(City):
       msg = f'{self} se degrada a {hamlet_t}.'
       self.level = 0
       self.name = hamlet_t
-      self.food -= 2
-      self.grouth -= 1
+      self.food -= 1
+      #self.grouth -= 1
       self.income -= 1
-      self.public_order -= 50
+      self.public_order -= 20
     if self.level == 2 and self.pop <= 2400:
       msg = f'{self} se degrada a {village_t}.'
       self.level = 1
       self.name = village_t
-      self.food -= 2
-      self.grouth -= 1
+      self.food -= 1
+      #self.grouth -= 1
       self.income -= 1
-      self.public_order -= 50
+      self.public_order -= 20
     if self.level == 3 and self.pop <= 7000:
       msg = f'{self} se degrada a {town_t}.'
       self.level = 1
       self.name = town_t
-      self.food -= 2
-      self.grouth -= 1
+      self.food -= 1
+      #self.grouth -= 1
       self.income -= 1
-      self.public_order -= 50
+      self.public_order -= 20
     if msg:
       self.nation.log[-1].append(msg)
       logging.debug(msg)
@@ -2437,23 +2456,23 @@ class Hall(City):
       self.level = 1
       self.name = village_t
       self.food += 1.5
-      self.grouth += 1
+      #self.grouth += 1
       self.income += 1
-      self.public_order += 50
+      self.public_order += 20
     if self.level == 1 and self.pop >= 8000:
       msg = f'{self} mejor a {town_t}.'
       self.level = 2
       self.name = town_t
       self.food += 1.5
-      self.grouth += 1
+      #self.grouth += 1
       self.income += 1
-      self.public_order += 50
+      self.public_order += 20
     if self.level == 2 and self.pop >= 20000:
       msg = f'{self} mejor a {city_t}.'
       self.level = 3
       self.name = city_t
       self.food += 2
-      self.grouth += 1
+      #self.grouth += 1
       self.income += 1
       self.public_order += 50
     if msg:
@@ -3599,8 +3618,8 @@ class Hamlet(City):
   events = [Looting, Revolt, Unrest]
   food = 2
   grouth = 0
-  public_order = -20
-  initial_unrest = 50
+  public_order = 20
+  initial_unrest = 15
   resource = 1
   upkeep = 1000
 
@@ -4860,12 +4879,12 @@ class GryphonRiders(Unit):
 # Vampiros.
 class CursedHamlet(City):
   name = cursed_hamlet_t
-  events = [Looting, Revolt, Unrest]
+  events = [Looting, Revolt]
   food = 2
   grouth = 0
   income = 1.5
   public_order = 30
-  initial_unrest = 30
+  initial_unrest = 5
   resource = 1
   upkeep = 600
 
@@ -5145,6 +5164,7 @@ class Pit(Building):
   size = 5
   gold = 1500
   food = 2
+  public_order = 1.3
   own_terrain = 1
   tags = [food_t]
 
@@ -5163,6 +5183,8 @@ class FuneraryDungeon(Pit, Building):
   base = Pit
   gold = 5000
   food = 3
+  income = 1.2
+  public_order = 2
   resource = 2
   tags = [food_t, resource_t]
 
@@ -6189,6 +6211,8 @@ class Fields(Building):
   size = 6
   gold = 1500
   food = 2
+  income = 1.2
+  public_order = 1.2
   own_terrain = 1
   tags = [food_t]
 
@@ -6207,6 +6231,8 @@ class SmallFarm(Fields, Building):
   base = Fields
   gold = 6000
   food = 4
+  income = 1.2
+  public_order = 1.3
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -6217,12 +6243,11 @@ class SmallFarm(Fields, Building):
 
 class Farm(SmallFarm, Building):
   name = farm_t
-  3
   base = SmallFarm
   gold = 15000
   food = 6
-  # grouth = 50
-  # income = 50
+  public_order = 1.3
+  # income = 1.5
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
@@ -6281,7 +6306,7 @@ class Quarry(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.resource_cost = [0, 70]
+    self.resource_cost = [0, 100]
     self.soil = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
     self.hill = [1]
@@ -6302,7 +6327,7 @@ class SawMill(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.resource_cost = [0, 60]
+    self.resource_cost = [0, 80]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t]
     self.hill = [0, 1]
@@ -6343,8 +6368,8 @@ class HolyEmpire(Nation):
   food_limit_builds = 3000
   food_limit_upgrades = 5000
   military_limit_upgrades = 3000
-  grouth_base = 5
-  grouth_rate = 200
+  grouth_base = 6
+  grouth_rate = 100
   expansion = 1000
   public_order = 0
   tile_cost = 600
@@ -6358,7 +6383,7 @@ class HolyEmpire(Nation):
   scout_factor = 8
   stalk_rate = 200
 
-  city_req_pop_base = 1200
+  city_req_pop_base = 2200
   commander_rate = 10
   pop_limit = 60
   units_animal_limit = 20
@@ -6381,16 +6406,21 @@ class HolyEmpire(Nation):
     self.allow_around_grassland = 4
     self.allow_around_plains = 0
     # terrenos adyacentes no permitidos.
+    self.unallow_around_forest = 2
     self.unallow_around_ocean = 2 
     self.unallow_around_swamp = 1
     self.unallow_around_tundra = 0
     self.unallow_around_glacier = 0
+    #All terrains.
+    self.all_terrains = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
 
     # edificios iniciales disponibles.
     self.av_buildings = [Fields, PlaceOfProphecy, Pastures, TrainingCamp, SawMill, Quarry]
+    #Cities.
     self.av_cities = [Hamlet]
+    #city names.
     self.city_names = roman_citynames
-    
+  
     # terrenos de comida.
     self.for_food.soil = [grassland_t, plains_t]
     self.for_food.surf = [none_t]
@@ -6399,10 +6429,9 @@ class HolyEmpire(Nation):
     self.for_res.soil = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
     self.for_res.surf = [2]
     self.for_res.hill = [0, 1]
-    
+  
     #Population types.
-    self.population_type = [Peasants]
-    
+    self.population_type = [Peasants(self)]
     # Rebels.
     self.units_rebels = [Archers, Hunters, Raiders, Riders, Warriors]
     # initial placement.
@@ -6425,7 +6454,7 @@ class WoodElves(Nation):
   food_limit_upgrades = 5000
   military_limit_upgrades = 1000
   grouth_base = 3
-  grouth_rate = 200
+  grouth_rate = 100
   public_order = 0
   expansion = 2500
   upkeep_base = 60
@@ -6438,7 +6467,7 @@ class WoodElves(Nation):
   scout_factor = 5
   stalk_rate = 400
 
-  city_req_pop_base = 1600
+  city_req_pop_base = 2500
   commander_rate = 7
   pop_limit = 30
   units_animal_limit = 100
@@ -6462,12 +6491,16 @@ class WoodElves(Nation):
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 2 
     self.unallow_around_swamp = 0
+    #All terrains.
+    self.all_terrains = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
 
     # edificios iniciales disponibles.
     self.av_buildings = [CraftmensTree, FalconRefuge, GlisteningPastures, Grove, Sanctuary, stoneCarvers]
+    #Cities.
     self.av_cities = [Hall]
+    #City names.
     self.city_names = elven_citynames
-    
+  
     # terrenos de comida.
     self.for_food_soil = [grassland_t, plains_t]
     self.for_food.surf = [none_t]
@@ -6479,7 +6512,6 @@ class WoodElves(Nation):
     
     #Population types.
     self.population_type = [ForestGuard(self), Huntress(self)]
-    
     # rebeldes.
     self.units_rebels = [Huntress, Hunters, ForestGuard, Warriors]
     # initial placement.
@@ -6499,10 +6531,10 @@ class Wallachia(Nation):
   pop_pref_surf = [none_t]
   gold = 30000
   food_limit_builds = 3000
-  food_limit_upgrades = 4000
   military_limit_upgrades = 3000
+  food_limit_upgrades = 4000
   grouth_base = 5
-  grouth_rate = 200
+  grouth_rate = 100
   expansion = 1500
   public_order = 0
   upkeep_base = 60
@@ -6515,7 +6547,7 @@ class Wallachia(Nation):
   scout_factor = 15
   stalk_rate = 160
 
-  city_req_pop_base = 1000
+  city_req_pop_base = 1600
   commander_rate = 10
   pop_limit = 50
   units_animal_limit = 100
@@ -6539,11 +6571,16 @@ class Wallachia(Nation):
     self.allow_around_hill = 3
     # terrenos adyacentes no permitidos.
     self.unallow_around_ocean = 0
-  
+    #All terrains.
+    self.all_terrains = [waste_t, glacier_t, grassland_t, plains_t, tundra_t]
+
     # edificios iniciales disponibles.
     self.av_buildings = [Cemetery, Fields, HallsOfTheDead, HuntingGround, Gallows, Pit, Quarry, SawMill]
+    #Cities.
     self.av_cities = [CursedHamlet]
+    #City names.
     self.city_names = death_citynames
+
     # terrenos de comida.
     self.for_food.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.for_food.surf = [none_t]
@@ -6553,7 +6590,7 @@ class Wallachia(Nation):
     self.for_res.surf = [none_t, forest_t]
     self.for_res.hill = [0, 1]
     #Population types.
-    self.population_type = [Slaves]
+    self.population_type = [Slaves(self)]
     
     # rebeldes.
     self.units_rebels = [Archers, Raiders, Riders, Ghouls, VarGhul]
@@ -6596,7 +6633,7 @@ class Campment(Building):
   size = 4
   stealth = 15
   gold = 7000
-  unrest = 30
+  unrest = 20
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6640,7 +6677,7 @@ class CaveOfGhouls(Building):
   size = 4
   stealth = 19 
   gold = 6000
-  unrest = 10
+  unrest = 20
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6662,7 +6699,7 @@ class FightingPit(Building):
   size = 4
   stealth = 14
   gold = 6000
-  unrest = 40
+  unrest = 20
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6683,7 +6720,7 @@ class GoblinLair(Building):
   size = 3
   stealth = 19
   gold = 4000
-  unrest = 20
+  unrest = 30
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6704,7 +6741,7 @@ class HiddenForest(Building):
   size = 5
   stealth = 20
   gold = 12000
-  unrest = 10
+  unrest = 0
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6725,7 +6762,7 @@ class HyenasLair(Building):
   size = 2
   stealth = 16
   gold = 2000
-  unrest = 10
+  unrest = 0
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6746,7 +6783,7 @@ class NecromancersLair(Building):
   size = 4
   stealth = 20
   gold = 6000
-  unrest = 30
+  unrest = 20
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6767,7 +6804,7 @@ class OathStone(Building):
   size = 4
   stealth = 15
   gold = 8000
-  unrest = 10
+  unrest = 5
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6851,7 +6888,7 @@ class UnderworldEntrance(Building):
   size = 6
   stealth = 24
   gold = 24000
-  unrest = 50
+  unrest = 30
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6872,7 +6909,7 @@ class WisperingWoods(Building):
   size = 5
   stealth = 22
   gold = 12000
-  unrest = 10
+  unrest = 0
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6893,7 +6930,7 @@ class WargsCave(Building):
   size = 3
   stealth = 18
   gold = 4000
-  unrest = 30
+  unrest = 20
   own_terrain = 0
   tags = [military_t]
   def __init__(self, nation, pos):
@@ -6938,7 +6975,7 @@ class WolfLair(Building):
 # Units.
 class Archers(Human):
   name = archers_t
-  units = 30
+  units = 20
   min_units = 10
   max_squads = 5
   type = 'infantry'
@@ -7836,8 +7873,8 @@ class Levy(Human):
   type = 'infantry'
   traits = [human_t, levy_t]
   size = 2
-  gold = 120
-  upkeep = 5
+  gold = 140
+  upkeep = 4
   resource_cost = 11
   food = 3
   pop = 30

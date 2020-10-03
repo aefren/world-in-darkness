@@ -125,6 +125,7 @@ class Terrain:
     self.effects = []
     self.events = []
     self.items = []
+    self.log = []
     self.skills = []
     self.skill_names = []
     self.terrain_events = []
@@ -309,29 +310,32 @@ class Terrain:
     self.units_traits = []
     self.units_tags = []
     sq = self.get_near_tiles(1)
-    for s in sq:
-      if s != self:
-        if s.hill: self.around_hill += 1
-        if s.surf.name != none_t:
-          if s.surf.name == swamp_t: self.around_swamp += 1
-          if s.surf.name == forest_t: self.around_forest += 1
-          if s.surf.name == mountain_t: self.around_mountain += 1
-          if s.surf.name == volcano_t: self.around_volcano += 1
-        elif s.surf.name == none_t:
-          if s.soil.name == coast_t: self.around_coast += 1
-          if s.soil.name == plains_t: self.around_plains += 1
-          if s.soil.name == grassland_t: self.around_grassland += 1
-          if s.soil.name == waste_t: self.around_desert += 1
-          if s.soil.name == tundra_t: self.around_tundra += 1
-          if s.soil.name == glacier_t: self.around_glacier += 1
+    for tl in sq:
+      if tl != self:
+        if tl.hill: self.around_hill += 1
+        if tl.surf.name != none_t:
+          if tl.surf.name == swamp_t: self.around_swamp += 1
+          if tl.surf.name == forest_t: self.around_forest += 1
+          if tl.surf.name == mountain_t: self.around_mountain += 1
+          if tl.surf.name == volcano_t: self.around_volcano += 1
+        elif tl.surf.name == none_t:
+          if tl.soil.name == coast_t: self.around_coast += 1
+          if tl.soil.name == plains_t: self.around_plains += 1
+          if tl.soil.name == grassland_t: self.around_grassland += 1
+          if tl.soil.name == waste_t: self.around_desert += 1
+          if tl.soil.name == tundra_t: self.around_tundra += 1
+          if tl.soil.name == glacier_t: self.around_glacier += 1
 
-      if s.sight and s != self:
-        self.around_corpses += len(s.corpses)
+      if tl.sight and tl != self:
+        self.around_corpses += len(tl.corpses)
         if nation:
-          if s.nation != nation and s.nation != None: self.around_nations += [s.nation]
-          if s.nation == nation: self.around_snations += [s.nation]
-          for uni in s.units:
-            uni.update()
+          if tl.nation != nation and tl.nation != None: self.around_nations += [tl.nation]
+          if tl.nation == nation: self.around_snations += [tl.nation]
+          for uni in tl.units:
+            try:
+              uni.update()
+            except:
+              Pdb().set_trace()
             if uni.nation != nation and uni.hidden == 0:
               self.around_threat += uni.ranking
             if uni.nation == nation:
@@ -385,13 +389,13 @@ class Terrain:
     if self.is_city == 0: self.public_order += self.city.public_order * 0.5
     if info: print(f'after if is city {self.public_order= }.')
     # From buildings.
-    self.public_order_buildings = 0
+    self.public_order_buildings = 1
     for b in self.buildings:
-      self.public_order_buildings += b.public_order_pre
+      self.public_order_buildings *= b.public_order_pre
       if b.is_complete or b.type == city_t:
-        self.public_order_buildings += b.public_order
+        self.public_order_buildings *= b.public_order
 
-    self.public_order += self.public_order_buildings
+    self.public_order *= self.public_order_buildings
     if info: print(f'after buildings {self.public_order= }.')
     # From units.
     self.po = self.public_order
@@ -400,7 +404,7 @@ class Terrain:
       self.public_order -= self.public_order_unrest
       if info: print(f'after unrest {self.public_order= }.')
     
-    if self.defense: self.public_order += (self.defense //10)/self.pop*100
+    if self.defense and self.pop: self.public_order += (self.defense //10)/self.pop*100
     if info: print(f'after units defense {self.public_order= }.')
     
     self.public_order_reduction = self.public_order_buildings * abs(self.public_order) / 100
@@ -412,7 +416,7 @@ class Terrain:
     if self.pop == 0: 
       self.public_order = 0
       self.unrest = 0
-    # if self.unrest > 100: self.unrest = 100
+    if self.unrest > 100: self.unrest = 100
     self.unrest = round(self.unrest)
 
   def set_skills(self, info=0):
@@ -482,6 +486,7 @@ class Terrain:
     self.threat = 0
     if self.sight:
       for uni in self.units:
+        if uni.hp_total < 1: continue
         if uni.nation.name != nation.name and uni.hidden == 0:
           uni.update()
           self.threat += uni.ranking
@@ -499,7 +504,7 @@ class Terrain:
     if self.flood > 0: self.flood -= 1
     self.raided = 0
     if self.unrest > 0: self.unrest -= randint(2, 10)
-    if self.unrest > 0: self.unrest -= self.defense * 0.1
+    if self.unrest > 0: self.unrest -= self.defense * 0.2
     self.unrest = round(self.unrest)
     if self.unrest < 0: self.unrest = 0
     self.units_blocked + [u for u in self.units if u.blocked > 0]
@@ -562,8 +567,10 @@ class Terrain:
       self.set_threat(nation)
       
     # eliminando unidades, generando corpses.
-    self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
-                    and i.corpses]
+    try:
+      self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
+                      and i.corpses]
+    except: Pdb().set_trace()    
     self.units = [it for it in self.units 
                   if it.hp_total >= 1]
     self.is_blocked()
@@ -676,7 +683,7 @@ class Mountain(Terrain):
 
 class Swamp(Terrain):
   cost = 1
-  food = 0.5
+  food = 0.75
   name = swamp_t
   resource = 1
 
@@ -771,7 +778,7 @@ class World:
       # si listo.
       item.update()
       if go:
-        if item.units > 1: item.hp_total = randint(20, 80) * item.hp_total / 100
+        if item.units > 1: item.hp_total = randint(20, 50) * item.hp_total / 100
         item.update()
         item.pos = tile
         item.nation.update(item.nation.map)
@@ -819,7 +826,12 @@ class World:
       PLAYING = False
 
   def building_restoration(self):
-    for b in self.buildings: b.resource_cost[0] += b.resource_cost[1]*0.2
+    for b in self.buildings:
+      units = [uni for uni in b.pos.units if uni.nation != b.nation] 
+      if units: continue
+      if b.resource_cost[0] < b.resource_cost[1]: 
+        b.resource_cost[0] += b.resource_cost[1]*0.2
+        if b.resource_cost[0] > b.resource_cost[1]: b.resource_cost[0] = b.resource_cost[1]
   def season_events(self):
     self.set_master()
     self.events_num = int((self.height + self.width) * 0.1)
@@ -2075,7 +2087,7 @@ def ai_move_group(itm, info=0):
           if s.threat < itm.group_ranking * 0.7:
             if (itm.day_night 
                 and (s.nation != itm.nation and s.nation != None)
-                and boasics.roll_dice(1) >= 3):
+                and basics.roll_dice(1) >= 3):
               if info: logging.debug(f'will avoid hills by night.')
               continue
             if info: logging.debug(f'moves to {s} {s.cords}.')
@@ -2110,7 +2122,7 @@ def ai_play(nation):
   
   # ciudades.
   for ct in nation.cities:
-    ct.population_change()
+    if ct.pos.world.turn > 1: ct.population_change()
     ct.set_downgrade()
     ct.set_upgrade()
     ct.check_training()
@@ -3126,7 +3138,7 @@ def control_game(event):
       return
     if event.key == pygame.K_b:
       # ver edificios.
-      if x < 0 and pos in nation.map and pos.blocked == 0:
+      if x < 0 and pos in nation.map:
         menu_building(pos, nation)
         pos.update(nation)
       # quemar.
@@ -4102,7 +4114,10 @@ def menu_building(pos, nation, sound='in1'):
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_i:
           if isinstance(items[x], str) == False: info_building(items[x])
-        if event.key == pygame.K_u  :
+        if event.key == pygame.K_u:
+          if pos.blocked: 
+            loadsound('errn1')
+            continue
           if isinstance(items[x], str) == False and items[x].is_complete and items[x].upgrade:
             item = get_item2(items1=items[x].upgrade, msg='mejorar')
             if item: 
@@ -4127,7 +4142,9 @@ def menu_building(pos, nation, sound='in1'):
           say = 1
         
         if event.key == pygame.K_DELETE:
-          if items[x].type == city_t or items[x].resource_cost[0] == items[x].resource_cost[1]:
+          if (items[x].type == city_t 
+              or items[x].resource_cost[0] == items[x].resource_cost[1]
+              or items[x].pos.blocked):
             loadsound('errn1')
             continue
           items[x].pos.buildings.remove(items[x])
@@ -4135,6 +4152,9 @@ def menu_building(pos, nation, sound='in1'):
           sleep(loadsound('set7')//2)
         if event.key == pygame.K_RETURN:
           # construir.
+          if pos.blocked: 
+            loadsound('errn1')
+            continue
           if isinstance(items[x], str) and pos.city and pos.nation == nation:
             building = create_building(pos.city, nation.av_buildings)
             if building:
@@ -5306,13 +5326,13 @@ def start_turn(nation):
   else: scenary[0].pos_sight(nation, scenary)
   map_update(nation, nation.map)
   nation.update(nation.map)
-  nation.set_hidden_buildings()
+  if nation.pos.world.turn > 1: nation.set_hidden_buildings()
   # ingresos.
-  nation.set_income()
+  if nation.pos.world.turn > 1: nation.set_income()
   # ciudades.
   logging.debug(f'ciudades.')
   for city in nation.cities:
-    city.population_change()
+    if city.pos.world.turn > 1: city.population_change()
     city.update()
     city.check_building()
     city.check_training()

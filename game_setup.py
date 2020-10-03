@@ -3,7 +3,7 @@ exec('from data.items import *')
 
 
 #Difficulty.
-DIFFICULTY = 50
+DIFFICULTY = 30
 DIFFICULTY_TYPE = 'dynamic'
 #Random Buildings.
 random_buildings = [BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls, 
@@ -17,7 +17,7 @@ buildings_value = 20
 ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
-HOLY.ai = 0
+HOLY.ai = 1
 TRANS = Wallachia()
 TRANS.ai = 1
 

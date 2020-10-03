@@ -96,13 +96,12 @@ def get_wound_mod(num):
 
 
 def get_unrest_mod(num):
-  if num > 10: return 0
-  if num <= 10: return 1
-  if num <= 0: return 2
-  if num <= -10: return 3
-  if num <= -20: return 4
-  if num <= -30: return  5
-  if num < -50: return 6
+  if num < -80: return 5
+  if num <= -60: return  4
+  if num <= -40: return 3
+  if num <= -20: return 2
+  if num <= 0: return 1
+  else: return 0
 
 
 def roll_dice(time=1):
