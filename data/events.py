@@ -32,8 +32,9 @@ class Looting(Event):
       buildings = [b for b in t.buildings if b.nation != self.itm.nation]
       if buildings: roll += 4
       if info: print(f'{roll = : }')
-      if roll >= 8 and t.unrest >= 20:
-        raided = randint(ceil(t.income*0.2), ceil(t.income*0.6))
+      if roll >= 10 and t.unrest >= 20:
+        raided = randint(ceil(t.income*0.2), ceil(t.income*0.4))
+        if t.unrest >= 50: raided *= 2 
         t.raided = raided
         msg = f'{raiders_t} {raids_t} {raided} {in_t} {t} {t.cords}.'
         self.itm.nation.log[-1] += [msg]
@@ -46,7 +47,7 @@ class Looting(Event):
         buildings = [b for b in t.buildings if b.nation == self.itm.nation]
         if t.unrest >= 50 and buildings:
           building = choice(buildings)
-          building.resource_cost[0] -= building.resource_cost[1]*uniform(0.1, 0.5)
+          building.resource_cost[0] -= building.resource_cost[1]*uniform(0.3, 0.6)
           msg = f'{building} has been damaged.'
           self.itm.nation.log[-1] += [msg]
         if self.itm.nation.show_info: sleep(loadsound('spell35') / 4)
@@ -80,23 +81,19 @@ class Revolt(Event):
         if info: print(rebelions)
         for r in range(rebelions):
           unit = choice(units)
-          percent = randint(10, 30)
+          percent = randint(20, 50)
           unit.pop = percent*unit.pop/100
           if t.pop >= unit.pop:
             unit = t.add_unit(unit, self.itm.nation.name)
             unit.hp_total = percent*unit.hp_total/100
             unit.update()
-            for nt in t.world.random_nations:
-              if nt.name == unit.align.name: unit.nation = nt
+            #for nt in t.world.random_nations:
+              #if nt.name == unit.align.name: unit.nation = nt
             t.world.units += [unit]
             rebels += [unit]
-            extra = randint(1, rebelions)
-            unit.hp_total *= rebelions
-            unit.pop *= rebelions
             t.pop -= unit.pop
             unit.update() 
             unit.set_default_align()
-            if t.pop >0: t.unrest += (unit.ranking//5)/t.pop*100
 
         if rebels:
           logging.debug(f'evento {self.name} (order) en {t} {t.cords}.')
@@ -106,6 +103,27 @@ class Revolt(Event):
         if rebels and self.itm.nation.show_info: sleep(loadsound('spell35') / 2)
 
 
+class Starving(Event):
+  name = "starving"
+  
+  def run(self, info=0):
+    for t in self.itm.tiles:
+      if t.pop < 1: continue
+      if t.populated >= 120:
+        t.unrest += randint(1, 3)
+      elif t.populated >= 80:
+        t.unrest += randint(1, 2)
+      if t.populated >= 150 and basics.roll_dice(2) >= 11:
+        deads = randint(5, 20)*t.pop/100
+        if deads > t.pop: deads = t.pop
+        t.unrest += deads * t.pop / 100
+        t.pop -= deads
+        t.add_corpses(choice(t.nation.population_type), deads)
+        msg = f'starving in {t} {t.cords} deads {deads}.'
+        self.itm.nation.log[-1] += [msg]
+        if self.itm.nation.show_info: sleep(loadsound('spell36', channel=ch5) // 1.3)
+
+
 class Unrest(Event):
   name = 'unrest'
   turns = 0
@@ -113,7 +131,7 @@ class Unrest(Event):
 
   def run(self, info=0):
     if self.itm.pos.world.turn < 2: return
-    chance = 11
+    chance = 10
     for t in self.itm.tiles:
       t.update(self.itm.nation)
       if info:print(f'checking unrest in {t} {t.cords}.')
@@ -123,10 +141,11 @@ class Unrest(Event):
       if t.public_order <= 80: roll += 1
       if t.public_order <= 40: roll += 1
       if t.public_order <= 0: roll += 1
+      if t.around_threat + t.threat > 0: roll += 1
       if t.is_city: roll -= 2
       if info: print(f'{roll = : }')
       if roll >= chance:
-        unrest = randint(1, 10)
+        unrest = randint(1, 2)
         unrest += sum([b.unrest for b in buildings])
         t.unrest += unrest
         t.last_unrest = f'{turn_t} {t.world.turn} {unrest}.'

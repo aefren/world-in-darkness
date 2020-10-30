@@ -561,6 +561,72 @@ class RaiseDead(Spell):
 
 
 
+class RecruitForestGuards(Spell):
+  name = "recruit forest guards"
+  desc = 'recruit 1 forest guard squad..'
+  cost = 2
+  cast = 1
+  
+  tile_pop = 15
+  def ai_run(self, itm):
+    buildings = [b for b in itm.pos.buildings if b.nation == itm.nation]
+    if itm.pos.public_order < 0 and itm.pos.unrest < 20: self.init(itm)
+    if (itm.pos.around_threat+itm.pos.threat > itm.pos.defense*2
+        and buildings): self.init(itm)
+  def run(self, itm):
+    unit = itm.pos.add_unit(Levy, itm.nation.name)
+    unit.set_squads(1)
+    itm.pos.unrest += 2
+    msg = f'{unit} (recruited)'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+class RecruitPeasants(Spell):
+  name = "recruit peasants"
+  desc = 'recruit 1 peasant squad..'
+  cost = 2
+  cast = 1
+  
+  tile_pop = 15
+  def ai_run(self, itm):
+    buildings = [b for b in itm.pos.buildings if b.nation == itm.nation]
+    if itm.pos.public_order < 0 and itm.pos.unrest < 20: self.init(itm)
+    if (itm.pos.around_threat+itm.pos.threat > itm.pos.defense*2
+        and buildings): self.init(itm)
+  def run(self, itm):
+    unit = itm.pos.add_unit(Levy, itm.nation.name)
+    unit.set_squads(1)
+    itm.pos.unrest += 5
+    msg = f'{unit} (recruited)'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+class RecruitLevy(Spell):
+  name = "recruit Levy"
+  desc = 'recruit 1 levy squad..'
+  cost = 2
+  cast = 1
+  
+  tile_pop = 15
+  def ai_run(self, itm):
+    buildings = [b for b in itm.pos.buildings if b.nation == itm.nation]
+    if itm.pos.public_order < 0 and itm.pos.unrest < 20: self.init(itm)
+    if (itm.pos.around_threat+itm.pos.threat > itm.pos.defense*2
+        and buildings): self.init(itm)
+  def run(self, itm):
+    unit = itm.pos.add_unit(Levy, itm.nation.name)
+    unit.set_squads(1)
+    itm.pos.unrest += 5
+    msg = f'{unit} (recruited)'
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+
+
+  
+
+  
 class Reinvigoration(Spell):
   desc = 'sacrifica 50 población para regenerar 20 poder.'
   cost = 10
@@ -734,7 +800,7 @@ class SummonDriads(Spell):
     if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
-    unit = itm.pos.add_unit(Driads, itm.nation.name)
+    unit = itm.pos.add_unit(Driad, itm.nation.name)
     msg = f'{unit} ({summoning_t})'
     logging.debug(msg)
     itm.log[-1] += [msg]
@@ -785,7 +851,7 @@ class SummonForestBears(Spell):
     if itm.pos.surf and itm.pos.surf == forest_t and itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
-    unit = itm.pos.add_unit(ForestBears, itm.nation.name)
+    unit = itm.pos.add_unit(ForestBear, itm.nation.name)
     msg = f'{unit} ({summoning_t})'
     logging.debug(msg)
     itm.log[-1] += [msg]
@@ -803,7 +869,7 @@ class SummonFalcons(Spell):
     if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
 
   def run(self, itm):
-    unit = itm.pos.add_unit(Falcons, itm.nation.name)
+    unit = itm.pos.add_unit(Falcon, itm.nation.name)
     msg = f'{unit} ({summoning_t})'
     logging.debug(msg)
     itm.log[-1] += [msg]

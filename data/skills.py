@@ -28,8 +28,8 @@ class Skill:
   sound = None
   ranking = 1
   tags = []
-  type = 'generic' 
-  # types: "generic', 'before combat', 'after combat', 'before attack', 'after attack'.
+  # types: "generic", "before combat", "after combat", "before attack", "after attack", "start turn".
+  type = 0 
   turns = -1
 
   def __init__(self, itm):
@@ -141,7 +141,7 @@ class BloodyBeast(Skill):
   desc = 'randomly kill population if tile has population.'
   effect = 'self'
   turns = 0
-  type = 2
+  type = "start turn"
 
   def run(self, itm):
     if itm.pos and itm.pos.pop:
@@ -651,7 +651,7 @@ class Intoxicated(Skill):
   desc = 'Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos.'
   effect = 'self'
   turns = randint(5, 10)
-  type = 2
+  type = "start turn"
 
   def run(self, itm):
     sk = Diseased(itm)
@@ -666,6 +666,49 @@ class Intoxicated(Skill):
       itm.nation.log[-1] += [msg]
       itm.hp_total -= damage
       if itm.show_info: sleep(loadsound('spell34', channel=ch5) / 2)
+
+
+class Javelins(Skill):
+  effect = 'self'
+  name = "javelins"
+  desc = ''
+  # ranking = 1.2
+  damage = 4
+  dist = 9
+  type = 'before attack'
+
+  def run(self, itm):
+    if (itm.target and itm.pre_melee > 0 
+        and itm.target.dist <= self.dist ):
+      target = itm.target
+      for r in range(itm.units):
+        wounds = 00
+        logging.debug(f'{self.name}.')
+        logging.debug(f'{itm.dist=:}, {target.dist=:}.')
+        off = 4
+        off -= target.dfs + target.dfs_mod
+        hit = basics.get_hit_mod(off)
+        logging.debug(f'hit {hit}.')
+        
+        st = 4
+        st -= target.res + target.res_mod
+        wound = basics.get_wound_mod(st)
+        logging.debug(f'wound {wound}.')          
+        if basics.roll_dice(1) >= wound:
+          damage += 2
+          if basics.roll_dice(1) == 6:
+            damage += 2
+    # itm.damage_done[-1] += damage
+    if damage:
+      if damage > target.hp_total: damage = target.hp_total
+      target.hp_total -= damage
+      target.update()
+      target.deads[-1] += target.c_units - target.units
+      itm.temp_log += [f'{self.name} ({itm}) {kills_t} {target.deads[-1]}.']
+      logging.debug(f'hiere on {damage}.')
+
+
+
 
 
 class LocustSwarm(Skill):
@@ -722,7 +765,7 @@ class LordOfBones(Skill):
 
   def run(self, itm):
     if (itm.nation == self.nation and itm != self.itm 
-        and itm.name in [skeletons_t]):
+        and itm.name in [skeleton_t]):
       itm.effects.append(self.name)
       itm.att_mod += 1
       itm.dfs_mod += 1
@@ -794,7 +837,7 @@ class Miasma(Skill):
   desc = ''
   effects = 'self'
   ranking = 1
-  type = 2
+  type = "start turn"
   turns = -1
   tags = ['miasma']
 
@@ -968,7 +1011,7 @@ class PyreOfCorpses(Skill):
   name = 'pyre of corpses'
   desc = 'burn corpses at position.'
   effect = 'self'
-  type = 2
+  type = "start turn"
 
   def run(self, itm):
     for cr in itm.pos.corpses:
@@ -1295,7 +1338,7 @@ class TheBeast(Skill):
   effect = 'self'
   desc = 'Randomly kills population in position.'
   turns = 0
-  type = 2
+  type = "start turn"
 
   def run(self, itm):
     if itm.pos and basics.roll_dice(2) >= 10 and itm.pos.day_night:
@@ -1424,6 +1467,19 @@ class VigourMourtis(Skill):
       itm.effects.append(self.name)
       itm.hit_rolls_mod += 1
 
+
+class Undisciplined(Skill):
+  name = "undisciplined"
+  desc = "at start of each turn one of those options can occur. loss a random unit number, generate unrest in tile if unit is in a city tile."
+  effect = 'self'
+  ranking = 1
+  type = 'start turn'
+
+  def run(self, itm):
+    roll = basics.roll_dice(1)
+    if roll<=4:
+      if itm.pos: itm.pos.unrest += randint(1,2)
+    else: itm.hp_total -= itm.hp*randint(1,3)
 
 
 class WailingWinds(Skill):
