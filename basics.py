@@ -104,6 +104,7 @@ def get_unrest_mod(num):
   else: return 0
 
 
+
 def roll_dice(time=1):
   dice = [randint(1, 6) for i in range(time)]
   return sum(dice)

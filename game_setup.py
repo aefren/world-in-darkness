@@ -11,7 +11,7 @@ random_buildings = [BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls,
                     NecromancersLair, OathStone, OpulentTomb, TroglodyteCave,  
                     TrollCave, UnderworldEntrance, WisperingWoods, WolfLair,
                     WargsCave]
-buildings_value = 20
+buildings_value = 12
 
 #factions.
 ELF = WoodElves()

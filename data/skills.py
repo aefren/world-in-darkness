@@ -1186,7 +1186,7 @@ class Spread(Skill):
           logging.debug(f'reanima {itm.raised[-1]}.')
       
       if raised:
-        itm.temp_log += [f'{raised_t} {raised} {zombies_t}.']
+        itm.temp_log += [f'{raised_t} {raised} {zombie_t}.']
 
 
 
