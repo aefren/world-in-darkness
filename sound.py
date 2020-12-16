@@ -4,7 +4,7 @@ from pdb import Pdb
 import pygame
 
 wav = '.wav'
-sounds = os.getcwd()+str('/data/sounds/')
+path = os.getcwd()+str('/data/sounds/')
 
 
 mixer = pygame.mixer
@@ -21,7 +21,7 @@ ch5 = pygame.mixer.Channel(5) #magic.
 channels1 = [ch0, ch1, ch2, ch3, ch4, ch5]
 
 
-def loadsound(soundfile, channel=ch0, path=sounds,  extention=wav, vol=1):
+def loadsound(soundfile, channel=ch0, path=path,  extention=wav, vol=1):
   channel.stop()
   if isinstance(vol, tuple): channel.set_volume(vol[0], vol[1])
   else: channel.set_volume(vol)  
@@ -29,7 +29,7 @@ def loadsound(soundfile, channel=ch0, path=sounds,  extention=wav, vol=1):
   return mixer.Sound(path+soundfile+extention).get_length()
 
 
-def loadsound1(soundfile, channel=ch0, path=sounds,  extention=wav, vol=1):
+def loadsound1(soundfile, channel=ch0, path=path,  extention=wav, vol=1):
   channel.stop()
   if isinstance(vol, tuple): channel.set_volume(vol[0], vol[1])
   else: channel.set_volume(vol)  

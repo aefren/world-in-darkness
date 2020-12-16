@@ -45,7 +45,6 @@ class Skill:
     pass
 
 
-
 class Ambushment(Skill):
   name = 'Emboscada'
   desc = '+1 att, +2 dfs, +2 moves if unit is hidden and unit is in forest, swamp or hill.'
@@ -195,7 +194,7 @@ class Charge(Skill):
   type = 'generic'
 
   def run(self, itm):
-    itm.damage_charge_mod += 1
+    itm.can_charge = 1
 
 
 
@@ -415,7 +414,7 @@ class ForestTerrain(Skill):
     itm.stealth_mod += 2
     if itm.forest_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.charge = 0
+      itm.charges = 0
       itm.moves_mod -= 2
       itm.dfs_mod -= 1
       itm.off_mod -= 1
@@ -473,7 +472,7 @@ class HeavyCharge(Skill):
   type = 'generic'
 
   def run(self, itm):
-    itm.damage_charge_mod += 3
+    itm.can_charge = 1
 
 
 
@@ -517,7 +516,7 @@ class HillTerrain(Skill):
     itm.stealth_mod += 2
     if itm.mountain_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.charge = 0
+      itm.charges = 0
       itm.moves_mod -= 2
       itm.dfs_mod -= 1
       itm.off_mod -= 1
@@ -666,48 +665,6 @@ class Intoxicated(Skill):
       itm.nation.log[-1] += [msg]
       itm.hp_total -= damage
       if itm.show_info: sleep(loadsound('spell34', channel=ch5) / 2)
-
-
-class Javelins(Skill):
-  effect = 'self'
-  name = "javelins"
-  desc = ''
-  # ranking = 1.2
-  damage = 4
-  dist = 9
-  type = 'before attack'
-
-  def run(self, itm):
-    if (itm.target and itm.pre_melee > 0 
-        and itm.target.dist <= self.dist ):
-      target = itm.target
-      for r in range(itm.units):
-        wounds = 00
-        logging.debug(f'{self.name}.')
-        logging.debug(f'{itm.dist=:}, {target.dist=:}.')
-        off = 4
-        off -= target.dfs + target.dfs_mod
-        hit = basics.get_hit_mod(off)
-        logging.debug(f'hit {hit}.')
-        
-        st = 4
-        st -= target.res + target.res_mod
-        wound = basics.get_wound_mod(st)
-        logging.debug(f'wound {wound}.')          
-        if basics.roll_dice(1) >= wound:
-          damage += 2
-          if basics.roll_dice(1) == 6:
-            damage += 2
-    # itm.damage_done[-1] += damage
-    if damage:
-      if damage > target.hp_total: damage = target.hp_total
-      target.hp_total -= damage
-      target.update()
-      target.deads[-1] += target.c_units - target.units
-      itm.temp_log += [f'{self.name} ({itm}) {kills_t} {target.deads[-1]}.']
-      logging.debug(f'hiere on {damage}.')
-
-
 
 
 
@@ -897,7 +854,7 @@ class mist(Skill):
   effect = 'all'
   type = 'generic'
 
-  def run(selfself, itm):
+  def run(self, itm):
     itm.effects += [self.name]
     itm.stealth_mod += 3
     if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 3
@@ -996,7 +953,8 @@ class PikeSquare (Skill):
   type = 'generic'
 
   def run(self, itm):
-    if itm.squads >= 2:
+    if (itm.squads >= 2 and itm.target
+        and itm.dist < itm.weapon.range_max and itm.dist >= itm.weapon.range_min):
       itm.effects.append(self.name) 
       itm.att_mod += 1
     elif itm.squads >= 3:
@@ -1309,7 +1267,7 @@ class SwampTerrain(Skill):
   def run(self, itm):
     if itm.swamp_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
-      itm.charge = 0
+      itm.charges = 0
       itm.dfs_mod -= 1
       itm.moves_mod -= 2
       itm.off_mod -= 1
@@ -1433,7 +1391,7 @@ class ToxicArrows(Skill):
 
 
 class ToxicClaws(Skill):
-  name = 'garras t�xicas.'
+  name = 'ToxicClawicas.'
   desc = 'units loses x damage per turn during x turns.'
   effect = 'self'
   ranking = 1.2

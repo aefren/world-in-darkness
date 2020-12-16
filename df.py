@@ -3744,13 +3744,13 @@ class Game:
   
     if event.type == pygame.KEYDOWN:
       if event.key == pygame.K_7:
-        pos.add_unit(VladDracul, wallachia_t, 1)
+        pos.add_unit(Equite, holy_empire_t, 1)
       if event.key == pygame.K_8:
         pos.add_unit(Ghoul, wallachia_t, 1)
       if event.key == pygame.K_9:
         pos.add_unit(Principes, holy_empire_t, 1)
       if event.key == pygame.K_0:
-        pos.add_unit(WeetOne, holy_empire_t, 1)
+        pos.add_unit(Velites, holy_empire_t, 1)
       if event.key == pygame.K_a:
         if x > -1:
           target = local_units[x].set_attack()
@@ -4239,7 +4239,7 @@ class Game:
               nation_name = None
           if pos.sight:
             local_units = pos.get_units(nation)
-            local_units.sort(key=lambda x: x.damage, reverse=True)
+            #local_units.sort(key=lambda x: x.damage, reverse=True)
             local_units.sort(key=lambda x: x.units, reverse=True)
             local_units.sort(key=lambda x: x.scout)
             local_units.sort(key=lambda x: x.settler)

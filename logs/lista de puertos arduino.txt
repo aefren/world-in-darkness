@@ -1,0 +1,39 @@
+lista de puertos Arduino1:
+
+puente ICSP.
+IQRF
+IQRF.
+Reset.
+3.3V
+5V
+Tierra
+tierra.
+VIN.
+
+a0
+a1
+a2
+a3
+a4
+a5
+
+
+Puente AREF.
+SCL.
+SDA.
+AREF.
+GND.
+13.
+12.
+11
+10
+9.
+8.
+7.
+6.
+5.
+4.
+3.
+2.
+1 TX.
+0 RX.
