@@ -349,10 +349,7 @@ class Terrain:
           if tl.nation != nation and tl.nation != None: self.around_nations += [tl.nation]
           if tl.nation == nation: self.around_snations += [tl.nation]
           for uni in tl.units:
-            try:
-              uni.update()
-            except:
-              Pdb().set_trace()
+            uni.update()
             if uni.nation != nation and uni.hidden == 0:
               self.around_threat += uni.ranking
             if uni.nation == nation:
@@ -934,12 +931,12 @@ class World:
     self.season_events()
     
     self.buildings = []
-    self.units = []
+    self.random_units = []
     for t in scenary:
       for b in t.buildings:
         if b.nation in self.random_nations: self.buildings += [b]
       for uni in t.units:
-        if uni.nation in self.random_nations: self.units.append(uni)
+        if uni.nation in self.random_nations: self.random_units.append(uni)
     self.nations_score = sum(n.score for n in self.nations)
     self.units = [i for i in self.units if i.hp_total > 0]
     
@@ -1173,6 +1170,7 @@ class Ai:
         i.split()
   
   def ai_expand_city(self, city):
+    import data.weapons
     '''buscará expandir la ciudad.'''
     logging.info(f'ai_expand_city {city}. gold {city.nation.gold}')
     city.nation.devlog[-1] += [f'expanding {city}']

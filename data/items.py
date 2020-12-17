@@ -1452,14 +1452,15 @@ class Unit:
   shield = None
   defensive_skills = []
 
-  att = 0
-  weapon = None
-  base_weapon = None
+  att1 = 0
+  weapon1 = None
+  weapon2 = None
+  weapon3 = None
   javelins = 0
   rng = 1
   mrng = 0
   off = 0
-  str = 0
+  strn = 0
   pn = 0
   offensive_skills = []
   other_skills = [] 
@@ -1543,8 +1544,8 @@ class Unit:
     self.other_skills = [i for i in self.other_skills]
     self.traits = [i for i in self.traits]
     self.terrain_skills = [i(self) for i in self.terrain_skills]
-    if self.weapon: self.weapon = self.weapon(self)
-    if self.base_weapon: self.base_weapon = self.base_weapon(self)
+    if self.weapon1: self.weapon1 = self.weapon1(self)
+    if self.weapon2: self.weapon2 = self.weapon2(self)
     self.mp = [i for i in self.mp]
     self.food_total = self.food * self.units
     self.upkeep_total = self.upkeep * self.units
@@ -1675,7 +1676,7 @@ class Unit:
       
       self.update()
       building = choice(buildings)
-      damage = (self.damage + self.damage_mod) * self.att
+      damage = (self.damage + self.damage_mod) * self.att1
       damage *= self.units
       if self.resolve + self.resolve_mod >= 7: damage *= 0.3
       if self.resolve + self.resolve_mod >= 5: damage *= 0.2
@@ -1750,7 +1751,7 @@ class Unit:
       logging.debug(f"self not in self.pos")
     _units = [it for it in pos.units if it.nation != self.nation]
     [it.update() for it in _units]
-    _units.sort(key=lambda x: sum([x.off, x.off_mod, x.str, x.str_mod]), reverse=True)
+    _units.sort(key=lambda x: sum([x.off, x.off_mod, x.strn, x.strn_mod]), reverse=True)
     _units.sort(key=lambda x: x.units, reverse=True)
     _units.sort(key=lambda x: x.rng >= 6, reverse=True)
     _units.sort(key=lambda x: x.comm)
@@ -1856,8 +1857,8 @@ class Unit:
           f"{skills_t} {units[0].skill_names}. {units[1].skill_names}.",
           f"off: {self.off+self.off_mod} +{self.off_mod} " 
           f"VS {target.off+target.off_mod} +{target.off_mod}.",
-          f"str: {self.str+self.str_mod} +{self.str_mod} " 
-          f"VS {target.str+target.str_mod} +{target.str_mod}.",
+          f"strn: {self.strn+self.strn_mod} +{self.strn_mod} " 
+          f"VS {target.strn+target.strn_mod} +{target.strn_mod}.",
           f"shield: {shields[0]} VS {shields[1]}.",
           f"armor: {armors[0]} VS {armors[1]}." 
           ]
@@ -1958,8 +1959,8 @@ class Unit:
 
   def combat_charge(self, damage, info=0):
     self.temp_log += [f"{self} {charges_t}"]
-    if self.weapon: damage += self.weapon.damage
-    if self.base_weapon: damage += self.base_weapon.damage
+    if self.weapon1: damage += self.weapon1.damage
+    if self.weapon2: damage += self.weapon2.damage
     if info: logging.debug(f"{self} {charges_t}.")
     self.charges = 0
     return damage
@@ -1984,20 +1985,25 @@ class Unit:
     self.damage_done[-1] += damage
     target.deads[-1] += target.c_units - target.units
 
-  def combat_fight(self, weapon=weapon, hits=1, shield=1, armor=1, wound=1, info=0):
+  def combat_fight(self, weapon, info=0):
     target = self.target
     damage = weapon.damage
-    damage + ((self.str + self.str_mod) - (self.target.res + self.target.res_mod)) 
+    strn = self.strn+self.strn_mod
+    res = self.target.res+self.target.res_mod
+    damage += strn - res
+    pn = weapon.pn
+    pn += floor((strn-res)/2)  
+    if pn < 0: pn = 0 
     # hits.
-    if hits and self.combat_hits(self.off + self.off_mod, info) == None: return
+    if weapon.hits and self.combat_hits(self.off + self.off_mod, info) == None: return
     # Shield.
-    if shield and self.combat_shield(target, info): return
+    if weapon.shield and self.combat_shield(target, info): return
     # Wounds.
-    if wound:
-      hit_to = self.combat_wounds(self.str + self.str_mod, info)
+    if weapon.wounds:
+      hit_to = self.combat_wounds(self.strn + self.strn_mod, info)
       if hit_to == None: return
     # Armors.
-    if armor and self.combat_armors(hit_to, self.pn + self.pn_mod, target, info) == 1: return
+    if weapon.armor and self.target.armor and self.combat_armors(hit_to, pn, target, info) == 1: return
     damage = self.combat_critical(damage, weapon, hit_to)
     if self.charges: damage = self.combat_charge(damage, info=0) 
     self.combat_damage(damage, target, info=0)
@@ -2030,20 +2036,20 @@ class Unit:
     self.critical_damage = 0
     if info: logging.info(f"{self} total hp {self.hp_total} ataca.")
     
-    if (self.weapon 
-        and self.dist in range(self.weapon.range_min, self.weapon.range_max + 1)):
-      weapon = self.weapon
+    if (self.weapon1 
+        and self.dist in range(self.weapon1.range_min, self.weapon1.range_max + 1)):
+      weapon = self.weapon1
       self.temp_log += [
           f"{self} {attacking_t}. dist {self.dist}",
           f"effects {self.effects}",
-          f"att {self.att + self.att_mod} (+{self.att_mod}).",
+          f"att1 {self.att1 + self.att_mod} (+{self.att_mod}).",
           f"{weapon_t}: {weapon.name}," 
           f"{damage_t} {weapon.damage} {critical_t} {weapon.critical}.",
           ]
         
       for uni in range(self.units):
         if info: logging.debug(f"unidad {uni+1} de {self.units}.")
-        attacks = self.att + self.att_mod
+        attacks = self.att1 + self.att_mod
         for i in range(attacks):
           if target.hp_total < 1: break
           self.attacks[-1] += 1
@@ -2052,19 +2058,42 @@ class Unit:
           weapon.run()
       weapon.effects()
       
-    if (self.base_weapon 
-        and self.dist in range(self.base_weapon.range_min, self.base_weapon.range_max + 1)): 
-      weapon = self.base_weapon
+    if (self.weapon2 
+        and self.dist in range(self.weapon2.range_min, self.weapon2.range_max + 1)): 
+      weapon = self.weapon2
       self.temp_log += [
           f"{self} {attacking_t}. dist {self.dist}",
           f"effects {self.effects}",
-          f"att {self.att + self.att_mod} (+{self.att_mod}). "
+          f"att1 {self.att1 + self.att_mod} (+{self.att_mod}). "
           f"{weapon_t}: {weapon.name}. ",
+          f"{damage_t} {weapon.damage} {critical_t} {weapon.critical}.",
           ]
         
       for uni in range(self.units):
         if info: logging.debug(f"unidad {uni+1} de {self.units}.")
-        attacks = self.base_att + self.att2_mod
+        attacks = self.att2 + self.att2_mod
+        for i in range(attacks):
+          if target.hp_total < 1: break
+          self.attacks[-1] += 1
+          if info: logging.debug(f"ataque {i+1} de {attacks}.")
+          target.c_units = target.units
+          weapon.run()
+      weapon.effects()
+    
+    if (self.weapon3 
+        and self.dist in range(self.weapon2.range_min, self.weapon2.range_max + 1)): 
+      weapon = self.weapon3
+      self.temp_log += [
+          f"{self} {attacking_t}. dist {self.dist}",
+          f"effects {self.effects}",
+          f"att1 {self.att1 + self.att_mod} (+{self.att_mod}). "
+          f"{weapon_t}: {weapon.name}. ",
+          f"{damage_t} {weapon.damage} {critical_t} {weapon.critical}.",
+          ]
+        
+      for uni in range(self.units):
+        if info: logging.debug(f"unidad {uni+1} de {self.units}.")
+        attacks = self.att2 + self.att2_mod
         for i in range(attacks):
           if target.hp_total < 1: break
           self.attacks[-1] += 1
@@ -2073,10 +2102,13 @@ class Unit:
           weapon.run()
       weapon.effects()
         
+    
     self.hits_failed[-1] = self.attacks[-1] - self.strikes[-1]
     if self.damage_done[-1] and self.target.hidden: 
       self.temp_log += [f"{self.target} revealed."]
       self.target.revealed = 1
+    
+    
     
     self.temp_log += [  
       f"{attacks_t} {self.attacks[-1]}, {hits_failed_t} {self.hits_failed[-1]}, "
@@ -2164,10 +2196,10 @@ class Unit:
   def combat_moves(self, dist, info=1):
       moves = self.moves + self.moves_mod
       c_dist = dist
-      if self.weapon: weapon = self.weapon
-      else: weapon = self.base_weapon
-      if self.target.weapon:target_weapon = self.target.weapon
-      else: target_weapon = self.target.base_weapon
+      if self.weapon1: weapon = self.weapon1
+      else: weapon = self.weapon2
+      if self.target.weapon1:target_weapon = self.target.weapon1
+      else: target_weapon = self.target.weapon2
       if info:logging.debug(f"distancia de {self}  {dist}.")
       
       if (self.attacking and dist > weapon.range_max
@@ -2191,7 +2223,7 @@ class Unit:
         if move > moves: move = moves
         if self.hidden: move += 2
         dist += move
-        if dist > self.weapon.range_max: dist = self.weapon.range_max
+        if dist > self.weapon1.range_max: dist = self.weapon1.range_max
         if info: logging.debug(f"distancia final {dist}.")
         self.temp_log += [f"{self} backs up from {c_dist} to {dist}"]
       return dist
@@ -2418,12 +2450,12 @@ class Unit:
           f"{armor_t} {armor}.",
           f"{shield_t} {shield}.",
           f"defensive skills {defensive_skills}.",
-          f"{attacks_t} {self.att+self.att_mod} ({self.att_mod}).",
+          f"{attacks_t} {self.att1+self.att_mod} ({self.att_mod}).",
           f"{range_t} {self.rng+self.rng_mod} ({self.rng_mod}).",
           f"{damage_t} {self.damage+self.damage_mod} ({self.damage_mod}).",
           f"sacred damage {self.damage_sacred}",
           f"{offensive_t} {self.off+self.off_mod} ({self.off_mod}).",
-          f"{strength_t} {self.str+self.str_mod} ({self.str_mod}).",
+          f"{strength_t} {self.strn+self.strn_mod} ({self.strn_mod}).",
           f"{piercing_t} {self.pn+self.pn_mod} ({self.pn_mod}).",
           f"offensive skills {offensive_skills}.",
           f"spells {spells}." 
@@ -2902,10 +2934,10 @@ class Unit:
       if self.pos.pop:
         logging.debug(f"{self.pop=:}.")
         pop = self.pos.pop
-        deads = self.base_weapon.damage
-        if self.weapon: deads += self.weapon.damage
+        deads = self.weapon2.damage
+        if self.weapon1: deads += self.weapon1.damage
         logging.debug(f"initial dead {deads}.")
-        deads *= randint(1, self.att + self.att_mod + 1)
+        deads *= randint(1, self.att1 + self.att_mod + 1)
         if mounted_t in self.traits: deads *= 2 
         logging.debug(f"second dead {deads}.")
         defense = sum([i.units for i in self.pos.units if i.nation == self.pos.nation])
@@ -3152,8 +3184,8 @@ class Unit:
   def set_ranking(self):
     self.ranking_off = 0
     self.ranking_off_l = []
-    self.ranking_off *= self.att + self.att_mod
-    self.ranking_off_l += ["att", self.ranking_off]
+    self.ranking_off *= self.att1 + self.att_mod
+    self.ranking_off_l += ["att1", self.ranking_off]
     self.ranking_off *= self.units
     self.ranking_off_l += ["units", self.ranking_off]
     # if self.ranking > 1: self.ranking //= 2
@@ -3163,13 +3195,11 @@ class Unit:
     elif self.off + self.off_mod >= 4: self.ranking_off *= 1.3 + (self.off + self.off_mod) / 10
     else: self.ranking_off *= 1 + (self.off + self.off_mod) / 20
     self.ranking_off_l += ["off", self.ranking_off]
-    if self.str + self.str_mod >= 8: self.ranking_off *= 2.5 + (self.str + self.str_mod) / 10
-    elif self.str + self.str_mod >= 6: self.ranking_off *= 2 + (self.str + self.str_mod) / 10
-    elif self.str + self.str_mod >= 4: self.ranking_off *= 1.5 + (self.str + self.str_mod) / 10
-    else: self.ranking_off *= 1 + (self.str + self.str_mod) / 10
-    self.ranking_off_l += ["str", self.ranking_off]
-    self.ranking_off *= 1 + (self.pn + self.pn_mod) / 5
-    self.ranking_off_l += ["pn", self.ranking_off]
+    if self.strn + self.strn_mod >= 8: self.ranking_off *= 2.5 + (self.strn + self.strn_mod) / 10
+    elif self.strn + self.strn_mod >= 6: self.ranking_off *= 2 + (self.strn + self.strn_mod) / 10
+    elif self.strn + self.strn_mod >= 4: self.ranking_off *= 1.5 + (self.strn + self.strn_mod) / 10
+    else: self.ranking_off *= 1 + (self.strn + self.strn_mod) / 10
+    self.ranking_off_l += ["strn", self.ranking_off]
     self.ranking_off *= 1 + (self.moves + self.moves_mod) / 20
     self.ranking_off_l += ["moves", self.ranking_off]
     self.ranking_off = round(self.ranking_off / 20)
@@ -3204,10 +3234,6 @@ class Unit:
     self.ranking_dfs = round(self.ranking_dfs / 20)
 
     self.ranking = self.ranking_dfs + self.ranking_off
-    if self.rng + self.rng_mod >= 20: self.ranking *= 2
-    elif self.rng + self.rng_mod >= 15: self.ranking *= 1.75
-    elif self.rng + self.rng_mod >= 10: self.ranking *= 1.5
-    elif self.rng + self.rng_mod >= 6: self.ranking *= 1.2
   
     if self.can_fly: self.ranking *= 1.3
     if self.resolve + self.resolve_mod >= 6: self.ranking *= 1.3
@@ -3245,7 +3271,7 @@ class Unit:
     self.resolve_mod = 0
     self.size_mod = 0
     self.stealth_mod = 0
-    self.str_mod = 0
+    self.strn_mod = 0
     self.sts_mod = 0
 
     self.skill_names = []
@@ -3427,8 +3453,12 @@ class Unit:
     if self.leader and self.leader.group == []: self.leader = None
     self.show_info = self.nation.show_info
     ranges = []
-    if self.weapon: ranges += [self.weapon.range_min, self.weapon.range_max]
-    if self.base_weapon: ranges += [self.base_weapon.range_min, self.base_weapon.range_max]
+    self.damage1 = self.weapon1.damage if self.weapon1 else 0
+    self.damage2 = self.weapon2.damage if self.weapon2 else 0
+    self.damage3 = self.weapon3.damage if self.weapon3 else 0
+    self.damage = self.damage1+self.damage2+self.damage3
+    if self.weapon1: ranges += [self.weapon1.range_min, self.weapon1.range_max]
+    if self.weapon2: ranges += [self.weapon2.range_min, self.weapon2.range_max]
     self.range = [min(ranges), max(ranges)]
     
     # ranking.
@@ -3898,10 +3928,10 @@ class DemonHunter(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.SoulDrain
-  att = 1
+  weapon1 = weapons.SoulDrain
+  att1 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment]
 
   def __init__(self, nation):
@@ -3943,12 +3973,12 @@ class Druid(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortPoisonBow
-  att = 1
-  base_weapon = weapons.ToxicDagger
-  base_att = 1
+  weapon1 = weapons.ShortPoisonBow
+  att1 = 1
+  weapon2 = weapons.ToxicDagger
+  att2 = 1
   off = 3
-  str = 2
+  strn = 2
   offensive_skills = [Ambushment]
 
   def __init__(self, nation):
@@ -3990,10 +4020,10 @@ class KeeperOfTheGrove (Elf):
   arm = 0
   armor = MediumArmor()
 
-  weapon = weapons.GreatSword
-  att = 2
+  weapon1 = weapons.GreatSword
+  att1 = 2
   off = 5
-  str = 4
+  strn = 4
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4036,12 +4066,12 @@ class PriestessOfTheMoon(Elf):
   arm = 2
   armor = None
 
-  weapon = weapons.LongBow
-  att = 2
-  base_weapons = weapons.TigerFangs
-  base_att = 1
+  weapon1 = weapons.LongBow
+  att1 = 2
+  weapon2 = weapons.TigerFangs
+  att2 = 1
   off = 5
-  str = 4
+  strn = 4
   def __init__(self, nation):
     super().__init__(nation)
     self.spells = []  # [Entangling Roots ]
@@ -4077,12 +4107,12 @@ class AwakenTree(Elf):
   arm = 5
   armor = None
 
-  weapon = weapons.Branch
-  att = 4
-  base_weapon = weapons.Crush
-  base_att = 1
+  weapon1 = weapons.Branch
+  att1 = 4
+  weapon2 = weapons.Crush
+  att2 = 1
   off = 4
-  str = 5
+  strn = 5
   offensive_skills = [ImpalingRoots]
 
   def __init__(self, nation):
@@ -4122,12 +4152,12 @@ class BladeDancer(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.Sword
-  att = 2
-  base_weapon = weapons.Dagger
-  base_att =1
+  weapon1 = weapons.Sword
+  att1 = 2
+  weapon2 = weapons.Dagger
+  att2 =1
   off = 4
-  str = 3
+  strn = 3
   pn = 1
   offensive_skills = [Ambushment]
 
@@ -4169,10 +4199,10 @@ class Driad(Elf):
   arm = 2
   armor = None
 
-  weapon = weapons.ShortBow
-  att = 2
+  weapon1 = weapons.ShortBow
+  att1 = 2
   off = 4
-  str = 4
+  strn = 4
   
   stealth = 8
   offensive_skills = [Ambushment]
@@ -4210,12 +4240,12 @@ class EternalGuard(Elf):
   arm = 0
   armor = HeavyArmor()
 
-  weapon = weapons.Spear
-  att = 1
-  base_weapon = weapons.Dagger
-  base_att = 1
+  weapon1 = weapons.Spear
+  att1 = 1
+  weapon2 = weapons.Dagger
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -4256,12 +4286,12 @@ class Falcon(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.Claw
-  att = 2
-  base_weapon = weapons.Bite
-  base_att = 2
+  weapon1 = weapons.Claw
+  att1 = 2
+  weapon2 = weapons.Bite
+  att2 = 2
   off = 4
-  str = 3
+  strn = 3
   pn = 0
 
   def __init__(self, nation):
@@ -4297,12 +4327,12 @@ class ForestBear(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Claw
-  att = 2
-  base_weapon = weapons.Bite
-  base_att = 1
+  weapon1 = weapons.Claw
+  att1 = 2
+  weapon2 = weapons.Bite
+  att2 = 1
   off = 4
-  str = 5
+  strn = 5
   pn = 0
 
   def __init__(self, nation):
@@ -4343,12 +4373,12 @@ class ForestEagle(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.Claw
-  att = 2
-  base_weapon = weapons.Bite
-  base_att = 1
+  weapon1 = weapons.Claw
+  att1 = 2
+  weapon2 = weapons.Bite
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   pn = 1
 
   def __init__(self, nation):
@@ -4386,12 +4416,12 @@ class GreatEagle(Elf):
   arm = 2
   armor = None
 
-  weapon = weapons.Talon
-  att = 2
-  base_weapon = weapons.Beak
-  base_att = 1
+  weapon1 = weapons.Talon
+  att1 = 2
+  weapon2 = weapons.Beak
+  att2 = 1
   off = 5
-  str = 5
+  strn = 5
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4426,12 +4456,12 @@ class ForestGiant(Unit):
   arm = 2
   armor = None
 
-  weapon = weapons.GreatClub
-  att = 1
-  base_weapon = weapons.Crush
-  base_att = 1
+  weapon1 = weapons.GreatClub
+  att1 = 1
+  weapon2 = weapons.Crush
+  att2 = 1
   off = 4
-  str = 5
+  strn = 5
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4470,10 +4500,10 @@ class ForestGuard(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortSword
-  att = 1
+  weapon1 = weapons.ShortSword
+  att1 = 1
   off = 3
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment]
 
   def __init__(self, nation):
@@ -4514,12 +4544,12 @@ class ForestRider(Elf):
   armor = HeavyArmor
   shield = Shield()
 
-  weapon = weapons.Lance 
-  att = 1
-  base_weapon = weapons.Hoof
-  base_att = 2
+  weapon1 = weapons.Lance 
+  att1 = 1
+  weapon2 = weapons.Hoof
+  att2 = 2
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
@@ -4560,11 +4590,11 @@ class ElvesSettler(Human):
   arm = 0
   armor = None
 
-  att = 2
+  att1 = 2
   damage = 1
   rng = 1
   off = 1
-  str = 1
+  strn = 1
   pn = 0
 
   def __init__(self, nation):
@@ -4603,12 +4633,12 @@ class Huntress(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.CrossBow
-  att = 1
-  base_weapon = weapons.ShortSword
-  base_att = 1
+  weapon1 = weapons.CrossBow
+  att1 = 1
+  weapon2 = weapons.ShortSword
+  att2 = 1
   off = 5
-  str = 4
+  strn = 4
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -4648,12 +4678,12 @@ class WoodArcher(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.Bow
-  att = 2
-  base_weapon = weapons.Dagger
-  att = 1
+  weapon1 = weapons.Bow
+  att1 = 2
+  weapon2 = weapons.Dagger
+  att1 = 1
   off = 4
-  str = 2
+  strn = 2
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -4694,12 +4724,12 @@ class SisterFromTheDeepth(Elf):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortPoisonBow
-  att = 2
-  base_weapon = weapons.ToxicDagger
-  base_att = 1
+  weapon1 = weapons.ShortPoisonBow
+  att1 = 2
+  weapon2 = weapons.ToxicDagger
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -4739,12 +4769,12 @@ class ElkRider(Elf):
   arm = 2
   armor = None
 
-  weapon = weapons.LongBow
-  att = 2
-  base_weapon = weapons.HeavyHoof
-  base_att = 2
+  weapon1 = weapons.LongBow
+  att1 = 2
+  weapon2 = weapons.HeavyHoof
+  att2 = 2
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [BattleFocus, HeavyCharge]
 
   def __init__(self, nation):
@@ -5085,12 +5115,12 @@ class Legatus(Human):
   shield = Shield()
   defensive_skills = []
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = []
 
   def __init__(self, nation):
@@ -5132,11 +5162,11 @@ class Augur(Unit):
   arm = 0
   armor = None
 
-  base_weapon = weapons.Staff
-  base_att = 1
-  att = 1
+  weapon2 = weapons.Staff
+  att2 = 1
+  att1 = 1
   off = 3
-  str = 2
+  strn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5178,12 +5208,12 @@ class Aquilifer(Human):
   armor = HeavyArmor()
   shield = Shield()
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 5
-  str = 3
+  strn = 3
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5221,10 +5251,10 @@ class Flamen(Human):
   arm = 0
   armor = LightArmor()
 
-  weapon = weapons.Staff
-  att = 1
+  weapon1 = weapons.Staff
+  att1 = 1
   off = 4
-  str = 2
+  strn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5264,10 +5294,10 @@ class PontifexMaximus(Unit):
   armor = LightArmor()
   shield = Shield()
 
-  weapon = weapons.Staff
-  att = 1
+  weapon1 = weapons.Staff
+  att1 = 1
   off = 4
-  str = 2
+  strn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5303,10 +5333,10 @@ class Settler(Human):
   arm = 0
   armor = None
 
-  base_weapon = weapons.Fist
-  att = 2
+  weapon2 = weapons.Fist
+  att1 = 2
   off = 1
-  str = 1
+  strn = 1
   pn = 0
 
   def __init__(self, nation):
@@ -5344,12 +5374,12 @@ class Flagellant(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Flail
-  att = 2
-  base_weapon = weapons.Fist
-  base_att = 1
+  weapon1 = weapons.Flail
+  att1 = 2
+  weapon2 = weapons.Fist
+  att2 = 1
   off = 3
-  str = 2
+  strn = 2
   offensive_skills = [Fanatism]
 
   def __init__(self, nation):
@@ -5386,12 +5416,12 @@ class RebornOne(Human):
   armor = None
   Shield = Shield()
 
-  weapon = weapons.Sword
-  att = 1
-  base_weapon = weapons.Fist
-  base_att = 1
+  weapon1 = weapons.Sword
+  att1 = 1
+  weapon2 = weapons.Fist
+  att2 = 1
   off = 4
-  str = 2
+  strn = 2
   offensive_skills = [Fanatism]
 
   def __init__(self, nation):
@@ -5428,12 +5458,12 @@ class Velites(Human):
   armor = None
   shield = Shield()
 
-  weapon = weapons.Sword
-  att = 1
-  base_weapon = weapons.Fist
-  base_att = 1 
+  weapon1 = weapons.Sword
+  att1 = 1
+  weapon2 = weapons.Fist
+  att2 = 1 
   off = 2
-  str = 2
+  strn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5468,12 +5498,12 @@ class ImperialGuard(Human):
   arm = 0
   armor = HeavyArmor()
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 5
-  str = 3
+  strn = 3
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5508,12 +5538,12 @@ class Hastati(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.BronzeSpear
-  att = 1
-  base_weapon = weapons.Dagger
-  base_att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
+  weapon2 = weapons.Dagger
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -5549,12 +5579,12 @@ class Principes(Human):
   arm = 0
   armor = HeavyArmor()
 
-  weapon = weapons.Spear
-  att = 1
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.Spear
+  att1 = 1
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -5590,12 +5620,12 @@ class Halberdier(Human):
   arm = 0
   armor = MediumArmor()
 
-  weapon = weapons.Halberd
-  att = 1
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.Halberd
+  att1 = 1
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [MassSpears, PikeSquare]
 
   def __init__(self, nation):
@@ -5632,12 +5662,12 @@ class SacredWarrior(Human):
   armor = None
   shield = Shield()
 
-  weapon = weapons.BlessedSword
-  att = 2
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.BlessedSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [ShadowHunter]
 
   def __init__(self, nation):
@@ -5674,12 +5704,12 @@ class KnightsTemplar (Human):
   arm = 0
   armor = HeavyArmor()
 
-  weapon = weapons.LongSpear
-  att = 1
-  base_weapon = weapons.Pugio
-  base_att = 1
+  weapon1 = weapons.LongSpear
+  att1 = 1
+  weapon2 = weapons.Pugio
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -5716,12 +5746,12 @@ class Sagittarii(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Bow
-  att = 2
-  base_weapon = weapons.Dagger
-  base_att = 1
+  weapon1 = weapons.Bow
+  att1 = 2
+  weapon2 = weapons.Dagger
+  att2 = 1
   off = 3
-  str = 2
+  strn = 2
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
   def __init__(self, nation):
@@ -5756,12 +5786,12 @@ class CrossBowMan(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.CrossBow
-  att = 1
-  base_weapon = weapons.Dagger
-  base_att = 1
+  weapon1 = weapons.CrossBow
+  att1 = 1
+  weapon2 = weapons.Dagger
+  att2 = 1
   off = 5
-  str = 5
+  strn = 5
   offensive_skills = [Ambushment, ReadyAndWaiting]
 
   def __init__(self, nation):
@@ -5796,9 +5826,9 @@ class Arquebusier(Human):
   arm = 0
   armor = None
 
-  att = 1
+  att1 = 1
   off = 5
-  str = 5
+  strn = 5
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
   def __init__(self, nation):
@@ -5833,11 +5863,11 @@ class Musket(Human):
   arm = 0
   armor = None
 
-  att = 2
+  att1 = 2
   damage = 3
   rng = 20
   off = 5
-  str = 5
+  strn = 5
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
   def __init__(self, nation):
@@ -5874,12 +5904,12 @@ class Equite(Human):
   armor = None
   shield = None
 
-  weapon = weapons.LightLance
-  att = 1
-  base_weapon = weapons.Hoof
-  base_att = 2
+  weapon1 = weapons.LightLance
+  att1 = 1
+  weapon2 = weapons.Hoof
+  att2 = 2
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -5920,12 +5950,12 @@ class Equites2(Human):
   arm = 2
   armor = HeavyArmor()
 
-  weapon = weapons.Lance
-  att = 1
-  base_weapon = weapons.Sword
-  base_att = 1
+  weapon1 = weapons.Lance
+  att1 = 1
+  weapon2 = weapons.Sword
+  att2 = 1
   off = 5
-  str = 5
+  strn = 5
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -5965,12 +5995,12 @@ class Gryphon(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Talon
-  att = 2
-  base_weapon = weapons.Beak
-  base_att = 1
+  weapon1 = weapons.Beak
+  att1 = 2
+  weapon2 = weapons.Talon
+  att2 = 1
   off = 5
-  str = 5
+  strn = 5
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -6007,12 +6037,12 @@ class GryphonRiders(Unit):
   arm = 2
   armor = None
 
-  weapon = weapons.Talon
-  att = 2
-  base_weapon = weapons.Sword
-  base_att = 2
+  weapon1 = weapons.Talon
+  att1 = 2
+  weapon2 = weapons.Sword
+  att2 = 2
   off = 5
-  str = 5
+  strn = 5
   pn = 1
   offensive_skills = [HeavyCharge]
 
@@ -6383,10 +6413,10 @@ class Adjule(Unit):
   arm = 0
   armor = None
 
-  att = 2
+  att1 = 2
   damage = 2
   off = 4
-  str = 4
+  strn = 4
   pn = 0
   
   stealth = 6
@@ -6433,12 +6463,12 @@ class WailingLady(Undead):
   arm = 0
   armor = None
 
-  weapon = weapons.ScreenOfSorrow
-  att = 1
-  base_weapon = weapons.Skythe
-  base_att = 1
+  weapon1 = weapons.ScreenOfSorrow
+  att1 = 1
+  weapon2 = weapons.Skythe
+  att2 = 1
   off = 5
-  str = 6
+  strn = 6
   
   stealth = 8
 
@@ -6476,10 +6506,10 @@ class Bat(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.Bite
-  att = 2
+  weapon1 = weapons.Bite
+  att1 = 2
   off = 2
-  str = 1
+  strn = 1
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6517,12 +6547,12 @@ class BlackKnight(Undead):
   arm = 1
   armor = HeavyArmor()
 
-  weapon = weapons.Lance
-  att = 1
-  base_weapon = weapons.BroadSword
-  base_att = 1
+  weapon1 = weapons.Lance
+  att1 = 1
+  weapon2 = weapons.BroadSword
+  att2 = 1
   off = 5
-  str = 4
+  strn = 4
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -6564,12 +6594,12 @@ class BloodKnight(Undead):
   armor = HeavyArmor()
   shield = Shield()
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.BloodDrinker
-  base_att = 1
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.BloodDrinker
+  att2 = 1
   off = 6
-  str = 6
+  strn = 6
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6607,12 +6637,12 @@ class CryptHorror(Undead):
   arm = 2
   armor = None
 
-  weapon = weapons.ToxicClaw
-  att = 2
-  base_weapon = weapons.ToxicFangs
-  base_att = 1
+  weapon1 = weapons.ToxicClaw
+  att1 = 2
+  weapon2 = weapons.ToxicFangs
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6648,12 +6678,12 @@ class DireWolf(Undead):
   arm = 2
   armor = None
 
-  weapon = weapons.Claw
-  att = 2
-  base_weapon = weapons.Bite
-  base_att = 1
+  weapon1 = weapons.Claw
+  att1 = 2
+  weapon2 = weapons.Bite
+  att2 = 1
   off = 5
-  str = 5
+  strn = 5
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6694,12 +6724,12 @@ class Draugr(Unit):
   hres = 1
   arm = 2
 
-  weapon = weapons.ToxicClaw
-  att = 2
-  base_weapon = weapons.Crush
-  base_att = 1
+  weapon1 = weapons.ToxicClaw
+  att1 = 2
+  weapon2 = weapons.Crush
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
   
   stealth = 4
 
@@ -6744,12 +6774,12 @@ class FellBat(Undead):
   hres = 1
   arm = 0
 
-  weapon = weapons.Claw
-  att = 2
-  base_weapon = weapons.Bite
-  base_att = 2
+  weapon1 = weapons.Claw
+  att1 = 2
+  weapon2 = weapons.Bite
+  att2 = 2
   off = 4
-  str = 
+  strn = 4
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6788,10 +6818,10 @@ class Ghoul(Human):
   arm = 0
   armor = None
 
-  base_weapon = weapons.ToxicClaw
-  base_att = 2
+  weapon2 = weapons.ToxicClaw
+  att2 = 2
   off = 3
-  str = 3
+  strn = 3
   populated_land = 1
   pref_corpses = 1
 
@@ -6837,10 +6867,10 @@ class Isaac(Unit):
   armor = MediumArmor()
   shield = Shield()
 
-  att = 2
+  att1 = 2
   damage = 4
   off = 5
-  str = 4
+  strn = 4
   
   fear = 6
   pref_corpses = 1
@@ -6886,11 +6916,11 @@ class Necromancer(Human):
   armor = None
   shield = Shield()
 
-  weapon = weapons.Staff
-  att = 1
+  weapon1 = weapons.Staff
+  att1 = 1
   damage = 2
   off = 3
-  str = 3
+  strn = 3
   
   fear = 6
   sort_chance = 100
@@ -6935,10 +6965,10 @@ class GraveGuard(Undead):
   armor = HeavyArmor()
   shield = Shield()
 
-  weapon = weapons.Spear
-  att = 1
+  weapon1 = weapons.Spear
+  att1 = 1
   off = 5
-  str = 5
+  strn = 5
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6976,10 +7006,10 @@ class Settler2(Human):
   arm = 0
   armor = None
 
-  att = 2
+  att1 = 2
   damage = 1
   off = 1
-  str = 1
+  strn = 1
   pn = 0
 
   def __init__(self, nation):
@@ -7016,10 +7046,10 @@ class Skeleton(Undead):
   hres = 1
   arm = 1
 
-  weapon = weapons.Sword
-  att = 2
+  weapon1 = weapons.Sword
+  att1 = 2
   off = 3
-  str = 3
+  strn = 3
 
   fear = 0
 
@@ -7057,10 +7087,10 @@ class SpectralInfantry(Unit):
   arm = 0
   armor = MediumArmor()
 
-  weapon = weapons.BronzeSpear
-  att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
   off = 4
-  str = 4
+  strn = 4
 
   fear = 0
 
@@ -7071,7 +7101,7 @@ class SpectralInfantry(Unit):
 
 
 
-class s(Undead):
+class Vampire(Undead):
   name = vampire_t
   units = 1
   min_units = 1
@@ -7100,10 +7130,10 @@ class s(Undead):
   arm = 0
   armor = None
 
-  weapon = weapons.Claw
-  att = 4
+  weapon1 = weapons.Claw
+  att1 = 4
   off = 5
-  str = 5
+  strn = 5
 
   populated_land = 1
 
@@ -7148,12 +7178,12 @@ class VampireLord(Undead):
   arm = 1
   armor = MediumArmor()
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.Claw
-  base_att = 2
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Claw
+  att2 = 2
   off = 6
-  str = 5
+  strn = 5
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -7192,12 +7222,12 @@ class Vargheist(Undead):
   hres = 5
   arm = 2
 
-  weapon = weapons.Fangs
-  att = 1
-  base_weapon = weapons.Claw
-  base_att = 2
+  weapon1 = weapons.Fangs
+  att1 = 1
+  weapon2 = weapons.Claw
+  att2 = 2
   off = 5
-  str = 7
+  strn = 7
 
   fear = 6
   populated_land = 1
@@ -7244,12 +7274,12 @@ class VladDracul(Undead):
   arm = 3
   armor = LightArmor()
 
-  weapon = weapons.PosesedBlade
-  att = 4
-  base_weapon = weapons.VampireTeeth
-  base_att = 2
+  weapon1 = weapons.PosesedBlade
+  att1 = 4
+  weapon2 = weapons.VampireTeeth
+  att2 = 2
   off = 8
-  str = 8
+  strn = 8
 
   stealth = 5
 
@@ -7295,10 +7325,10 @@ class VarGhul(Undead):
   hres = 1
   arm = 2
 
-  weapon = weapons.ToxicClaw
-  att = 2
+  weapon1 = weapons.ToxicClaw
+  att1 = 2
   off = 4
-  str = 5
+  strn = 5
 
   fear = 2
   populated = 1
@@ -7339,10 +7369,10 @@ class Zombie(Undead, Ground):
   hres = 0
   arm = 0
 
-  weapon = weapons.Fist
-  att = 1
+  weapon1 = weapons.Fist
+  att1 = 1
   off = 2
-  str = 2
+  strn = 2
   pn = 0
   offensive_skills = [Surrounded]
 
@@ -8233,10 +8263,10 @@ class AntleredShaman(Human):
   armor = None
   shield = Shield()
 
-  att = 2
+  att1 = 2
   damage = 3
   off = 3
-  str = 4
+  strn = 4
   pn = 0
   
   fear = 6
@@ -8286,10 +8316,10 @@ class DevoutOfChaos(Human):
   armor = None
   shield = Shield()
 
-  att = 1
+  att1 = 1
   damage = 2
   off = 3
-  str = 3
+  strn = 3
   pn = 0
   
   fear = 6
@@ -8333,10 +8363,10 @@ class Inquisitor(Human):
   arm = 0
   armor = LightArmor()
 
-  att = 2
+  att1 = 2
   damage = 3
   off = 3
-  str = 3
+  strn = 3
   pn = 0
   offensive_skills = [ShadowHunter]
 
@@ -8373,10 +8403,10 @@ class WarMonger(Human):
   arm = 0
   armor = LightArmor()
 
-  att = 2
+  att1 = 2
   damage = 3
   off = 3
-  str = 3
+  strn = 3
   pn = 0
   offensive_skills = [ShadowHunter]
 
@@ -8414,12 +8444,12 @@ class Archer(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Bow
-  att = 2
-  base_weapon = weapons.Fist
-  base_att = 1
+  weapon1 = weapons.Bow
+  att1 = 2
+  weapon2 = weapons.Fist
+  att2 = 1
   off = 2
-  str = 2
+  strn = 2
   offensive_skills = [Skirmisher]
   
   fear = 5
@@ -8462,10 +8492,10 @@ class Akhlut(Unit):
   arm = 2
   armor = None
 
-  weapon = weapons.Bite
-  att =2
+  weapon1 = weapons.Bite
+  att1 =2
   off = 5
-  str = 6
+  strn = 6
 
   stealth = 6
 
@@ -8510,11 +8540,11 @@ class BlackOrc(Unit):
   arm = 2
   armor = HeavyArmor
 
-  weapon = weapons.GreatSword
-  att = 2
-  base_weapon = weapons.Claw
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Claw
   off = 5
-  str = 5
+  strn = 5
 
   fear = 2
   populated_land = 1
@@ -8559,10 +8589,10 @@ class SonOfWind(Human):
   armor = LightArmor()
   shield = Shield()
 
-  weapon = weapons.Scimitar
-  att = 3
+  weapon1 = weapons.Scimitar
+  att1 = 3
   off = 5
-  str = 3
+  strn = 3
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -8598,11 +8628,11 @@ class Population(Human):
   arm = 0
   armor = None
 
-  att = 1
+  att1 = 1
   damage = 1
   rng = 1
   off = 1
-  str = 1
+  strn = 1
   pn = 0
   
   fear = 5
@@ -8645,10 +8675,10 @@ class Crocodile(Unit):
   arm = 3
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
   off = 4
-  str = 4
+  strn = 4
 
   fear = 2
   sort_chance = 100
@@ -8693,13 +8723,13 @@ class DesertNomad(Human):
   armor = None
   shield = None
 
-  weapon = weapons.ShortBow
-  att = 2
-  base_weapon = weapons.Dagger
-  base_att = 2
+  weapon1 = weapons.ShortBow
+  att1 = 2
+  weapon2 = weapons.Dagger
+  att2 = 2
   damage = 2
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = []
   
   fear = 3
@@ -8745,10 +8775,10 @@ class DevourerOfDemons(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.SoulDrain
-  att = 1
+  weapon1 = weapons.SoulDrain
+  att1 = 1
   off = 8
-  str = 8
+  strn = 8
 
   stealth = 5
 
@@ -8786,10 +8816,10 @@ class Galley(Ship):
   res = 4
   arm = 0
 
-  att = 1
+  att1 = 1
   damage = 10
   off = 3
-  str = 3
+  strn = 3
   pn = 0
   
   cap = 60
@@ -8831,12 +8861,12 @@ class GiantBear(Unit):
   arm = 4
   armor = None
 
-  weapon = weapons.Claw
-  att = 1
-  base_weapon = weapons.Bite
-  base_att = 1
+  weapon1 = weapons.Claw
+  att1 = 1
+  weapon2 = weapons.Bite
+  att2 = 1
   off = 5
-  str = 6
+  strn = 6
 
   sort_chance = 90
 
@@ -8878,12 +8908,12 @@ class GiantWolf(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
-  base_att = weapons.Claw
-  base_att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
+  att2 = weapons.Claw
+  att2 = 1
   off = 4
-  str = 5
+  strn = 5
   
   fear = 4
   populated_land = 1
@@ -8928,11 +8958,11 @@ class Goblin(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortBow
-  att = 4
-  base_weapon = weapons.Claw
+  weapon1 = weapons.ShortBow
+  att1 = 4
+  weapon2 = weapons.Claw
   off = 2
-  str = 1
+  strn = 1
   offensive_skills = [Ambushment, Skirmisher] 
   
   fear = 3
@@ -8979,10 +9009,10 @@ class Harpy(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Talon
-  att = 2
+  weapon1 = weapons.Talon
+  att1 = 2
   off = 3
-  str = 3
+  strn = 3
   
   fear = 1
   populated_land = 1
@@ -9027,12 +9057,12 @@ class HellHound(Undead):
   arm = 2
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
-  base_weapon = weapons.Claw
-  base_att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
+  weapon2 = weapons.Claw
+  att2 = 1
   off = 4
-  str = 6
+  strn = 6
   
   fear = 2
   stealth = 8
@@ -9074,10 +9104,10 @@ class Hyena(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
   off = 4
-  str = 4
+  strn = 4
   
   fear = 5
   populated_land = 1
@@ -9124,10 +9154,10 @@ class Hunter(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortBow
-  att = 1
+  weapon1 = weapons.ShortBow
+  att1 = 1
   off = 3
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
 
   fear = 6
@@ -9170,12 +9200,12 @@ class NomadsRider(Human):
   arm = 1
   armor = None
 
-  weapon = weapons.Bow
-  att = 1
-  base_weapon = weapons.Hoof
-  base_att = 2
+  weapon1 = weapons.Bow
+  att1 = 1
+  weapon2 = weapons.Hoof
+  att2 = 2
   off = 4
-  str = 3
+  strn = 3
   offensive_skills = [Skirmisher]
 
   fear = 3
@@ -9222,10 +9252,10 @@ class Orc_Archer(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Bow
-  att = 2
+  weapon1 = weapons.Bow
+  att1 = 2
   off = 2
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
   
   fear = 4
@@ -9272,10 +9302,10 @@ class OrcWarrior(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Sword
-  att = 2
+  weapon1 = weapons.Sword
+  att1 = 2
   off = 3
-  str = 3
+  strn = 3
   
   fear = 4
   populated_land = 1
@@ -9321,10 +9351,10 @@ class Levy(Human):
   armor = None
   shield = Shield()
 
-  weapon = weapons.BronzeSpear
-  att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
   off = 2
-  str = 2
+  strn = 2
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -9363,12 +9393,12 @@ class LizardMan(Human):
   armor = None
   shield = None
 
-  weapon = weapons.Bite
-  att = 1
-  base_weapon = weapons.Claw
-  base_att = 4
+  weapon1 = weapons.Bite
+  att1 = 1
+  weapon2 = weapons.Claw
+  att2 = 4
   off = 4
-  str = 3
+  strn = 3
 
   fear = 5
   sort_chance = 90
@@ -9411,10 +9441,10 @@ class LizardManInfantry(Human):
   armor = HeavyArmor()
   shield = Shield()
 
-  weapon = weapons.Trident
-  att = 2
+  weapon1 = weapons.Trident
+  att1 = 2
   off = 4
-  str = 4
+  strn = 4
 
   fear = 5
   sort_chance = 90
@@ -9457,10 +9487,10 @@ class Mandeha(Unit):
   arm = 2
   armor = None
 
-  weapon = weapons.FleshEater
-  att = 2
+  weapon1 = weapons.FleshEater
+  att1 = 2
   off = 6
-  str = 6
+  strn = 6
   offensive_skills = []
 
   fear = 2
@@ -9502,11 +9532,11 @@ class Mammot(Unit):
   arm = 4
   armor = None
 
-  weapon = weapons.Tusk
-  att = 1
-  base_weapon = weapons.Crush
+  weapon1 = weapons.Tusk
+  att1 = 1
+  weapon2 = weapons.Crush
   off = 4
-  str = 6
+  strn = 6
 
   fear = 5
   populated_land = 1
@@ -9553,10 +9583,10 @@ class MASTER(Unit):
   arm = 0
   armor = LightArmor()
 
-  att = 6
+  att1 = 6
   damage = 6
   off = 8
-  str = 8
+  strn = 8
   pn = 3
 
   stealth = 5
@@ -9600,10 +9630,10 @@ class Ogre(Unit):
   arm = 2
   armor = None
 
-  weapon = weapons.GreatClub
-  att = 1
+  weapon1 = weapons.GreatClub
+  att1 = 1
   off = 3
-  str = 4
+  strn = 4
 
   fear = 2
   populated_land = 1
@@ -9647,10 +9677,10 @@ class PaleOne(Unit):
   arm = 0
   armor = LightArmor
 
-  weapon = weapons.BronzeSpear
-  att = 2
+  weapon1 = weapons.BronzeSpear
+  att1 = 2
   off = 3
-  str = 3
+  strn = 3
 
   fear = 5
   populated_land = 0
@@ -9694,10 +9724,10 @@ class Peasant(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Pitchfork
-  att = 1
+  weapon1 = weapons.Pitchfork
+  att1 = 1
   off = 2
-  str = 2
+  strn = 2
 
   fear = 5
 
@@ -9738,10 +9768,10 @@ class PeasantLevy(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.BronzeSpear
-  att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
   off = 2
-  str = 2
+  strn = 2
 
   fear = 5
 
@@ -9782,10 +9812,10 @@ class Raider(Human):
   arm = 0
   armor = LightArmor()
 
-  weapon = weapons.BronzeSpear
-  att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
   off = 3
-  str = 2
+  strn = 2
   
   fear = 4
   populated_land = 1
@@ -9828,12 +9858,12 @@ class Rider(Human):
   arm = 1
   armor = None
 
-  weapon = weapons.Sword
-  att = 2
-  base_weapon = weapons.Hoof
-  base_att = 1
+  weapon1 = weapons.Sword
+  att1 = 2
+  weapon2 = weapons.Hoof
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
   offensive_skills = [Charge]
 
   fear = 4
@@ -9878,10 +9908,10 @@ class Satyr(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.BronzeSpear
-  att = 1
+  weapon1 = weapons.BronzeSpear
+  att1 = 1
   off = 3
-  str = 4
+  strn = 4
   offensive_skills = [Charge]
 
   fear = 4
@@ -9926,12 +9956,12 @@ class Slave(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Sword
-  att = 2
-  base_weapon = weapons.Fist
-  base_att = 1
+  weapon1 = weapons.Sword
+  att1 = 2
+  weapon2 = weapons.Fist
+  att2 = 1
   off = 2
-  str = 2
+  strn = 2
 
   fear = 5
 
@@ -9973,12 +10003,12 @@ class SlaveHunter(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.ShortBow
-  att = 1
-  base_weapon = weapons.Fist
-  base_att = 1
+  weapon1 = weapons.ShortBow
+  att1 = 1
+  weapon2 = weapons.Fist
+  att2 = 1
   off = 3
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
 
   fear = 6
@@ -10023,10 +10053,10 @@ class SlaveWarrior(Human):
   armor = None
   shield = Shield()
 
-  weapon = weapons.Sword
-  att = 1
+  weapon1 = weapons.Sword
+  att1 = 1
   off = 4
-  str = 3
+  strn = 3
   pn = 0
 
   fear = 5
@@ -10069,12 +10099,12 @@ class TheKnightsTemplar(Human):
   arm = 2
   armor = HeavyArmor()
 
-  weapon = weapons.Lance
-  att = 1
-  base_weapon = weapons.ShortSword
-  base_att = 1
+  weapon1 = weapons.Lance
+  att1 = 1
+  weapon2 = weapons.ShortSword
+  att2 = 1
   off = 5
-  str = 4
+  strn = 4
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -10115,10 +10145,10 @@ class Troglodyte(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.Claw
-  att = 1
+  weapon1 = weapons.Claw
+  att1 = 1
   off = 2
-  str = 4
+  strn = 4
 
   fear = 1
   populated_land = 1
@@ -10162,10 +10192,10 @@ class Troll(Unit):
   arm = 5
   armor = None
 
-  weapon = weapons.GreatClub
-  att = 1
+  weapon1 = weapons.GreatClub
+  att1 = 1
   off = 3
-  str = 5
+  strn = 5
 
   fear = 2
   populated_land = 1
@@ -10210,12 +10240,12 @@ class Warg(Unit):
   arm = 1
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
-  base_weapon = weapons.Claw
-  base_att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
+  weapon2 = weapons.Claw
+  att2 = 1
   off = 4
-  str = 4
+  strn = 4
   
   fear = 4
   populated_land = 1
@@ -10261,10 +10291,10 @@ class Warrior(Human):
   arm = 0
   armor = None
 
-  weapon = weapons.Sword
-  att = 2
+  weapon1 = weapons.Sword
+  att1 = 2
   off = 3
-  str = 3
+  strn = 3
 
   fear = 5
   populated_land = 1
@@ -10306,10 +10336,10 @@ class WetOne(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.StoneSpear
-  att = 1
+  weapon1 = weapons.StoneSpear
+  att1 = 1
   off = 3
-  str = 3
+  strn = 3
 
   fear = 7
   populated_land = 0
@@ -10355,10 +10385,10 @@ class Wolf(Unit):
   arm = 0
   armor = None
 
-  weapon = weapons.Bite
-  att = 1
+  weapon1 = weapons.Bite
+  att1 = 1
   off = 3
-  str = 3
+  strn = 3
   offensive_skills = [Ambushment]
   
   fear = 4

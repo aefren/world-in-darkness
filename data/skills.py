@@ -116,7 +116,7 @@ class BloodRaining(Skill):
       itm.resolve_mod += 1
       itm.moves_mod += 1
       itm.res_mod += 2
-      itm.str += 2
+      itm.strn += 2
     else:
       itm.resolve_mod -= 1
       itm.dfs_mod -= 1
@@ -127,7 +127,7 @@ class BloodRaining(Skill):
         itm.resolve_mod -= 1
       if itm.rng + itm.rng_mod > 5:
         itm.off_mod -= 1
-        itm.str_mod -= 1 
+        itm.strn_mod -= 1 
         itm.range_mod -= 5
 
   def tile_run(self, itm):
@@ -146,7 +146,7 @@ class BloodyBeast(Skill):
     if itm.pos and itm.pos.pop:
       if basics.roll_dice(2) >= 10:
         deads = randint(1, itm.units)
-        deads *= itm.att + itm.att_mod
+        deads *= itm.att1 + itm.att_mod
         deads *= itm.damage + itm.damage_mod
         if deads > itm.pos.pop: deads = itm.pos.pop
         itm.pos.pop -= deads
@@ -220,7 +220,7 @@ class DarkPresence(Skill):
         itm.moves_mod += 1
         itm.off_mod += 1
         itm.res_mod += 2
-        itm.str_mod += 2
+        itm.strn_mod += 2
 
 
 
@@ -272,7 +272,7 @@ class DHLevels(Skill):
   def run(self, itm):
     if itm.level == 2:
       itm.off_mod += 1
-      itm.str_mod += 1
+      itm.strn_mod += 1
 
 
 class DesertSurvival(Skill):
@@ -304,7 +304,7 @@ class Eclipse(Skill):
       if itm.rng + itm.rng_mod > 5: itm.rng_mod -= 5
     if malignant_t in itm.traits:
       itm.off_mod += 2
-      itm.str_mod += 2
+      itm.strn_mod += 2
 
   def tile_run(self, itm):
     self.turns -= 1
@@ -326,7 +326,7 @@ class Fanatism(Skill):
       itm.dfs_mod -= 2
       itm.moves_mod += 1
       itm.resolve_mod += 2
-      itm.str_mod += 1
+      itm.strn_mod += 1
 
 
 
@@ -345,7 +345,7 @@ class FearAura(Skill):
       itm.moves_mod -= 2
       itm.off_mod -= 2
       itm.dfs_mod -= 2
-      itm.str_mod -= 1
+      itm.strn_mod -= 1
 
 
 class FeedingFrenzy(Skill):
@@ -359,7 +359,7 @@ class FeedingFrenzy(Skill):
     itm.damage_mod += 2
     itm.moves_mod += 1
     itm.res_mod += 1
-    itm.str_mod += 2 
+    itm.strn_mod += 2 
 
 
 class Fly(Skill):
@@ -580,13 +580,13 @@ class Helophobia(Skill):
   def run(self, itm):
     if itm.pos and itm.pos.day_night == 0:
       itm.effects += [self.name]
-      if itm.att + itm.att_mod > 2: itm.att_mod -= 2
+      if itm.att1 + itm.att_mod > 2: itm.att_mod -= 2
       if itm.damage + itm.damage_mod >= 2: itm.damage_mod -= 2
       itm.dfs_mod -= 2
       itm.moves_mod -= 2
       itm.off_mod -= 2
       itm.res_mod -= 2
-      itm.str_mod -= 2
+      itm.strn_mod -= 2
 
 
 class ImpalingRoots(Skill):
@@ -708,7 +708,7 @@ class LongBow(Skill):
     itm.effects.append(self.name)
     itm.pn_mod += 1
     itm.rng_mod += 5
-    itm.str_mod += 1
+    itm.strn_mod += 1
 
 
 
@@ -782,7 +782,7 @@ class MastersEye(Skill):
         itm.effects += [f'{death_t}.']
         itm.moves_mod += 1
         itm.res_mod += 1
-        itm.str_mod += 1
+        itm.strn_mod += 1
       if malignant_t in itm.traits:
         itm.effects += [f'{malignant_t}']
         itm.resolve_mod += 1
@@ -1043,7 +1043,7 @@ class ReadyAndWaiting(Skill):
     if itm.mp[0] == itm.mp[1]:
       itm.effects += [self.name]
       itm.off_mod += 1
-      itm.str_mod += 1
+      itm.strn_mod += 1
 
 
 
@@ -1158,15 +1158,15 @@ class Surrounded(Skill):
     if itm.squads >= 10:
       itm.effects.append(self.name + str(3))
       itm.off_mod += 3
-      itm.str_mod += 3
+      itm.strn_mod += 3
     elif itm.squads >= 7:
       itm.effects.append(self.name + str(2))
       itm.off_mod += 2
-      itm.str_mod += 2
+      itm.strn_mod += 2
     elif itm.squads >= 3:
       itm.effects.append(self.name + str(1))
       itm.off_mod += 1
-      itm.str_mod += 1
+      itm.strn_mod += 1
 
 
 
@@ -1182,7 +1182,7 @@ class Scavenger(Skill):
       itm.effects += {self.name}
       itm.moves_mod += 1
       itm.res_mod += 1
-      itm.str_mod += 1
+      itm.strn_mod += 1
 
 
 
@@ -1224,7 +1224,7 @@ class SecondSun(Skill):
       itm.moves -= 2
       itm.dfs_mod -= 2
       itm.off_mod -= 2
-      itm.str_mod -= 2
+      itm.strn_mod -= 2
       itm.resolve -= 2
 
   def tile_run(self, itm):
@@ -1481,4 +1481,4 @@ class Diseased(Skill):
     itm.moves_mod -= 2
     itm.off_mod -= 2
     itm.res_mod -= 1
-    itm.str_mod -= 2
+    itm.strn_mod -= 2

@@ -8,6 +8,11 @@ from random import randint
 class Weapon:
   name = str()
   desc = ""
+  hits = 1
+  wounds = 1
+  shield = 1
+  armor = 1
+  
   sacred_damage = 0
   min_dist = 0
   max_dist = 0
@@ -727,7 +732,7 @@ class Tusk(Weapon):
 
 
 class VampireTeeth(Weapon):
-name = "vampire teeth"
+  name = "vampire teeth"
   desc = ""
   ranking = 1.2
   damage = 3
