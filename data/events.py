@@ -34,10 +34,17 @@ class Looting(Event):
       if info: print(f'{roll = : }')
       if roll >= 10 and t.unrest >= 20:
         raided = randint(ceil(t.income*0.2), ceil(t.income*0.4))
-        if t.unrest >= 50: raided *= 2 
+        kills = randint(1,10)*t.pop/100
+        if t.unrest >= 50: raided *= 2
+        kills *= 2 
         t.raided = raided
-        msg = f'{raiders_t} {raids_t} {raided} {in_t} {t} {t.cords}.'
+        t.pop -= kills
+        msg = f"{raiders_t} {raids_t} {raided} {in_t} {t} {t.cords}."
         self.itm.nation.log[-1] += [msg]
+        if kills >= 1:
+          t.add_corpses(choice(t.nation.population_type), kills) 
+          msg = f'{raiders_t} {kill_t} {kills}.'
+          self.itm.nation.log[-1] += [msg]
         if t.is_city and t.city.capital and t.city.nation.gold >= 500:
           try:
             steal = randint(int(self.itm.nation.gold*0.1), int(self.itm.nation.gold*0.5))
@@ -110,7 +117,7 @@ class Starving(Event):
     for t in self.itm.tiles:
       if t.pop < 1: continue
       if t.populated >= 120:
-        t.unrest += randint(1, 3)
+        t.unrest += randint(3, 7)
       elif t.populated >= 80:
         t.unrest += randint(1, 2)
       if t.populated >= 150 and basics.roll_dice(2) >= 11:
@@ -138,14 +145,14 @@ class Unrest(Event):
       roll = basics.roll_dice(2)
       buildings = [b for b in t.buildings if b.nation != self.itm.nation]
       if buildings: roll += 3
-      if t.public_order <= 80: roll += 1
+      if t.public_order <= 70: roll += 1
       if t.public_order <= 40: roll += 1
       if t.public_order <= 0: roll += 1
       if t.around_threat + t.threat > 0: roll += 1
       if t.is_city: roll -= 2
       if info: print(f'{roll = : }')
       if roll >= chance:
-        unrest = randint(1, 2)
+        unrest = randint(1, 5)
         unrest += sum([b.unrest for b in buildings])
         t.unrest += unrest
         t.last_unrest = f'{turn_t} {t.world.turn} {unrest}.'

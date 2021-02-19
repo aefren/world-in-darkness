@@ -330,7 +330,7 @@ class CastRainOfToads(Spell):
     for t in tiles:
       if self.name in [ev.name for ev in t.events]: raining += 1
       if t.around_nations: nations += len(t.around_nations)
-      if t .units: hostiles += len([u.units for u in t.units if u.nation != itm.nation])
+      if t .units: hostiles += len([u.units for u in t.units if u.nation not in itm.belongs])
     if ((raining <= 6 and nations >= 2) 
         or itm.pos.city and itm.pos.city.seen_threat >= itm.pos.city.defense
         or hostiles and raining <= 6): 
@@ -692,7 +692,7 @@ class SightFromFuture(Spell):
     tiles = itm.pos.get_near_tiles(1)
     for t in tiles:
       for uni in t.units:
-        if uni.nation != itm.nation: uni.revealed = 1
+        if uni.nation not in itm.belongs: uni.revealed = 1
 
 
 class SummonSecondSun(Spell):

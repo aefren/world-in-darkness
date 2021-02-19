@@ -1,17 +1,14 @@
-exec('from data.items import HolyEmpire, Wallachia, WoodElves, Hell, Nature, Orcs, Wild')
-exec('from data.items import *')
+#exec("from data.items import HolyEmpire, Wallachia, WoodElves, Hell, Nature, Orcs, Wild")
+exec("from data.items import *")
+exec("import data.items")
 
 
 #Difficulty.
-DIFFICULTY = 30
-DIFFICULTY_TYPE = 'dynamic'
+DIFFICULTY = 50
+DIFFICULTY_TYPE = "dynamic"
 #Random Buildings.
-random_buildings = [BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls, 
-                    FightingPit, GoblinLair, HiddenForest, HyenasLair, 
-                    NecromancersLair, OathStone, OpulentTomb, TroglodyteCave,  
-                    TrollCave, UnderworldEntrance, WisperingWoods, WolfLair,
-                    WargsCave]
-buildings_value = 1
+random_buildings = data.items.random_buildings
+buildings_value = 20
 
 #factions.
 ELF = WoodElves()

@@ -8,6 +8,7 @@ from random import randint
 class Weapon:
   name = str()
   desc = ""
+  hit_to = None
   hits = 1
   wounds = 1
   shield = 1
@@ -26,7 +27,6 @@ class Weapon:
     itm= self.itm
     itm.update()
     itm.combat_fight(self)
-    if self.push: self.push_backs()
   def modifier(self):
     pass
   def push_backs(self):
@@ -43,12 +43,24 @@ class Weapon:
   def pre_melee(self):
     pass
   def after_melee(self):
-    pass
+    if self.push: self.push_backs()
   def effects(self):
     itm = self.itm
   def update(self):
     self = self._class__(self.itm)
     self.modifier()
+
+
+
+class Club(Weapon):
+  name = "club"
+  desc = ""
+  ranking = 1.2
+  damage = 4
+  critical = 6
+  range_max = 1 
+  range_min = 1
+  pn = 0
 
 
 class Crush(Weapon):
@@ -78,7 +90,7 @@ class Bite(Weapon):
   desc = ""
   ranking = 1.1
   damage = 2
-  critical = 4
+  critical = 2
   range_max = 0
   range_min = 0
   pn = 0
@@ -133,7 +145,7 @@ class Bow(Weapon):
   damage = 2
   critical = 1
   range_max = 20
-  range_min = 6
+  range_min = 4
 
 
 class Branch(Weapon):
@@ -176,11 +188,12 @@ class BronzeJavelins(Weapon):
 
 
 class BronzeSpear(Weapon):
+  # Note. This weapon should always be place on weapon1.
   name = "Bronze spear"
   desc = ""
-  ranking = 1.3
-  damage = 4
-  critical = 5
+  ranking = 1.2
+  damage = 3
+  critical = 2
   range_max = 3 
   range_min = 2
   pn = 0
@@ -247,6 +260,18 @@ class Dagger(Weapon):
   pn = 1
 
 
+
+class ElongatedFangs(Weapon):
+  name = "fangs"
+  desc = ""
+  ranking = 1.2
+  damage = 4
+  critical = 4
+  range_max = 1
+  range_min = 0
+  pn = 0
+
+
 class Fangs(Weapon):
   name = "fangs"
   desc = ""
@@ -307,8 +332,8 @@ class GreatClub(Weapon):
   name = "great club"
   desc = ""
   ranking = 1.3
-  damage = 4
-  critical = 6
+  damage = 6
+  critical = 14
   range_max = 2 
   range_min = 1
   pn = 0
@@ -319,13 +344,14 @@ class GreatSword(Weapon):
   desc = ""
   ranking = 1.3
   damage = 5
-  critical = 7
+  critical = 5
   range_max = 1
-  range_min = 0
+  range_min = 1
   pn = 0
 
 
 class Halberd(Weapon):
+  # Note. This weapon should always be place on weapon1.
   name = "halberd"
   desc = ""
   ranking = 1.2
@@ -362,6 +388,18 @@ class Hoof(Weapon):
   pn = 0
 
 
+
+class ImmenseClaws(Weapon):
+  name = "immense claws"
+  desc = ""
+  ranking = 1.2
+  damage = 3
+  critical = 4
+  range_max = 0
+  range_min = 0
+  pn = 1
+
+
 class Lance(Weapon):
   name = "lance"
   desc = ""
@@ -391,16 +429,16 @@ class LongBow(Weapon):
   ranking = 1.2
   ammo = 20
   damage = 3
-  critical = 3
+  critical = 2
   range_max = 40
   range_min = 6
   def modifier(self):
     if self.itm.dist >= 30:
       self.damage -= 1
-      self.critical -= 2
+      self.critical -= 1
     elif self.itm.dist <= 10:
-      self.damage += 2
-      self.critical += 2
+      self.damage += 1
+      self.critical += 1
 
 
 class LongPoisonBow(Weapon):
@@ -409,25 +447,24 @@ class LongPoisonBow(Weapon):
   ranking = 1.2
   ammo = 20
   damage = 2
-  critical = 3
+  critical = 1
   range_max = 15
   range_min = 0
   pn = 0
   def modifier(self):
     if self.itm.dist >= 30:
       self.damage -= 1
-      self.critical -= 2
+      self.critical -= 1
     elif self.itm.dist <= 10:
-      self.damage += 2
-      self.critical += 2
-
-
+      self.damage += 1
+      self.critical += 1
 
 
 class LongSpear(Weapon):
+  # Note. This weapon should always be place on weapon1.
   name = "long spear"
   desc = ""
-  ranking = 1.3
+  ranking = 1.4
   damage = 5
   critical = 8
   range_max = 4
@@ -440,6 +477,7 @@ class LongSpear(Weapon):
 class PosesedBlade(Weapon):
   name = "posesed blade"
   desc = ""
+  wounds = 0
   ranking = 1.1
   damage = 3
   critical = 4
@@ -453,7 +491,7 @@ class Pitchfork(Weapon):
   desc = ""
   ranking = 1
   damage = 2
-  critical = 2
+  critical = 1
   range_max = 1
   range_min = 0
   pn = 0
@@ -464,7 +502,7 @@ class Pugio(Weapon):
   desc = ""
   ranking = 1.1
   damage = 3
-  critical = 4
+  critical = 2
   range_max = 0 
   range_min = 0
   pn = 1
@@ -473,8 +511,10 @@ class Pugio(Weapon):
 class ScreenOfSorrow(Weapon):
   name = "screen of sorrow"
   desc = ""
+  wounds = 0
+  hit_to = "head"
   ranking = 1.2
-  damage = 3
+  damage = 4
   critical = 6
   range_max = 20
   range_min = 0
@@ -492,7 +532,7 @@ class Skythe(Weapon):
   name = "skythe"
   desc = ""
   ranking = 1.2 
-  damage = 5
+  damage = 4
   critical = 5
   range_max = 0 
   range_min = 0
@@ -504,9 +544,9 @@ class ShortBow(Weapon):
   ranking = 1.3 
   ammo = 30
   damage = 2
-  critical = 1
+  critical = 2
   range_max = 12 
-  range_min = 5
+  range_min = 4
   pn = 0
 
 
@@ -528,7 +568,7 @@ class ShortSword(Weapon):
   desc = ""
   ranking = 1.2
   damage = 3
-  critical = 3
+  critical = 2
   range_max = 1
   range_min = 0
   pn = 0
@@ -559,9 +599,10 @@ class SoulDrain(Weapon):
 
 
 class Spear(Weapon):
+  # Note. This weapon should always be place on weapon1.
   name = "spear"
   desc = ""
-  ranking = 1.2
+  ranking = 1.3
   damage = 5
   critical = 7
   range_max = 3
@@ -742,7 +783,16 @@ class VampireTeeth(Weapon):
   pn = 0
 
 
-  
+class ZombieBite(Weapon):
+  name = "Zombie bite"
+  desc = ""
+  ranking = 1.1
+  damage = 2
+  critical = 4
+  range_max = 0
+  range_min = 0
+  pn = 0
+
 
 
 
