@@ -5,6 +5,8 @@ import basics
 from data import skills
 from random import randint
 
+
+
 class Weapon:
   name = str()
   desc = ""
@@ -19,16 +21,22 @@ class Weapon:
   max_dist = 0
   pn = 0
   push = 0
+
   def __init__(self, itm):
     self.itm = itm
+    self.modifier = []
+
   def __str__(self):
     return self.name
+
   def run(self):
-    itm= self.itm
+    itm = self.itm
     itm.update()
     itm.combat_fight(self)
-  def modifier(self):
+
+  def set_modifier(self):
     pass
+
   def push_backs(self):
     if self.push and basics.roll_dice(1) <= self.push:
       c_dist = self.itm.target.dist
@@ -37,18 +45,18 @@ class Weapon:
       msg = f"{self.itm} puch back to {self.itm.target} from {c_dist} to {self.itm.target.dist}"
       self.itm.target.temp_log += [msg]
 
-
-
-
   def pre_melee(self):
     pass
+
   def after_melee(self):
     if self.push: self.push_backs()
+
   def effects(self):
     itm = self.itm
+
   def update(self):
-    self = self._class__(self.itm)
-    self.modifier()
+    self = self.__class__(self.itm)
+    self.set_modifier()
 
 
 
@@ -63,15 +71,17 @@ class Club(Weapon):
   pn = 0
 
 
+
 class Crush(Weapon):
   name = "crush"
   desc = ""
   ranking = 1.1
   damage = 5
   critical = 3
-  range_max = 5
+  range_max = 1
   range_min = 0
   pn = 0
+
 
 
 class Beak(Weapon):
@@ -85,6 +95,7 @@ class Beak(Weapon):
   pn = 0
 
 
+
 class Bite(Weapon):
   name = "bite"
   desc = ""
@@ -96,6 +107,7 @@ class Bite(Weapon):
   pn = 0
 
 
+
 class BlessedSword(Weapon):
   name = "blessed sword"
   desc = ""
@@ -105,10 +117,13 @@ class BlessedSword(Weapon):
   range_max = 1
   range_min = 1
   pn = 0
-  def modifier(self):
+
+  def set_modifier(self):
     if deads_t in self.int.target.tags:
       self.damage += 4
-      self.critical += 4 
+      self.critical += 4
+      self.modifier += [f"{damage_t} + 4, {critical_t} + 4."] 
+
 
 
 class BloodDrinker(Weapon):
@@ -120,7 +135,8 @@ class BloodDrinker(Weapon):
   range_max = 0
   range_min = 0
   pn = 0
-  def modifier(self):
+
+  def set_modifier(self):
     if deads_t not in self.itm.target.tags: pass
 
 
@@ -137,6 +153,7 @@ class BoulderClub(Weapon):
   push = 3
 
 
+
 class Bow(Weapon):
   name = "bow"
   desc = ""
@@ -145,7 +162,8 @@ class Bow(Weapon):
   damage = 2
   critical = 1
   range_max = 20
-  range_min = 4
+  range_min = 6
+
 
 
 class Branch(Weapon):
@@ -171,6 +189,19 @@ class BroadSword(Weapon):
   pn = 0
 
 
+
+class BronzeAxe(Weapon):
+  name = "bronze axe"
+  desc = ""
+  ranking = 1.1
+  damage = 3
+  critical = 4
+  range_max = 2 
+  range_min = 1
+  pn = 1
+
+
+
 class BronzeJavelins(Weapon):
   name = "bronze javelins"
   desc = ""
@@ -180,8 +211,9 @@ class BronzeJavelins(Weapon):
   range_max = 6
   range_min = 2
   pn = 0
+
   def pre_melee(self):
-    if (self.itm.dist in range(self.range_min, self.range_max+1)
+    if (self.itm.dist in range(self.range_min, self.range_max + 1)
         and self.c_ammo):
       self.itm.combat_fight()
       
@@ -199,6 +231,7 @@ class BronzeSpear(Weapon):
   pn = 0
 
 
+
 class BronzeScimitar(Weapon):
   name = "Bronze Scimitar"
   desc = ""
@@ -210,6 +243,7 @@ class BronzeScimitar(Weapon):
   pn = 0
 
 
+
 class Claw(Weapon):
   name = "claw"
   desc = ""
@@ -219,6 +253,7 @@ class Claw(Weapon):
   range_max = 0
   range_min = 0
   pn = 0
+
 
 
 class Scimitar(Weapon):
@@ -233,7 +268,6 @@ class Scimitar(Weapon):
 
 
 
-
 class CrossBow(Weapon):
   name = "crossbow"
   desc = ""
@@ -243,10 +277,13 @@ class CrossBow(Weapon):
   range_max = 15 
   range_min = 6
   pn = 1
-  def modifier(self):
+
+  def set_modifier(self):
     if self.itm.dist <= 10: 
       self.damage += 1
       self.critical += 2
+      self.modifier += [f"{damage_t} + 1, {self.critical_t} + 2"]
+
 
 
 class Dagger(Weapon):
@@ -272,6 +309,7 @@ class ElongatedFangs(Weapon):
   pn = 0
 
 
+
 class Fangs(Weapon):
   name = "fangs"
   desc = ""
@@ -283,6 +321,7 @@ class Fangs(Weapon):
   pn = 0
 
 
+
 class Falchion(Weapon):
   name = "Falchion"
   desc = ""
@@ -292,6 +331,7 @@ class Falchion(Weapon):
   range_max = 1 
   range_min = 0
   pn = 1
+
 
 
 class Fist(Weapon):
@@ -317,6 +357,7 @@ class Flail(Weapon):
   pn = 0
 
 
+
 class FleshEater(Weapon):
   name = "Flesh eater"
   desc = ""
@@ -326,6 +367,7 @@ class FleshEater(Weapon):
   range_max = 0
   range_min = 0
   pn = 1
+
 
 
 class GreatClub(Weapon):
@@ -339,6 +381,7 @@ class GreatClub(Weapon):
   pn = 0
 
 
+
 class GreatSword(Weapon):
   name = "great sword"
   desc = ""
@@ -348,6 +391,7 @@ class GreatSword(Weapon):
   range_max = 1
   range_min = 1
   pn = 0
+
 
 
 class Halberd(Weapon):
@@ -360,10 +404,13 @@ class Halberd(Weapon):
   range_max = 3
   range_min = 1
   pn = 1
-  def modifier(self):
+
+  def set_modifier(self):
     if self.itm.dist < 2: 
       self.damage -= 1
-      self.critical -= 1
+      self.critical -= 2
+      self.modifier += [f"{damage_t} - 1 {critical_t} - 2"]
+
 
 
 class HeavyHoof(Weapon):
@@ -375,6 +422,7 @@ class HeavyHoof(Weapon):
   range_max = 1
   range_min = 0
   pn = 0
+
 
 
 class Hoof(Weapon):
@@ -392,12 +440,13 @@ class Hoof(Weapon):
 class ImmenseClaws(Weapon):
   name = "immense claws"
   desc = ""
-  ranking = 1.2
+  ranking = 1.3
   damage = 3
   critical = 4
   range_max = 0
   range_min = 0
   pn = 1
+
 
 
 class Lance(Weapon):
@@ -411,6 +460,8 @@ class Lance(Weapon):
   pn = 2
   push = 3
 
+
+
 class LightLance(Weapon):
   name = "light lance"
   desc = ""
@@ -423,6 +474,7 @@ class LightLance(Weapon):
   push = 2
 
 
+
 class LongBow(Weapon):
   name = "long bow"
   desc = ""
@@ -432,13 +484,17 @@ class LongBow(Weapon):
   critical = 2
   range_max = 40
   range_min = 6
-  def modifier(self):
+
+  def set_modifier(self):
     if self.itm.dist >= 30:
       self.damage -= 1
       self.critical -= 1
+      self.modifier += [f"{damage_t} - 1, {critical_t} - 1"]
     elif self.itm.dist <= 10:
       self.damage += 1
       self.critical += 1
+      self.modifier += [f"{damage_t} + 1, {critical_t} + 1"]
+
 
 
 class LongPoisonBow(Weapon):
@@ -451,13 +507,17 @@ class LongPoisonBow(Weapon):
   range_max = 15
   range_min = 0
   pn = 0
-  def modifier(self):
+
+  def set_modifier(self):
     if self.itm.dist >= 30:
       self.damage -= 1
       self.critical -= 1
+      self.modifier += [f"{damage_t} - 1, {critical_t} - 1"]
     elif self.itm.dist <= 10:
       self.damage += 1
       self.critical += 1
+      self.modifier += [f"{damage_t} + 1, {critical_t} + 1"]
+
 
 
 class LongSpear(Weapon):
@@ -474,16 +534,29 @@ class LongSpear(Weapon):
 
 
 
+class MantisClaw(Weapon):
+  name = "mantis claw"
+  desc = ""
+  ranking = 1.1
+  damage = 3
+  critical = 5
+  range_max = 1
+  range_min = 0
+  pn = 0
+
+
+
 class PosesedBlade(Weapon):
   name = "posesed blade"
   desc = ""
   wounds = 0
   ranking = 1.1
-  damage = 3
-  critical = 4
+  damage = 7
+  critical = 15
   range_max = 1
   range_min = 0
   pn = 0
+
 
 
 class Pitchfork(Weapon):
@@ -497,6 +570,7 @@ class Pitchfork(Weapon):
   pn = 0
 
 
+
 class Pugio(Weapon):
   name = "pugio"
   desc = ""
@@ -506,6 +580,7 @@ class Pugio(Weapon):
   range_max = 0 
   range_min = 0
   pn = 1
+
 
 
 class ScreenOfSorrow(Weapon):
@@ -518,14 +593,16 @@ class ScreenOfSorrow(Weapon):
   critical = 6
   range_max = 20
   range_min = 0
+
   def effects(self):
     if (basics.roll_dice(1) 
-        >= self.itm.target.resolve+self.itm.target.resolve_mod):
+        >= self.itm.target.resolve + self.itm.target.resolve_mod):
       c_dist = self.itm.target.dist
       back = randint(2, 5)
       self.itm.target.dist += back
       msg = f"{self.itm} puch back to {self.itm.target} from {c_dist} to {self.itm.target.dist}"
       self.itm.target.temp_log += [msg]
+
 
 
 class Skythe(Weapon):
@@ -538,6 +615,7 @@ class Skythe(Weapon):
   range_min = 0
 
 
+
 class ShortBow(Weapon):
   name = "short bow"
   desc = ""
@@ -548,6 +626,7 @@ class ShortBow(Weapon):
   range_max = 12 
   range_min = 4
   pn = 0
+
 
 
 class ShortPoisonBow(Weapon):
@@ -586,6 +665,7 @@ class Sling(Weapon):
   pn = 0
 
 
+
 class SoulDrain(Weapon):
   name = "soul scourge"
   desc = ""
@@ -594,7 +674,6 @@ class SoulDrain(Weapon):
   critical = 10
   range_max = 1
   range_min = 0
-
 
 
 
@@ -611,6 +690,7 @@ class Spear(Weapon):
   push = 3
 
 
+
 class StoneSpear(Weapon):
   name = "Bronze spear"
   desc = ""
@@ -620,6 +700,7 @@ class StoneSpear(Weapon):
   range_max = 3 
   range_min = 2
   pn = 0
+
 
 
 class Sword(Weapon):
@@ -633,6 +714,7 @@ class Sword(Weapon):
   pn = 0
 
 
+
 class Staff(Weapon):
   name = "staff"
   desc = ""
@@ -642,6 +724,7 @@ class Staff(Weapon):
   range_max = 1
   range_min = 0
   pn = 0
+
 
 
 class Talon(Weapon):
@@ -655,6 +738,7 @@ class Talon(Weapon):
   pn = 1
 
 
+
 class TigerFangs(Weapon):
   name = "tiger fangs"
   desc = ""
@@ -664,6 +748,7 @@ class TigerFangs(Weapon):
   range_max = 0
   range_min = 0
   pn = 1
+
 
 
 class ToxicClaw(Weapon):
@@ -676,9 +761,10 @@ class ToxicClaw(Weapon):
   range_max = 0
   range_min = 0
   pn = 0
+
   def effects(self):
     itm = self.itm
-    if (sum(itm.damage_done) >= self.damage_need*itm.target.hp_total/100 
+    if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100 
         and itm.target.hp_total >= 1
         and death_t not in itm.target.traits 
         and poisonres_t not in itm.target.traits):
@@ -704,9 +790,10 @@ class ToxicDagger(Weapon):
   range_max = 0 
   range_min = 0
   pn = 1
+
   def effects(self):
     itm = self.itm
-    if (sum(itm.damage_done) >= self.damage_need*itm.target.hp_total/100 
+    if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100 
         and itm.target.hp_total >= 1
         and death_t not in itm.target.traits 
         and poisonres_t not in itm.target.traits):
@@ -732,9 +819,10 @@ class ToxicFangs(Weapon):
   range_max = 0
   range_min = 0
   pn = 0
+
   def effects(self):
     itm = self.itm
-    if (sum(itm.damage_done) >= self.damage_need*itm.target.hp_total/100 
+    if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100 
         and itm.target.hp_total >= 1
         and death_t not in itm.target.traits 
         and poisonres_t not in itm.target.traits):
@@ -749,6 +837,7 @@ class ToxicFangs(Weapon):
           itm.temp_log += [msg]
 
 
+
 class Trident(Weapon):
   name = "trident"
   desc = ""
@@ -758,6 +847,7 @@ class Trident(Weapon):
   range_max = 1 
   range_min = 0
   pn = 0
+
 
 
 class Tusk(Weapon):
@@ -771,16 +861,16 @@ class Tusk(Weapon):
   pn = 0
 
 
-
-class VampireTeeth(Weapon):
-  name = "vampire teeth"
+class VampireBite(Weapon):
+  name = "vampire bite"
   desc = ""
   ranking = 1.2
-  damage = 3
-  critical = 3
+  damage = 5
+  critical = 11
   range_max = 0 
   range_min = 0
   pn = 0
+
 
 
 class ZombieBite(Weapon):
@@ -792,10 +882,6 @@ class ZombieBite(Weapon):
   range_max = 0
   range_min = 0
   pn = 0
-
-
-
-
 
 """
 Created on 3 nov. 2020

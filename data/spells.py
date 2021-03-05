@@ -7,13 +7,13 @@ from data.items import *
 
 
 class Spell:
-  name = 'skill'
+  name = "skill"
   desc = str()
   cast = 6
   cost = 1
   ranking = 0
   tags = []
-  type = 'spell' 
+  type = "spell" 
 
   tile_area = -1
   target = None
@@ -46,29 +46,29 @@ class Spell:
   def check_cast(self, itm):
     if roll_dice(2) >= self.cast: return 1
     else: 
-      msg = f'{self} {failed_t}.'
+      msg = f"{self} {failed_t}."
       if itm.show_info: 
         sp.speak(msg, 1)
-        sleep(loadsound('spell11',channel=ch5)//2)
+        sleep(loadsound("spell11",channel=ch5)//2)
       return msg
 
   def check_conditions(self, itm, target):
-    msg = ''
-    if self.gold and itm.nation.gold < self.gold: msg += f'{self.name} {needs_t} {self.gold} {gold_t}.'
-    if self.target and target.type not in self.target: msg += f'not {self.target} selected.'
+    msg = ""
+    if self.gold and itm.nation.gold < self.gold: msg += f"{self.name} {needs_t} {self.gold} {gold_t}."
+    if self.target and target.type not in self.target: msg += f"not {self.target} selected."
     if self.traits: pass
-    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f'{self.name} {needs_t} {forest_t}.'
-    if self.tile_waste and itm.pos.soil.name != waste_t: msg += f'{self.name} {needs_t} {waste_t}.'
-    if self.corpses and itm.pos.corpses == []: msg += f'{self.name} {needs_t} corpses.'
-    if self.tile_pop and itm.pos.pop < self.tile_pop: msg += f'{self.name} {needs_t} {self.tile_pop} population.'
+    if self.tile_forest and itm.pos.surf.name != forest_t: msg += f"{self.name} {needs_t} {forest_t}."
+    if self.tile_waste and itm.pos.soil.name != waste_t: msg += f"{self.name} {needs_t} {waste_t}."
+    if self.corpses and itm.pos.corpses == []: msg += f"{self.name} {needs_t} corpses."
+    if self.tile_pop and itm.pos.pop < self.tile_pop: msg += f"{self.name} {needs_t} {self.tile_pop} population."
     if msg: 
-      if itm.nation.show_info: sleep(loadsound('errn1')*0.5)
+      if itm.nation.show_info: sleep(loadsound("errn1")*0.5)
       return msg
     else: return None
 
   def check_cost(self, itm):
     if itm.power < self.cost:
-      msg = f'{self}. {needs_t} {power_t}.'
+      msg = f"{self}. {needs_t} {power_t}."
       logging.debug(msg)
       itm.log[-1] += [msg]
       if itm.show_info: sp.speak(msg, 1)
@@ -80,7 +80,7 @@ class Spell:
   def init(self, itm, target=None):
     target = target
     if self.target:
-      if (any(i in self.target for i in ['beast', 'cavalry', 'infantry', 'civil']) 
+      if (any(i in self.target for i in ["beast", "cavalry", "infantry", "civil"]) 
           and target == None):
         units = [i for i in itm.pos.units 
                  if i.nation == itm.nation and i != itm]
@@ -95,20 +95,32 @@ class Spell:
     if target:self.run(itm, target)
     else: self.run(itm)
     
+  def msg_upkeep_limit(self, itm):
+    return f"{itm} can't summon {self} by upkeep_limit."
   def run(self):
     pass
+  def set_msg0(self, itm):
+    msg = f"{itm} spell {self.name} in {itm.pos} {itm.pos.cords}."
+    itm.log[-1] += [msg]
+    logging.debug(msg)
+    if itm.pos.world:itm.pos.world.log[-1] += [msg]
+  def set_msg1(self, itm, unit):
+    msg = f"{unit} ({summoning_t}) on {itm.pos} {itm.pos.cords}."
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+    itm.pos.world.log[-1] += [msg]
 
 
 
 class BlessingWeapons(Spell):
-  name = 'bendecir armas'
+  name = "bendecir armas"
   cost = 1#0
   cast = 4
-  type = 'spell'
+  type = "spell"
   tags = [health_t]
 
-  target = ['infantry']
-  tags = ['blessing']
+  target = ["infantry"]
+  tags = ["blessing"]
   def ai_run(self, itm):
     if itm.pos.around_threat: 
       units = [uni for uni in itm.pos.units if uni != itm
@@ -116,7 +128,7 @@ class BlessingWeapons(Spell):
       if units: self.init(itm, units[0])
   
   def run(self, itm, target):
-    msg = f'{itm} has removed {intoxicated_t} {from_t} {target}.'
+    msg = f"{itm} has removed {intoxicated_t} {from_t} {target}."
     logging.debug(msg)
     itm.log[-1] += [msg]
     target.log[-1] += [msg]
@@ -125,41 +137,41 @@ class BlessingWeapons(Spell):
     target.other_skills += [skill(target)]
 
 
-
 class BloodHeal(Spell):
-  name = 'blood heal'
-  desc = 'sacrifica un número aleatoreo de población para curarse.'
+  name = "blood heal"
+  desc = "sacrifica un número aleatoreo de población para curarse."
   cast = 6
   cost = 10
-  type = 'spell'
+  type = "spell"
 
   tile_pop = 20
-  tags = ['restoration']
+  tags = ["restoration"]
 
   def ai_run(self, itm):
     if itm.hp_total < itm.hp*itm.units: self.init(itm)
     
   def run(self, itm):
-    if itm.nation.show_info: sleep(loadsound('spell42',channel=ch3))
+    if itm.nation.show_info: sleep(loadsound("spell42",channel=ch3))
     itm.pos.pop -= 20
-    msg = f'{itm} recovers 5 hp.'
     itm.hp_total += 5
     itm.update()
+    msg = f"{itm} recovers 5 hp."
     logging.debug(msg)
     itm.log[-1] += [msg]
+    itm.pos.world.log[-1] += [msg]
 
 
 class BreathOfTheDesert(Spell):
-  desc = 'Envía aires del desierto a una casilla elegida. esto subirá la temperatura y dañara la producción de alimentos.'
+  desc = "Envía aires del desierto a una casilla elegida. esto subirá la temperatura y dañara la producción de alimentos."
 
 
 
 class CastBloodRain(Spell):
-  name = 'blood rain'
+  name = "blood rain"
   cast = 8
   cost = 20
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(1)
@@ -170,10 +182,8 @@ class CastBloodRain(Spell):
                           or itm.pos.city and itm.pos.city.seen_threat > itm.pos.city.defense)): self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 2
     roll = basics.roll_dice(1)
     if roll >= 6: dist += 4
@@ -192,13 +202,12 @@ class CastBloodRain(Spell):
                     and evt.name != Storm.name]
 
 
-
 class Cannibalize(Spell):
-  name = 'cannibalize'
+  name = "cannibalize"
   cast = 1
   cost = 0
   type = spell_t
-  tags = ['feeding', 'cannibalize']
+  tags = ["feeding", "cannibalize"]
   def ai_run(self, itm):
     if FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] and itm.pos.corpses: self.run(itm) 
   def run(self, itm):
@@ -209,7 +218,7 @@ class Cannibalize(Spell):
       sk = FeedingFrenzy(itm)
       if corpses >= itm.units: 
         sk.turns = 5
-        sk.name += f' full' 
+        sk.name += f" full" 
         times = itm.units
         for cr in itm.pos.corpses:
           if times <= 0: break
@@ -220,55 +229,51 @@ class Cannibalize(Spell):
             if times < 1: break
       elif corpses >= 50*itm.units/100: 
         sk.turns = 3
-        sk.name += f' half'
+        sk.name += f" half"
         itm.pos.corpses = []
       else: 
         sk.turns = 1
-        sk.name += f' low'
+        sk.name += f" low"
         itm.pos.corpses = [] 
       itm.other_skills += [sk]
-      msg = f'{itm} cannivalizes {corpses} {corpses_t}'
+      msg = f"{itm} cannivalizes {corpses} {corpses_t}"
       itm.log[-1] += [msg]
-      if itm.show_info: sleep(loadsound('spell37')//2)
+      if itm.show_info: sleep(loadsound("spell37")//2)
     else:
-      itm.log[-1] += [f'can not cannivalize'] 
-      if itm.show_info: loadsound('errn1')
+      itm.log[-1] += [f"can not cannivalize"] 
+      if itm.show_info: loadsound("errn1")
 
 
 class CastLocustSwarm(Spell):
-  name = 'cast locust swarm'
+  name = "cast locust swarm"
   cast = 10
   cost = 15
   tile_waste = 1
   type = spell_t
-  tags = ['plague']
+  tags = ["plague"]
   def ai_run(self, itm):
     self.init(itm)
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name} in {itm.pos} {itm.pos.cords}.'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     pos = itm.pos
     casting = LocustSwarm
     pos.events += [casting(pos)]
 
 
 class CastMist(Spell):
-  name = 'cast mist'
+  name = "cast mist"
   cast = 10
   cost = 10
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     pos = itm.pos
     casting = Rain
     casting.turns = randint(2, 4)
@@ -278,11 +283,11 @@ class CastMist(Spell):
 
 
 class CastRain(Spell):
-  name = 'cast rain'
+  name = "cast rain"
   cast = 9
   cost = 20
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(2)
@@ -293,10 +298,8 @@ class CastRain(Spell):
     if raining: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 3
     roll = roll_dice(1)
     if roll >= 6: dist += 2
@@ -315,12 +318,12 @@ class CastRain(Spell):
 
 
 class CastRainOfToads(Spell):
-  name = 'lluvia de sapos'
-  desc = 'cast toads raining'
+  name = "lluvia de sapos"
+  desc = "cast toads raining"
   cast = 8
   cost = 20
   type = spell_t
-  tags = ['disease', 'unrest', 'miasma']
+  tags = ["disease", "unrest", "miasma"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(1)
@@ -337,10 +340,8 @@ class CastRainOfToads(Spell):
       self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 1
     roll = roll_dice(1)
     if roll >= 5: dist += 1
@@ -356,15 +357,12 @@ class CastRainOfToads(Spell):
         s.events += [casting(s)]
 
 
-
-
-
 class CastStorm(Spell):
-  name = 'storm'
+  name = "storm"
   cast = 10
   cost = 20
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(1)
@@ -374,10 +372,8 @@ class CastStorm(Spell):
     if raining == 0: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 1
     roll = roll_dice(1)
     if roll >= 6: dist += 2
@@ -398,13 +394,13 @@ class CastStorm(Spell):
 
 
 class CastWailingWinds(Spell):
-  name = 'wailing winds'
-  desc = '-1 resolve for all units. ignores (death, malignant.'
+  name = "wailing winds"
+  desc = "-1 resolve for all units. ignores (death, malignant."
   cast = 8
   cost = 10
   ranking = 0
-  tags = ['morale']
-  type = 'spell'
+  tags = ["morale"]
+  type = "spell"
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(1)
@@ -414,10 +410,8 @@ class CastWailingWinds(Spell):
     if wailing == 0: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell38', channel=ch5, vol=0.7))
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell38", channel=ch5, vol=0.7))
+    self.set_msg0(itm)
     dist = 1
     roll = roll_dice(1)
     if roll >= 6: dist += 2
@@ -434,23 +428,53 @@ class CastWailingWinds(Spell):
         s.events += [casting(s)]
 
 
+class Curse(Spell):
+  name = "curse"
+  desc = "if success target gets diseased."
+  cast = 6
+  cost = 9
+  type = "spell"
+
+  target = ["beast", "cavalry", "civil", "infantry"]
+  tags = ["healer"]
+
+  def ai_run(self, itm):
+    units = [i for i in itm.pos.units if itm.nation not in i.belongs
+             and self.name not in i.global_skills]
+    
+    if units:
+      units.sort(key=lambda x: x.ranking,reverse=True) 
+      self.init(itm, units[0])
+
+  def run(self, itm, target):
+    if itm.nation.show_info: sleep(loadsound("spell42",channel=ch3))
+    sk = Diseased(itm)
+    sk.turns = randint(1, 4)
+    if sk.name not in [s.name for s in target.global_skills]:
+      target.global_skills += [sk]
+    msg = f"{itm} has cursed {to_t} {target}."
+    logging.debug(msg)
+    itm.log[-1] += [msg]
+    itm.pos.world.log[-1] += [msg]
+    target.log[-1] += [msg]
+
 
 class HealingMists(Spell):
-  desc = 'summons a mist in unit position. this mist heals all units into.'
+  desc = "summons a mist in unit position. this mist heals all units into."
   cast = 8
   cost = 15
 
 
 
 class HealingRoots(Spell):
-  name = 'raices curativas.'
-  desc = 'removes target poison effects.'
+  name = "raices curativas."
+  desc = "removes target poison effects."
   cast = 4
   cost = 15
-  type = 'spell'
+  type = "spell"
 
-  target = ['beast', 'cavalry', 'civil', 'infantry']
-  tags = ['healer']
+  target = ["beast", "cavalry", "civil", "infantry"]
+  tags = ["healer"]
 
   def ai_run(self, itm):
     units = [i for i in itm.pos.units if i.nation == itm.nation
@@ -459,9 +483,9 @@ class HealingRoots(Spell):
     if units: self.init(itm, units[0])
 
   def run(self, itm, target):
-    if itm.nation.show_info: sleep(loadsound('spell42',channel=ch3))
+    if itm.nation.show_info: sleep(loadsound("spell42",channel=ch3))
     target.other_skills = [sk for sk in target.other_skills if sk.name != intoxicated_t]
-    msg = f'{itm} has removed {intoxicated_t} {from_t} {target}.'
+    msg = f"{itm} has removed {intoxicated_t} {from_t} {target}."
     logging.debug(msg)
     itm.log[-1] += [msg]
     target.log[-1] += [msg]
@@ -479,7 +503,7 @@ class EnchantedForests(Spell):
 
 
 class FeastOfFlesh(Spell):
-  desc = 'sacrifica 200 población para invocar ogros a su servicio. +50 unrest.'
+  desc = "sacrifica 200 población para invocar ogros a su servicio. +50 unrest."
   cast = 4
   cost = 20
 
@@ -490,6 +514,22 @@ class FeastOfFlesh(Spell):
 class FireDarts(Spell):
   pass
 
+
+class GiftForTheNight(Spell):
+  name = "gift for the night"
+  cast = 10
+  cost = 12
+  type = "spell"
+  tags = ["summon"]
+
+  def ai_run(self, itm):
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm) 
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(WoodlandSpirit, itm.nation.name)
+    unit.hp_total = randint(unit.hp, unit.hp*5)
+    self.set_msg1(itm, unit)
 
 
 class MagicDuel(Spell):
@@ -512,8 +552,8 @@ class RaiseDead(Spell):
   cast = 6
   cost = 8
   ranking = 10
-  type = 'spell34'
-  tags = ['reanimating']
+  type = "spell34"
+  tags = ["reanimating"]
 
   corpses = 1
 
@@ -522,13 +562,13 @@ class RaiseDead(Spell):
 
   def run(self, itm):
     if itm.pos.corpses == []:
-      if itm.show_info: sleep(loadsound('errn1'))
-      msg = f'{itm} no puede lanzar hechiso {self.name}'
+      if itm.show_info: sleep(loadsound("errn1"))
+      msg = f"{itm} no puede lanzar hechiso {self.name}"
       logging.debug(msg)
       if msg not in itm.log[-1]: itm.log[-1].append(msg)
       return
     
-    logging.info(f'{self.name}. ({itm}).')
+    logging.info(f"{self.name}. ({itm}).")
     roll1 = roll_dice(2)
     tile = itm.pos
     
@@ -536,34 +576,34 @@ class RaiseDead(Spell):
     raised = choice(dead.corpses)(itm.nation)
     raised.hp_total = sum(dead.deads) * raised.hp
     raised.update()
-    logging.debug(f'unidades totales de {dead} {sum(dead.deads)}.')
-    logging.debug(f'{raised} unidades {raised.units}. hp {raised.hp}.')
+    logging.debug(f"unidades totales de {dead} {sum(dead.deads)}.")
+    logging.debug(f"{raised} unidades {raised.units}. hp {raised.hp}.")
     roll2 = roll_dice(2)
     needs = ceil(raised.ranking / 12)
-    logging.debug(f'roll1 {roll1}. cast {self.cast}, roll2 {roll2} need {needs}.')
+    logging.debug(f"roll1 {roll1}. cast {self.cast}, roll2 {roll2} need {needs}.")
     if roll2 >= needs and roll1 >= self.cast:
-      msg = f'{itm} lanza {self.name}.'
+      msg = f"{itm} lanza {self.name}."
       logging.info(msg)
       tile.corpses.remove(dead)
       raised.auto_attack = 1
       raised.pos = tile
       raised.pos.units.append(raised)
-      msg = f'reanimados {raised}.'
+      msg = f"reanimados {raised}."
       itm.log[-1].append(msg)
-      if itm.nation.show_info: sleep(loadsound('raiseundead1') / 2)
+      if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
       itm.pos.update(itm.nation)
     else:
-      msg = f'fallo.'
+      msg = f"fallo."
       logging.debug(msg)
       itm.log[-1].append(msg)
       if itm.show_info: 
-        sp.speak(f'{self.name} fall�.')
+        sp.speak(f"{self.name} fall�.")
 
 
 
 class RecruitForestGuards(Spell):
   name = "recruit forest guards"
-  desc = 'recruit 1 forest guard squad..'
+  desc = "recruit 1 forest guard squad.."
   cost = 2
   cast = 1
   
@@ -574,17 +614,15 @@ class RecruitForestGuards(Spell):
     if (itm.pos.around_threat+itm.pos.threat > itm.pos.defense*2
         and buildings): self.init(itm)
   def run(self, itm):
-    unit = itm.pos.add_unit(Levy, itm.nation.name)
+    unit = itm.pos.add_unit(ForestGuard, itm.nation.name)
     unit.set_squads(1)
     itm.pos.unrest += 2
-    msg = f'{unit} (recruited)'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
 
 
 class RecruitPeasants(Spell):
   name = "recruit peasants"
-  desc = 'recruit 1 peasant squad..'
+  desc = "recruit 1 peasant squad.."
   cost = 2
   cast = 1
   
@@ -595,17 +633,15 @@ class RecruitPeasants(Spell):
     if (itm.pos.around_threat+itm.pos.threat > itm.pos.defense*2
         and buildings): self.init(itm)
   def run(self, itm):
-    unit = itm.pos.add_unit(Levy, itm.nation.name)
+    unit = itm.pos.add_unit(PeasantLevy, itm.nation.name)
     unit.set_squads(1)
     itm.pos.unrest += 5
-    msg = f'{unit} (recruited)'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
 
 
 class RecruitLevy(Spell):
   name = "recruit Levy"
-  desc = 'recruit 1 levy squad..'
+  desc = "recruit 1 levy squad.."
   cost = 2
   cast = 1
   
@@ -619,27 +655,22 @@ class RecruitLevy(Spell):
     unit = itm.pos.add_unit(Levy, itm.nation.name)
     unit.set_squads(1)
     itm.pos.unrest += 5
-    msg = f'{unit} (recruited)'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
 
 
-  
-
-  
 class Reinvigoration(Spell):
-  desc = 'sacrifica 50 población para regenerar 20 poder.'
+  desc = "sacrifica 50 población para regenerar 20 poder."
   cost = 10
   cast = 4
 
 
 class Returning(Spell):
-  name = 'retorno'
-  desc = 'caster can teleport fastly to nation city capital. chance to be lost in time and return later or insane.'
+  name = "retorno"
+  desc = "caster can teleport fastly to nation city capital. chance to be lost in time and return later or insane."
   cast = 8
   cost = 30 
   type = spell_t
-  tags = ['teleport']
+  tags = ["teleport"]
   def ai_run(self, itm):
     go = 0
     if (itm.pos.around_threat > itm.pos.defense*1.5 
@@ -648,10 +679,10 @@ class Returning(Spell):
     if itm.pos == itm.pos.nation.cities[0].pos: go = 0
     if go: self.init(itm)
   def run(self, itm):
-    msg = f'spell {self.name}'
+    msg = f"spell {self.name}"
     itm.log[-1] += [msg]
     logging.debug(msg)
-    if itm.nation.show_info: sleep(loadsound('spell41', channel=ch5)*0.5)
+    if itm.nation.show_info: sleep(loadsound("spell41", channel=ch5)*0.5)
     itm.mp[0] = 0
     pos = itm.pos
     itm.nation.cities[0].pos.units += [itm]
@@ -664,44 +695,59 @@ class Returning(Spell):
       elif roll >= 5: blocked += 3
       itm.blocked = blocked
       itm.pos.units_blocked += [itm]
-      msg = f'{itm} is lost on time.'
+      msg = f"{itm} is lost on time."
       itm.log[-1] += [msg]
       itm.nation.log[-1] += [msg]
 
 
 class SanguineHeritage(Spell):
-  desc = 'sacrifices 44 slaves to raise 1 blood knight.'
+  desc = "sacrifices 44 slaves to raise 1 blood knight."
 
 
 class SightFromFuture(Spell):
-  name = 'vista desde el futuro'
-  desc = 'shows all near hidden units.'
+  name = "vista desde el futuro"
+  desc = "shows all near hidden units."
   cast = 6
   cost = 15
   type = spell_t
-  tags = ['rebelation']
+  tags = ["rebelation"]
 
   def ai_run(self, itm):
     if itm.pos.around_threat > itm.pos.defense:  self.init(self, itm)
 
   def run(self, itm):
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
+    self.set_msg0(itm)
     logging.debug(msg)
-    if itm.nation.show_info: sleep(loadsound('spell41', channel=ch5)*0.5)
+    if itm.nation.show_info: sleep(loadsound("spell41", channel=ch5)*0.5)
     tiles = itm.pos.get_near_tiles(1)
     for t in tiles:
       for uni in t.units:
         if uni.nation not in itm.belongs: uni.revealed = 1
 
 
+class SummonClayGolem(Spell):
+  name = "summon clay golem"
+  cast = 9
+  cost = 18
+  type = "spell"
+  tags = ["summon"]
+
+  def ai_run(self, itm):
+    if itm.nation.upkeep_limit and itm.nation.upkeep >= itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm) 
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(ClayGolem, itm.nation.name)
+    self.set_msg1(itm, unit)
+
+
 class SummonSecondSun(Spell):
-  name = 'cast second sun.'
-  desc = 'crea un segundo sol negando la noche.'
+  name = "cast second sun."
+  desc = "crea un segundo sol negando la noche."
   cast = 9
   cost = 40
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(5)
@@ -713,10 +759,8 @@ class SummonSecondSun(Spell):
     if go: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 5
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
@@ -730,31 +774,29 @@ class SummonSecondSun(Spell):
 
 
 class SummonAwakenTree(Spell):
-  name = 'summon awaken tree'
+  name = "summon awaken tree"
   cast = 4
   cost = 15
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   tile_forest = 1
 
   def ai_run(self, itm):
-    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm)
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(AwakenTree, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
+    self.set_msg1(itm, unit)
 
 
 class SummonDevourerOfDemons(Spell):
-  name = 'summon devourer of demons'
+  name = "summon devourer of demons"
   cast = 10
   cost = 20
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   def ai_run(self, itm):
     if itm.pos.around_nations and itm.pos.around_snation == []:
@@ -762,58 +804,52 @@ class SummonDevourerOfDemons(Spell):
 
   def run(self, itm):
     unit = itm.pos.add_unit(DevourerOfDemons, wild_t)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
 
 
 class SummonDraugr(Spell):
-  name = 'summon draugr'
+  name = "summon draugr"
   cast = 4
   cost = 10
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   tile_forest = 1
 
   def ai_run(self, itm):
-    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm)
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Draugr, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
-
+    self.set_msg1(itm, unit)
 
 
 
 class SummonDriads(Spell):
-  name = 'summon driads'
+  name = "summon driads"
   cast = 10
   cost = 25
-  type = 'spell'
-  tags = ['summon']
+  tile_forest = 1
+  type = "spell"
+  tags = ["summon"]
 
   def ai_run(self, itm):
-    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm)
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Driad, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
+    self.set_msg1(itm, unit)
 
 
 class SummonEclipse(Spell):
-  name = 'summon eclipse.'
-  desc = 'summon eclipse negating the day.'
+  name = "summon eclipse."
+  desc = "summon eclipse negating the day."
   cast = 10
   cost = 50
   type = spell_t
-  tags = ['weather']
+  tags = ["weather"]
 
   def ai_run(self, itm):
     tiles = itm.pos.get_near_tiles(8)
@@ -825,10 +861,8 @@ class SummonEclipse(Spell):
     if go: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound('spell27', channel=ch5, vol=0.7) / 2)
-    msg = f'spell {self.name}'
-    itm.log[-1] += [msg]
-    logging.debug(msg)
+    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    self.set_msg0(itm)
     dist = 8
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
@@ -841,72 +875,110 @@ class SummonEclipse(Spell):
 
 
 class SummonForestBears(Spell):
-  name = 'summon forest bears'
+  name = "summon forest bears"
   cast = 8
   cost = 15
-  tags = ['summon']
-  type = 'spell'
+  tile_forest = 1
+  tags = ["summon"]
+  type = "spell"
 
   def ai_run(self, itm):
-    if itm.pos.surf and itm.pos.surf == forest_t and itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if (itm.pos.surf.name == forest_t 
+        and itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit): return self.msg_upkeep_limit(itm)
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(ForestBear, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
+
+
+class SummonGiantBears(Spell):
+  name = "summon giant bears"
+  cast = 6
+  cost = 10
+  tile_forest = 1
+  tags = ["summon"]
+  type = "spell"
+
+  def ai_run(self, itm):
+    if (itm.pos.threat+itm.pos.around_threat > itm.pos.defense 
+        and itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit): return self.msg_upkeep_limit(itm) 
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(GiantBear, itm.nation.name)
+    unit.hp_total = randint(unit.hp, unit.hp*2)
+    self.set_msg1(itm, unit)
+
+
 
 
 
 class SummonFalcons(Spell):
-  name = 'summon forest falcons'
+  name = "summon forest falcons"
   cast = 5
   cost = 10
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   def ai_run(self, itm):
-    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm) 
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Falcon, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
 
 
 class SummonMandeha(Spell):
-  name = 'summon mandeha'
+  name = "summon mandeha"
   cast = 8
   cost = 35
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   def ai_run(self, itm):
     self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(Mandeha, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
-
+    self.set_msg1(itm, unit) 
 
 
 
 class SummonSpectralInfantry(Spell):
-  name = 'summon spectral infantry'
+  name = "summon spectral infantry"
   cast = 8
   cost = 20
-  type = 'spell'
-  tags = ['summon']
+  type = "spell"
+  tags = ["summon"]
 
   def ai_run(self, itm):
-    if itm.nation.upkeep < itm.nation.upkeep_limit: self.init(itm)
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm) 
+    self.init(itm)
 
   def run(self, itm):
     unit = itm.pos.add_unit(SpectralInfantry, itm.nation.name)
-    msg = f'{unit} ({summoning_t})'
-    logging.debug(msg)
-    itm.log[-1] += [msg]
+    self.set_msg1(itm, unit)
+
+
+
+class SummonWoodlandSpirit(Spell):
+  name = "summon woodland spirit"
+  cast = 10
+  cost = 20
+  type = "spell"
+  tile_forest = 1
+  tags = ["summon"]
+
+  def ai_run(self, itm):
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm)
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(WoodlandSpirit, itm.nation.name)
+    self.set_msg1(itm, unit)
+    
+
+
 

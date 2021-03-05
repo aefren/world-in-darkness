@@ -109,6 +109,21 @@ class BlessedWeapons(Skill):
       itm.strn_mod += 2
 
 
+class ColdResist(Skill):
+  name = blizzard_wanderer_t
+  desc = "ignores storm penalties."
+  effect = "self"
+  ranking = 1.1
+  type = "generic"
+
+  def run(self, itm):
+    itm.coldres = 1
+    if itm.pos and itm.pos.raining:
+      itm.effects.append(self.name)
+    if itm.pos and itm.pos.storm:
+      itm.can_hide = 1
+      itm.stealth_mod += 2
+
 
 class BloodRaining(Skill):
   name = "blood raining"
@@ -119,7 +134,7 @@ class BloodRaining(Skill):
 
   def run(self, itm):
     itm.effects += [self.name]
-    if malignant_t in itm.tags:
+    if malignant_t in itm.traits:
       itm.resolve_mod += 1
       itm.moves_mod += 1
       itm.res_mod += 2
@@ -129,7 +144,7 @@ class BloodRaining(Skill):
       itm.dfs_mod -= 1
       itm.moves_mod -= 1
       itm.off_mod -= 1
-      if mounted_t in itm.traits: 
+      if itm.mounted: 
         itm.moves_mod -= 1
         itm.resolve_mod -= 1
       if itm.range[1] > 5:
@@ -163,7 +178,7 @@ class BloodyBeast(Skill):
         corpses.units = 0
         corpses.hp_total = 0
         itm.pos.units += [corpses]
-        if itm.pos.nation.show_info : sleep(loadsound("spell33") * 0.5)
+        if itm.pos.nation.show_info: sleep(loadsound("spell33") * 0.5)
         msg = f"{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}."
         itm.pos.nation.log[-1].append(msg)
 
@@ -231,7 +246,7 @@ class DarkPresence(Skill):
   tags = ["leader"]
 
   def run(self, itm):
-    if (itm.nation == self.nation
+    if (itm.nation in self.itm.belongs
         and malignant_t in itm.traits 
         and vampire_t not in itm.traits and self.name not in itm.effects):
       if itm.pos and itm.pos.day_night == 0:
@@ -339,7 +354,7 @@ class Diseased(Skill):
 
 class Eclipse(Skill):
   name = "eclipse"
-  desc = "-1 off, -1dfs, -5 range if unit range is more than 5. +2 stealth."
+  desc = "if unit is not dark vision: -1 off, -1dfs, -5 range if unit range is more than 5. +2. stealth."
   effect = "all"
   type = "generic"
 
@@ -381,20 +396,21 @@ class Fanatism(Skill):
 
 class FearAura(Skill):
   effect = "enemy"
-  desc = "-2 resolve, -2 moves, -1 off, -1 dfs."
+  desc = "if target is not mindless. -2 resolve, -2 moves, -1 off, -1 dfs."
   name = fearaura_t
   ranking = 1.2
   type = "generic"  
   tags = ["fear aura"]
 
   def run(self, itm):
-    if death_t not in itm.traits and itm != self.itm:
-      itm.effects.append(fear_t)
-      itm.resolve_mod -= 2
-      itm.moves_mod -= 2
-      itm.off_mod -= 2
-      itm.dfs_mod -= 2
-      itm.strn_mod -= 1
+    if mindless_t in itm.traits: return
+    if itm == self.itm: return
+    if itm.nation in self.itm.belongs: return
+    itm.effects.append(fear_t)
+    itm.resolve_mod -= 2
+    itm.moves_mod -= 2
+    itm.off_mod -= 1
+    itm.dfs_mod -= 1
 
 
 
@@ -427,21 +443,21 @@ class Fly(Skill):
 
 class Furtive(Skill):
   name = "furtive"
-  desc = "+4 stealth."
+  desc = "+5 stealth."
   effect = "self"
   ranking = 1.1
   type = "generic"
 
   def run(self, itm):
     itm.effects.append(self.name)
-    itm.stealth_mod += 4
+    itm.stealth_mod += 5
 
 
 
 class ForestSurvival(Skill):
-  effect = "self"
-  desc = "+2 stealth if unit is on forest."
   name = "sobreviviente del bosque"
+  desc = "+2 stealth if unit is on forest."
+  effect = "self"
   ranking = 1.1
   type = "generic"
 
@@ -468,7 +484,7 @@ class ForestTerrain(Skill):
       itm.moves_mod -= 2
       itm.dfs_mod -= 1
       itm.off_mod -= 1
-      if mounted_t in itm.traits: itm.moves_mod -= 2
+      if itm.mounted: itm.moves_mod -= 2
 
 
 
@@ -491,14 +507,14 @@ class ForestWalker(Skill):
 
 class ElusiveShadow(Skill):
   name = "sombra elusiva"
-  desc = "+3 stealth on day, +6 stealth on night."
+  desc = "+8 stealth on day, +10 stealth on night."
   effect = "self"
   type = "generic"
 
   def run(self, itm):
     itm.effects.append(self.name) 
-    if itm.pos and itm.pos.day_night: itm.stealth_mod += 6
-    elif itm.pos and itm.pos.day_night == 0: itm.stealth_mod += 3
+    if itm.pos and itm.pos.day_night: itm.stealth_mod += 10
+    elif itm.pos and itm.pos.day_night == 0: itm.stealth_mod += 8
 
 
 
@@ -534,15 +550,16 @@ class Storm(Skill):
   type = "generic"
 
   def run(self, itm):
-    if itm.can_fly:
+    if itm.can_fly and itm.coldres == 0:
       itm.effects += [self.name] 
       itm.moves_mod -= 3
-    if itm.range[1] >= 5:
+    if itm.range[1] >= 5 and itm.coldres == 0:
       itm.effects += [self.name]
       itm.off_mod -= 2
 
   def tile_run(self, itm):
     itm.raining = 1
+    itm.storm = 1
     itm.flood = 2
     roll = basics.roll_dice(1)
     if roll >= 5: itm.flood += 1
@@ -571,7 +588,7 @@ class HillTerrain(Skill):
       itm.moves_mod -= 2
       itm.dfs_mod -= 1
       itm.off_mod -= 1
-      if mounted_t in itm.traits: itm.moves_mod -= 2
+      if itm.mounted: itm.moves_mod -= 2
 
 
 
@@ -683,17 +700,18 @@ class ImpalingRoots(Skill):
 
 class Inspiration(Skill):
   name = "inspiraci�n"
-  desc = "+1 hit roll, +1 resolve."
+  desc = "if target is not mindless. +1 hit roll, +1 resolve."
   effect = "friend"
   ranking = 1.2
   type = "generic"
   tags = [ "leader"]
 
   def run(self, itm):
-    if itm.nation == self.nation and itm != self.itm:
-      itm.effects.append(self.name)
-      itm.hit_rollss_mod += 1
-      itm.resolve_mod += 1
+    if itm.mindless_t in itm.traits: return
+    if itm.nation not in self.itm.belongs: return
+    itm.effects.append(self.name)
+    itm.hit_rollss_mod += 1
+    itm.resolve_mod += 1
 
 
 
@@ -755,14 +773,14 @@ class LocustSwarm(Skill):
 
 class LordOfBones(Skill):
   name = "se�or de los huesos"
-  effect = "friend"
   desc = "+1 att, +1 dfs, +1 off."
+  effect = "friend"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
 
   def run(self, itm):
-    if (itm.nation == self.nation and itm != self.itm 
+    if (itm.nation in self.itm.belongs and itm != self.itm 
         and itm.name in [skeleton_t]):
       itm.effects.append(self.name)
       itm.att1_mod += 1
@@ -771,16 +789,16 @@ class LordOfBones(Skill):
 
 
 
-class LordOfBlodd(Skill):
-  effect = "friend"
+class BloodLord(Skill):
+  name = "señor de sangre"
   desc = "+1 att, +1 moves, +1 resolve if unit is blood drinker."
-  name = "se�or de sangre"
+  effect = "friend"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
 
   def run(self, itm):
-    if (itm.nation == self.nation and itm != self.itm 
+    if (itm.nation in self.itm.belongs and itm != self.itm 
         and blood_drinker_t in itm.traits):
       itm.effects.append(self.name)
       itm.att1_mod += 1
@@ -816,17 +834,18 @@ class MastersEye(Skill):
   tags = ["leader"]
 
   def run(self, itm):
-    if itm != self.itm and itm.nation == self.nation:
-      itm.effects.append(self.name)
-      itm.hit_rolls_mod += 1
-      if death_t in itm.traits:
-        itm.effects += [f"{death_t}."]
-        itm.moves_mod += 1
-        itm.res_mod += 1
-        itm.strn_mod += 1
-      if malignant_t in itm.traits:
-        itm.effects += [f"{malignant_t}"]
-        itm.resolve_mod += 1
+    if itm == self.itm: return
+    if itm.nation not in self.itm.belongs: return
+    itm.effects.append(self.name)
+    itm.hit_rolls_mod += 1
+    if death_t in itm.traits:
+      itm.effects += [f"{death_t}."]
+      itm.moves_mod += 1
+      itm.res_mod += 1
+      itm.strn_mod += 1
+    if malignant_t in itm.traits:
+      itm.effects += [f"{malignant_t}"]
+      itm.resolve_mod += 1
 
 
 
@@ -863,7 +882,7 @@ class Miasma(Skill):
       if itm.city: msg += f" ({itm.city})"
       logging.debug(msg)
       itm.nation.log[-1] += [msg]
-      corpse = choice([cr for cr in itm.nation.population_type if poisonres_t not in cr.traits])
+      corpse = choice([cr for cr in itm.nation.population_type if cr.poisonres == 0])
       itm.add_corpses(corpse, deads)
       # corpse.deads = [pop_death * itm.pop // 100]
       # corpse.units=0
@@ -871,7 +890,7 @@ class Miasma(Skill):
       # itm.units += [corpse]
       itm.pop -= deads
       if itm.nation.show_info: sleep(loadsound("notify23", channel=ch4) // 1.5)
-    units = [u for u in itm.units if poisonres_t not in u.traits
+    units = [u for u in itm.units if u.poisonres == 0
                and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
     roll = basics.roll_dice(1)
     if roll >= 6 and units:
@@ -924,7 +943,7 @@ class Night(Skill):
 
 class NightFerocity(Skill):
   name = "ferocidad nocturna"
-  desc = "if night: +1 att, +2 damage, +1 moves."
+  desc = "if night: +1 att1, +2 damage, +1 moves."
   effect = "self"
   type = "generic"
 
@@ -977,9 +996,9 @@ class Organization(Skill):
   tags = ["leader"]
 
   def run(self, itm):
-    if (itm.nation == self.nation
+    if (itm.nation in self.itm.belongs
         and human_t in itm.traits
-        and all(i not in itm.traits for i in [commander_t, leader_t])):
+        and all(i == 0 for i in [itm.comm, itm.leader])):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
@@ -1042,7 +1061,7 @@ class Rain(Skill):
     if itm.can_fly:
       itm.effects += [self.name] 
       itm.moves_mod -= 2
-    if itm.range[1] > 5:      
+    if itm.range[1] > 5: 
       itm.effects += [self.name]
       itm.off_mod -= 1
 
@@ -1163,6 +1182,7 @@ class Skirmisher(Skill):
         itm.target.dist += dist
         msg = f"{self}: {itm} go back {dist}."
         itm.temp_log += [msg]
+
 
 
 class Spread(Skill):
@@ -1315,7 +1335,7 @@ class SwampTerrain(Skill):
       itm.dfs_mod -= 1
       itm.moves_mod -= 2
       itm.off_mod -= 1
-      if mounted_t in itm.traits: itm.moves_mod -= 2
+      if itm.mounted: itm.moves_mod -= 2
 
 
 
@@ -1350,7 +1370,7 @@ class TheBeast(Skill):
         itm.pos.pop -= deads
         if deads > 0: itm.pos.add_corpses(choice(itm.pos.nation.population_type), deads)
         if itm.pos.pop: itm.pos.unrest += deads * 100 / itm.pos.pop
-        if itm.pos.nation.show_info : sleep(loadsound("spell33") * 0.5)
+        if itm.pos.nation.show_info: sleep(loadsound("spell33") * 0.5)
         msg = f"{itm} {deads} deads {in_t} {itm.pos} {itm.pos.cords}."
         itm.nation.log[-1].append(msg)
       elif itm.pos.pop == 0 and basics.roll_dice(2) >= 10:
@@ -1393,7 +1413,9 @@ class ToxicArrows(Skill):
 
   def run(self, itm):
     if (itm.target and sum(itm.damage_done)
-        and all(i not in [death_t, poisonres_t] for i in itm.target.traits)):
+        and all(i not in [death_t, spirit_t] for i in itm.target.traits)
+    and itm.target.poisonres == 0
+    and i.ethereal == 0):
       logging.debug(f"{self.name} damage done {itm.damage_done}.")
       if basics.roll_dice(1) >= 5:
         sk = Intoxicated(itm.target)
@@ -1416,7 +1438,8 @@ class ToxicClaws(Skill):
   def run(self, itm):
     if (itm.target and sum(itm.damage_done) and itm.target.hp_total >= 1
         and death_t not in itm.target.traits 
-        and poisonres_t not in itm.target.traits):
+        and itm.poisonres == 0
+        and itm.ethereal == 0):
       logging.debug(f"{self.name} damage done {itm.damage_done}.")
       if basics.roll_dice(1) >= 3:
         sk = Intoxicated(itm.target)
@@ -1427,6 +1450,17 @@ class ToxicClaws(Skill):
           itm.target.log[-1] += [msg]
           itm.temp_log += [msg]
 
+
+class TundraTerrain(Skill):
+  name = "tundra terrain"
+  effect = "all"
+  desc = "-1 moves for non coldresist units."
+  type = "generic"
+
+  def run(self, itm):
+    if itm.coldres == 0:
+      itm.effects.append(self.name)
+      itm.moves_mod -= 1
 
 
 class VigourMourtis(Skill):
@@ -1452,8 +1486,8 @@ class Undisciplined(Skill):
 
   def run(self, itm):
     roll = basics.roll_dice(1)
-    if roll <= 4:
-      if itm.pos: itm.pos.unrest += randint(1, 2)
+    if roll <= 5:
+      if itm.pos and itm.pos.nation: itm.pos.unrest += randint(1, 2)
     else: itm.hp_total -= itm.hp * randint(1, 3)
 
 
@@ -1480,7 +1514,7 @@ class WarCry(Skill):
   type = "generic"
 
   def run(self, itm):
-    if itm.nation == self.nation and itm != self.itm and human_t in itm.traits: 
+    if itm.nation in self.itm.belongs and itm != self.itm and human_t in itm.traits: 
       itm.effects.append(self.name)
       itm.resolve_mod += 1
 
@@ -1494,8 +1528,12 @@ class Withdrawall(Skill):
   type = "after attack"
 
   def run(self, itm):
-    if basics.roll_dice(1) >= 6 and itm.target: 
-      if itm.hp_total >= 1 and itm.target.ranking > self.ranking*1.5: 
+    if itm.target  and itm.hp_total >= 1:
+      if itm.target.ranking < self.ranking * 1.5: return
+      if itm.dist > itm.target.range[1]: return
+      base = itm.moves - self.moves_mod
+      base -= self.target.moves+self.target.moves_mod
+      if basics.roll_dice(2) + base >= 9:
         itm.retreats = 1
         itm.mp[0] -= 1
         msg = f"{self} {itm} have fled."

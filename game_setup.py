@@ -4,7 +4,7 @@ exec("import data.items")
 
 
 #Difficulty.
-DIFFICULTY = 50
+DIFFICULTY = 70
 DIFFICULTY_TYPE = "dynamic"
 #Random Buildings.
 random_buildings = data.items.random_buildings
