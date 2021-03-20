@@ -249,7 +249,7 @@ class Claw(Weapon):
   desc = ""
   ranking = 1.1
   damage = 2
-  critical = 3
+  critical = 4
   range_max = 0
   range_min = 0
   pn = 0
@@ -582,6 +582,16 @@ class Pugio(Weapon):
   pn = 1
 
 
+class RustSword(Weapon):
+  name = "rust sword"
+  desc = ""
+  ranking = 1.1
+  damage = 3
+  critical = 3
+  range_max = 1
+  range_min = 1
+  pn = 0
+
 
 class ScreenOfSorrow(Weapon):
   name = "screen of sorrow"
@@ -707,8 +717,8 @@ class Sword(Weapon):
   name = "sword"
   desc = ""
   ranking = 1.2
-  damage = 4
-  critical = 3
+  damage = 5
+  critical = 6
   range_max = 1
   range_min = 1
   pn = 0

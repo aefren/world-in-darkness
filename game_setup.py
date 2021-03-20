@@ -1,4 +1,4 @@
-#exec("from data.items import HolyEmpire, Wallachia, WoodElves, Hell, Nature, Orcs, Wild")
+#exec("from data.items import HolyEmpire, valahia, WoodElves, Hell, Nature, Orcs, Wild")
 exec("from data.items import *")
 exec("import data.items")
 
@@ -14,12 +14,12 @@ buildings_value = 20
 ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
-HOLY.ai = 1
-TRANS = Wallachia()
+HOLY.ai = 0
+TRANS = valahia()
 TRANS.ai = 1
 
 NATIONS = [HOLY, ELF, TRANS]
 
 #Random factions.
-RANDOM_FACTIONS = [Hell(), Nature(), Orcs(), Wild()]
+RANDOM_FACTIONS = [Death(), Hell(), Nature(), Neutral(), Orcs(), Wild()]
 

@@ -16,7 +16,7 @@ def ai_join_units(itm, count=1, info=0):
   if info: logging.info(f'join units {itm} ({itm.units}).')
   itm.pos.update(itm.nation)
   for i in itm.pos.units:
-    if (i == itm or i.garrison != itm.garrison or i.settler or i.comm
+    if (i == itm or i.garrison != itm.garrison or i.settler or i.leadership
         or i.name != itm.name or i.can_join == 0 or i.hp_total < 1
         or i.goal or i.leader != itm.leader or i.leads or i.scout
         or i.squads >= i.max_squads or itm.squads < i.squads):

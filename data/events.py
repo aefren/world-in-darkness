@@ -1,11 +1,14 @@
-from random import choice, uniform
-from time import *
 
-from basics import *
 import basics
+import math
+
+from data import skills
+from data.lang.es import *
 from log_module import *
+from random import choice, randint, uniform
 from screen_reader import *
 from sound import *
+from time import *
 
 
 class Event:
@@ -33,7 +36,7 @@ class Looting(Event):
       if buildings: roll += 4
       if info: print(f'{roll = : }')
       if roll >= 10 and t.unrest >= 20:
-        raided = randint(ceil(t.income*0.2), ceil(t.income*0.4))
+        raided = randint(math.ceil(t.income*0.2), math.ceil(t.income*0.4))
         kills = randint(1,10)*t.pop/100
         if t.unrest >= 50: raided *= 2
         kills *= 2 
@@ -58,6 +61,37 @@ class Looting(Event):
           msg = f'{building} has been damaged.'
           self.itm.nation.log[-1] += [msg]
         if self.itm.nation.show_info: sleep(loadsound('spell35') / 4)
+
+
+class Reanimation(Event):
+  name = 'reanimation'
+  turns = 0
+  type = 0
+
+  def run(self, info = 1):
+    if info: logging.info(f'revisando eventos de {self.itm}.')
+    if self.itm.pos.world.turn < 2: return
+    for t in self.itm.tiles:
+      if t.corpses == []: continue
+      total_hp = randint(30,70)
+      dead = choice(t.corpses)
+      raised = choice(dead.corpses)(t.nation)
+      if sum(dead.deads)*total_hp >= total_hp: 
+        raised.hp_total = total_hp
+        dead.deads[0] -= total_hp/5
+      else: 
+        raised.hp_total = sum(raised.deads) * raised.hp
+        t.remove(raised)
+      raised.update()
+      
+      msg = f"{raised} raised in {t} {t.cords}."
+      logging.info(msg)
+      raised.auto_attack = 1
+      raised.pos = t
+      raised.pos.units.append(raised)
+      t.nation.log[-1].append(msg)
+      if t.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+      t.pos.update(t.nation)
 
 
 class Revolt(Event):

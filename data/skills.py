@@ -238,8 +238,9 @@ class Charge(Skill):
 
 class DarkPresence(Skill):
   name = "dark presence"
-  desc = "if death: in day: +2 res. "
-  desc += "if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str."
+  desc = """if death: in day: +2 res.
+  if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.
+  """
   effect = "friend"
   ranking = 1.1
   type = "generic"
@@ -593,9 +594,9 @@ class HillTerrain(Skill):
 
 
 class HoldPositions(Skill):
-  effect = "self"
-  desc = "+2 dfs if unit mp is full."
   name = "hold positions"
+  desc = "+2 dfs if unit mp is full."
+  effect = "leading"
   ranking = 1.2
   type = "generic"
 
@@ -608,7 +609,8 @@ class HoldPositions(Skill):
 
 class HolyAura(Skill):
   name = fearaura_t
-  desc = "-2 moves, - 1 dfs, -1 off, -1 resolve if enemy is death and malignant."
+  desc = """-2 moves, -2 dfs, -2 off if enemy is death and malignant.
+  """
   effect = "enemy"
   ranking = 1.2
   type = "generic"  
@@ -617,10 +619,9 @@ class HolyAura(Skill):
   def run(self, itm):
     if death_t in itm.target.traits or malignant_t in itm.target.traits:
       itm.effects += [f"{self.name}"]
-      itm.resolve_mod -= 2
       itm.moves_mod -= 2
-      itm.off_mod -= 1
-      itm.dfs_mod -= 1
+      itm.off_mod -= 2
+      itm.dfs_mod -= 2
 
 
 
@@ -700,18 +701,18 @@ class ImpalingRoots(Skill):
 
 class Inspiration(Skill):
   name = "inspiraci�n"
-  desc = "if target is not mindless. +1 hit roll, +1 resolve."
+  desc = "+1 hit roll, +2 resolve."
   effect = "friend"
   ranking = 1.2
   type = "generic"
   tags = [ "leader"]
 
   def run(self, itm):
-    if itm.mindless_t in itm.traits: return
+    if self.itm == itm: return
     if itm.nation not in self.itm.belongs: return
     itm.effects.append(self.name)
-    itm.hit_rollss_mod += 1
-    itm.resolve_mod += 1
+    itm.hit_rolls_mod += 1
+    itm.resolve_mod += 2
 
 
 
@@ -773,15 +774,15 @@ class LocustSwarm(Skill):
 
 class LordOfBones(Skill):
   name = "se�or de los huesos"
-  desc = "+1 att, +1 dfs, +1 off."
-  effect = "friend"
+  desc = """if unit is skeleton +1 att, +1 dfs, +1 off."""
+  effect = "leading"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
 
   def run(self, itm):
     if (itm.nation in self.itm.belongs and itm != self.itm 
-        and itm.name in [skeleton_t]):
+        and itm.name in [skeleton_t, skeleton_warrior_t]):
       itm.effects.append(self.name)
       itm.att1_mod += 1
       itm.dfs_mod += 1
@@ -791,8 +792,8 @@ class LordOfBones(Skill):
 
 class BloodLord(Skill):
   name = "señor de sangre"
-  desc = "+1 att, +1 moves, +1 resolve if unit is blood drinker."
-  effect = "friend"
+  desc = "+1 strn, +1 moves, +1 resolve if unit is blood drinker."
+  effect = "leading"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
@@ -801,9 +802,9 @@ class BloodLord(Skill):
     if (itm.nation in self.itm.belongs and itm != self.itm 
         and blood_drinker_t in itm.traits):
       itm.effects.append(self.name)
-      itm.att1_mod += 1
       itm.moves_mod += 1
       itm.resolve_mod += 1
+      itm.strn_mod += 2
 
 
 
@@ -988,17 +989,16 @@ class MountainSurvival(Skill):
 
 
 class Organization(Skill):
-  name = "organizaci�n"
+  name = "organization"
   desc = "+1 off, +1 dfs. +1 resolve if unit is not sacred."
-  effect = "friend"
+  effect = "leading"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
 
   def run(self, itm):
     if (itm.nation in self.itm.belongs
-        and human_t in itm.traits
-        and all(i == 0 for i in [itm.comm, itm.leader])):
+        and human_t in itm.traits and itm.leadership == 0):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
@@ -1081,7 +1081,7 @@ class Rain(Skill):
 class Regroup(Skill):
   name = "reagruparse"
   desc = "if a combat ends with a victory, all retreats are recovered."
-  effect = "self"
+  effect = "leading"
   type = "after combat"
 
   def run_after_combat(self, itm):
@@ -1124,7 +1124,7 @@ class Refit(Skill):
 class SermonOfCourage(Skill):
   name = "serm�n de coraje"
   desc = "+2 resolve if unit is sacred and human."
-  effect = "friend"
+  effect = "leading"
   ranking = 1.1
   type = "generic"
   tags = ["leader"]
@@ -1251,9 +1251,9 @@ class Scavenger(Skill):
 
 
 class Scream(Skill):
-  effect = "selv"
-  desc = "if roll >= 4 enemy morale check fails.."
   name = "grito ardiente"
+  effect = "selv"
+  desc = "if roll >= 3 enemy morale check fails.."
   ranking = 1.3
   type = "before attack"
 
@@ -1479,12 +1479,16 @@ class VigourMourtis(Skill):
 
 class Undisciplined(Skill):
   name = "undisciplined"
-  desc = "at start of each turn one of those options can occur. loss a random unit number, generate unrest in tile if unit is in a city tile."
+  desc = """if unit is not leaded.
+  at start of each turn one of those options can occur: 
+  loss a random unit number. 
+  generate unrest in tile if unit is in a city tile."""
   effect = "self"
   ranking = 1
   type = "start turn"
 
   def run(self, itm):
+    if itm.leader: return
     roll = basics.roll_dice(1)
     if roll <= 5:
       if itm.pos and itm.pos.nation: itm.pos.unrest += randint(1, 2)
@@ -1509,7 +1513,7 @@ class WailingWinds(Skill):
 class WarCry(Skill):
   name = "war cry"
   desc = "+1 resolve if unit is human ."
-  effect = "friend"
+  effect = "leading"
   ranking = 1.1
   type = "generic"
 
