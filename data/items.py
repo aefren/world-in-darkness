@@ -1578,7 +1578,7 @@ class Unit:
   javelins = 0
   mrng = 0
   off = 0
-  strn = 0
+  strn = 1
   pn = 0
   offensive_skills = []
   other_skills = [] 
@@ -4557,8 +4557,8 @@ class Druid(Elf):
   global_skills = [ForestWalker, Furtive]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 8
+  hres = 4
   arm = 0
   armor = None
 
@@ -4567,7 +4567,7 @@ class Druid(Elf):
   weapon2 = weapons.ToxicDagger
   att2 = 1
   off = 3
-  strn = 2
+  strn = 5
   offensive_skills = [Ambushment]
 
   common = 4
@@ -4611,15 +4611,15 @@ class KeeperOfTheGrove (Elf):
   global_skills = [ForestWalker, Furtive, PyreOfCorpses, Refit, Regroup]
 
   dfs = 5
-  res = 2
-  hres = 0
+  res = 12
+  hres = 4
   arm = 0
   armor = MediumArmor()
 
   weapon1 = weapons.GreatSword
   att1 = 2
   off = 5
-  strn = 4
+  strn = 14
 
   lead_traits = [elf_t, human_t]
   lead_aligments = [neutral_t, wild_t]
@@ -4661,15 +4661,15 @@ class PathFinder(Elf):
   global_skills = [ForestWalker, Furtive, Organization, PyreOfCorpses]
 
   dfs = 3
-  res = 1
-  hres = 0
+  res = 8
+  hres = 4
   arm = 0
   armor = LightArmor()
 
   weapon1 = weapons.LongBow
   att1 = 2
   off = 3
-  strn = 3
+  strn = 12
 
   lead_traits = [elf_t, human_t]
   lead_aligments = [neutral_t, wild_t]
@@ -4710,8 +4710,8 @@ class PriestessOfTheMoon(Elf):
   global_skills = [ForestWalker, Furtive, Inspiration, PyreOfCorpses]
 
   dfs = 5
-  res = 4
-  hres = 2
+  res = 11
+  hres = 4
   arm = 2
   armor = None
 
@@ -4720,7 +4720,7 @@ class PriestessOfTheMoon(Elf):
   weapon2 = weapons.TigerFangs
   att2 = 1
   off = 5
-  strn = 4
+  strn = 18
 
   lead_traits = [elf_t, human_t]
   lead_aligments = [neutral_t, wild_t]
@@ -4756,8 +4756,8 @@ class AwakenTree(Elf):
   global_skills = [ForestWalker]
 
   dfs = 3
-  res = 5
-  hres = 5
+  res = 14
+  hres = 14
   hlm = 0
   arm = 5
   armor = None
@@ -4767,7 +4767,7 @@ class AwakenTree(Elf):
   weapon2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 5
+  strn = 20
   offensive_skills = [ImpalingRoots]
 
   common = 3
@@ -4805,8 +4805,8 @@ class BladeDancer(Elf):
   global_skills = [ForestWalker, PyreOfCorpses, Regroup]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 8
+  hres = 4
   arm = 0
   armor = None
 
@@ -4815,7 +4815,7 @@ class BladeDancer(Elf):
   weapon2 = weapons.Dagger
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   pn = 1
   offensive_skills = [Ambushment]
 
@@ -4852,15 +4852,15 @@ class DemonHunter(Elf):
   global_skills = [DHLevels, ForestWalker, Furtive, ShadowHunter]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 12
+  hres = 6
   arm = 0
   armor = None
 
   weapon1 = weapons.SoulDrain
   att1 = 1
   off = 4
-  strn = 3
+  strn = 16
   offensive_skills = [Ambushment]
 
   def __init__(self, nation):
@@ -4895,15 +4895,15 @@ class Driad(Elf):
   global_skills = [ForestWalker, ElusiveShadow]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 9
+  hres = 5
   arm = 2
   armor = None
 
   weapon1 = weapons.ShortBow
   att1 = 2
   off = 4
-  strn = 4
+  strn = 12
   
   offensive_skills = [Ambushment]
 
@@ -4938,8 +4938,8 @@ class EternalGuard(Elf):
   global_skills = [ForestWalker, PyreOfCorpses, Refit, Regroup]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 9
+  hres = 4
   arm = 0
   armor = HeavyArmor()
 
@@ -4948,7 +4948,7 @@ class EternalGuard(Elf):
   weapon2 = weapons.Dagger
   att2 = 1
   off = 4
-  strn = 4
+  strn = 12
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -4985,8 +4985,8 @@ class Falcon(Elf):
   global_skills = [ForestWalker]
 
   dfs = 4
-  res = 1
-  hres = 0
+  res = 5
+  hres = 1
   arm = 0
   armor = None
 
@@ -4995,7 +4995,7 @@ class Falcon(Elf):
   weapon2 = weapons.Bite
   att2 = 2
   off = 4
-  strn = 3
+  strn = 5
   pn = 0
 
   def __init__(self, nation):
@@ -5027,8 +5027,8 @@ class ForestBear(Unit):
   global_skills = [ForestWalker, Furtive]
 
   dfs = 3
-  res = 3
-  hres = 2
+  res = 12
+  hres = 6
   arm = 1
   armor = None
 
@@ -5037,7 +5037,7 @@ class ForestBear(Unit):
   weapon2 = weapons.Bite
   att2 = 1
   off = 4
-  strn = 5
+  strn = 15
   pn = 0
 
   def __init__(self, nation):
@@ -5074,8 +5074,8 @@ class ForestEagle(Elf):
   global_skills = [ForestWalker]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 7
+  hres = 1
   arm = 0
   armor = None
 
@@ -5084,7 +5084,7 @@ class ForestEagle(Elf):
   weapon2 = weapons.Bite
   att2 = 1
   off = 4
-  strn = 3
+  strn = 7
   pn = 1
 
   def __init__(self, nation):
@@ -5117,8 +5117,8 @@ class GreatEagle(Elf):
   global_skills = [ForestWalker]
 
   dfs = 4
-  res = 3
-  hres = 1
+  res = 8
+  hres = 2
   arm = 2
   armor = None
 
@@ -5127,7 +5127,7 @@ class GreatEagle(Elf):
   weapon2 = weapons.Beak
   att2 = 1
   off = 5
-  strn = 5
+  strn = 9
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5158,8 +5158,8 @@ class ForestGiant(Unit):
   global_skills = [ForestWalker]
 
   dfs = 3
-  res = 5
-  hres = 2
+  res = 12
+  hres = 8
   arm = 2
   armor = None
 
@@ -5168,7 +5168,7 @@ class ForestGiant(Unit):
   weapon2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 5
+  strn = 15
 
   common = 4
 
@@ -5205,15 +5205,15 @@ class ForestGuard(Elf):
   global_skills = [ForestWalker, PyreOfCorpses]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = None
 
   weapon1 = weapons.ShortSword
   att1 = 1
   off = 3
-  strn = 3
+  strn = 8
   offensive_skills = [Ambushment]
 
   def __init__(self, nation):
@@ -5250,8 +5250,8 @@ class ForestRider(Elf):
   global_skills = [ForestWalker, PyreOfCorpses, Refit, Regroup]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 11
+  hres = 6
   arm = 1
   armor = HeavyArmor
   shield = Shield()
@@ -5261,7 +5261,7 @@ class ForestRider(Elf):
   weapon2 = weapons.Hoof
   att2 = 2
   off = 4
-  strn = 4
+  strn = 14
   offensive_skills = [HeavyCharge]
 
   def __init__(self, nation):
@@ -5297,15 +5297,15 @@ class ElvesSettler(Human):
   resolve = 4
 
   dfs = 1
-  res = 1
-  hres = 0
+  res = 5
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Fist
   att1 = 2
   off = 1
-  strn = 1
+  strn = 4
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5339,8 +5339,8 @@ class Huntress(Elf):
   global_skills = [ForestWalker, Furtive, PyreOfCorpses]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 7
+  hres = 1
   arm = 0
   armor = None
 
@@ -5349,7 +5349,7 @@ class Huntress(Elf):
   weapon2 = weapons.ShortSword
   att2 = 1
   off = 5
-  strn = 4
+  strn = 8
   offensive_skills = [Ambushment, Skirmisher]
 
   def __init__(self, nation):
@@ -5385,8 +5385,8 @@ class WoodArcher(Elf):
   global_skills = [ForestWalker, Furtive, PyreOfCorpses, Refit, Regroup]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 1
   arm = 0
   armor = None
 
@@ -5395,7 +5395,7 @@ class WoodArcher(Elf):
   weapon2 = weapons.Dagger
   att1 = 1
   off = 4
-  strn = 2
+  strn = 9
   offensive_skills = [Ambushment, Skirmisher, Withdrawall]
 
   def __init__(self, nation):
@@ -5433,8 +5433,8 @@ class SisterFromTheDeepth(Elf):
   global_skills = [ForestWalker, Furtive, PyreOfCorpses, Regroup]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 1
   arm = 0
   armor = None
 
@@ -5480,8 +5480,8 @@ class ElkRider(Elf):
   global_skills = [ForestWalker, Furtive]
 
   dfs = 3
-  res = 4
-  hres = 1
+  res = 12
+  hres = 6
   arm = 2
   armor = None
 
@@ -5490,7 +5490,7 @@ class ElkRider(Elf):
   weapon2 = weapons.HeavyHoof
   att2 = 2
   off = 4
-  strn = 4
+  strn = 14
   offensive_skills = [BattleFocus, HeavyCharge]
 
   def __init__(self, nation):
@@ -5826,8 +5826,8 @@ class Augur(Unit):
   global_skills = [PyreOfCorpses, SermonOfCourage]  # cure
 
   dfs = 2
-  res = 1
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = None
 
@@ -5835,7 +5835,7 @@ class Augur(Unit):
   att1 = 1
   att1 = 1
   off = 3
-  strn = 2
+  strn = 5
 
   lead_traits = [human_t, sacred_t]
   lead_aligments = [neutral_t, sacred_t]
@@ -5875,8 +5875,8 @@ class Aquilifer(Human):
   global_skills = [Inspiration, Regroup]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = HeavyArmor()
   shield = Shield()
@@ -5886,7 +5886,7 @@ class Aquilifer(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 5
-  strn = 3
+  strn = 12
 
   lead_traits = [human_t]
   lead_aligments = [neutral_t, sacred_t]
@@ -5925,8 +5925,8 @@ class Ballistarius(Human):
   global_skills = [Organization]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 8
+  hres = 1
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -5937,7 +5937,7 @@ class Ballistarius(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   offensive_skills = []
 
   can_hire = 1
@@ -5979,8 +5979,8 @@ class Centurion(Human):
   global_skills = [HoldPositions, Organization]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 9
+  hres = 4
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -5991,7 +5991,7 @@ class Centurion(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   offensive_skills = []
 
   can_hire = 1
@@ -6033,8 +6033,8 @@ class Decarion(Human):
   global_skills = [Organization]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 9
+  hres = 4
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -6045,7 +6045,7 @@ class Decarion(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   offensive_skills = []
 
   can_hire = 1
@@ -6087,8 +6087,8 @@ class Decurion(Human):
   global_skills = [Organization]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 9
+  hres = 4
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -6099,7 +6099,7 @@ class Decurion(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   offensive_skills = []
 
   can_hire = 1
@@ -6140,15 +6140,15 @@ class Flamen(Human):
   global_skills = [SermonOfCourage]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = LightArmor()
 
   weapon1 = weapons.Staff
   att1 = 1
   off = 4
-  strn = 2
+  strn = 5
 
   lead_traits = [human_t]
   lead_aligments = [neutral_t, sacred_t]
@@ -6188,8 +6188,8 @@ class Legatus(Human):
   global_skills = [HoldPositions, Organization]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -6200,7 +6200,7 @@ class Legatus(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 12
   offensive_skills = []
 
   lead_traits = [human_t]
@@ -6240,8 +6240,8 @@ class PontifexMaximus(Unit):
   global_skills = [SermonOfCourage]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = LightArmor()
   shield = Shield()
@@ -6249,7 +6249,7 @@ class PontifexMaximus(Unit):
   weapon1 = weapons.Staff
   att1 = 1
   off = 4
-  strn = 2
+  strn = 5
 
   lead_traits = [human_t, sacred_t]
   lead_aligments = [sacred_t]
@@ -6292,7 +6292,7 @@ class Settler(Human):
   weapon1 = weapons.Fist
   att1 = 2
   off = 1
-  strn = 1
+  strn = 4
   pn = 0
 
   def __init__(self, nation):
@@ -6326,8 +6326,8 @@ class Flagellant(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = None
 
@@ -6336,7 +6336,7 @@ class Flagellant(Human):
   weapon2 = weapons.Fist
   att2 = 1
   off = 3
-  strn = 2
+  strn = 9
   offensive_skills = [Fanatism]
 
   common = 8
@@ -6370,8 +6370,8 @@ class RebornOne(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 9
+  hres = 4
   arm = 0
   armor = None
   Shield = Shield()
@@ -6381,7 +6381,7 @@ class RebornOne(Human):
   weapon2 = weapons.Fist
   att2 = 1
   off = 4
-  strn = 2
+  strn = 9
   offensive_skills = [Fanatism]
 
   def __init__(self, nation):
@@ -6413,8 +6413,8 @@ class Velites(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = None
   shield = Shield()
@@ -6424,7 +6424,7 @@ class Velites(Human):
   weapon2 = weapons.Fist
   att2 = 1 
   off = 2
-  strn = 2
+  strn = 9
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6455,8 +6455,8 @@ class ImperialGuard(Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Regroup, Refit]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = HeavyArmor()
 
@@ -6465,7 +6465,7 @@ class ImperialGuard(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 5
-  strn = 3
+  strn = 12
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6496,8 +6496,8 @@ class Hastati(Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Regroup]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = None
 
@@ -6506,7 +6506,7 @@ class Hastati(Human):
   weapon2 = weapons.Dagger
   att2 = 1
   off = 4
-  strn = 3
+  strn = 11
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -6538,8 +6538,8 @@ class Principes(Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Regroup]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = HeavyArmor()
 
@@ -6548,7 +6548,7 @@ class Principes(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 11
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -6580,8 +6580,8 @@ class Halberdier(Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Refit, ]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = MediumArmor()
 
@@ -6590,7 +6590,7 @@ class Halberdier(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 11
   offensive_skills = [MassSpears, PikeSquare]
 
   def __init__(self, nation):
@@ -6622,8 +6622,8 @@ class SacredWarrior(Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Regroup, Refit]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 10
+  hres = 4
   arm = 0
   armor = None
   shield = Shield()
@@ -6633,7 +6633,7 @@ class SacredWarrior(Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 3
+  strn = 10
   offensive_skills = [ShadowHunter]
 
   def __init__(self, nation):
@@ -6666,8 +6666,8 @@ class KnightsTemplar (Human):
   global_skills = [BattleBrothers, PyreOfCorpses, Regroup, Refit]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 11
+  hres = 4
   arm = 0
   armor = HeavyArmor()
 
@@ -6676,7 +6676,7 @@ class KnightsTemplar (Human):
   weapon2 = weapons.Pugio
   att2 = 1
   off = 4
-  strn = 4
+  strn = 12
   offensive_skills = [PikeSquare]
 
   def __init__(self, nation):
@@ -6709,8 +6709,8 @@ class Sagittarii(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
@@ -6719,7 +6719,7 @@ class Sagittarii(Human):
   weapon2 = weapons.Dagger
   att2 = 1
   off = 3
-  strn = 2
+  strn = 10
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher, Withdrawall]
 
   def __init__(self, nation):
@@ -6750,8 +6750,8 @@ class CrossBowMan(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
@@ -6760,7 +6760,7 @@ class CrossBowMan(Human):
   weapon2 = weapons.Dagger
   att2 = 1
   off = 5
-  strn = 5
+  strn = 10
   offensive_skills = [Ambushment, ReadyAndWaiting]
 
   def __init__(self, nation):
@@ -6791,14 +6791,14 @@ class Arquebusier(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
   att1 = 1
   off = 5
-  strn = 5
+  strn = 10
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
   def __init__(self, nation):
@@ -6829,14 +6829,14 @@ class Musket(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
   att1 = 2
   off = 5
-  strn = 5
+  strn = 10
   offensive_skills = [Ambushment, ReadyAndWaiting, Skirmisher]
 
   def __init__(self, nation):
@@ -6869,8 +6869,8 @@ class Equite(Human):
   global_skills = [BattleBrothers, PyreOfCorpses]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 11
+  hres = 6
   arm = 1
   armor = None
   shield = None
@@ -6880,7 +6880,7 @@ class Equite(Human):
   weapon2 = weapons.Hoof
   att2 = 2
   off = 4
-  strn = 4
+  strn = 12
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -6917,8 +6917,8 @@ class Equites2(Human):
   global_skills = [BattleBrothers, Regroup, Refit]
 
   dfs = 4
-  res = 3
-  hres = 1
+  res = 13
+  hres = 6
   arm = 2
   armor = HeavyArmor()
 
@@ -6927,7 +6927,7 @@ class Equites2(Human):
   weapon2 = weapons.Sword
   att2 = 1
   off = 5
-  strn = 5
+  strn = 14
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -6962,8 +6962,8 @@ class Gryphon(Unit):
   global_skills = []
 
   dfs = 4
-  res = 4
-  hres = 3
+  res = 12
+  hres = 6
   arm = 1
   armor = None
 
@@ -6972,7 +6972,7 @@ class Gryphon(Unit):
   weapon2 = weapons.Talon
   att2 = 1
   off = 5
-  strn = 5
+  strn = 12
   offensive_skills = [Charge]
 
   def __init__(self, nation):
@@ -7006,8 +7006,8 @@ class GryphonRiders(Unit):
   global_skills = [ShadowHunter]
 
   dfs = 5
-  res = 4
-  hres = 3
+  res = 14
+  hres = 6
   arm = 2
   armor = None
 
@@ -7016,7 +7016,7 @@ class GryphonRiders(Unit):
   weapon2 = weapons.Sword
   att2 = 2
   off = 5
-  strn = 5
+  strn = 14
   pn = 1
   offensive_skills = [HeavyCharge]
 
@@ -7395,8 +7395,8 @@ class BoierLord(Unit):
   global_skills = [Furtive, BloodLord]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -7404,7 +7404,7 @@ class BoierLord(Unit):
   weapon1 = weapons.BroadSword
   att1 = 2
   off = 4
-  strn = 4
+  strn = 11
   
   fear = 6
   lead_traits = [human_t, blood_drinker_t]
@@ -7448,8 +7448,8 @@ class Paznic(Unit):
   global_skills = [Furtive, LordOfBones]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -7457,7 +7457,7 @@ class Paznic(Unit):
   weapon1 = weapons.GreatSword
   att1 = 2
   off = 4
-  strn = 4
+  strn = 8
   
   fear = 6
   lead_traits = [death_t]
@@ -7498,8 +7498,8 @@ class Isaac(Unit):
   global_skills = [Furtive, LordOfBones]
 
   dfs = 6
-  res = 4
-  hres = 0
+  res = 14
+  hres = 4
   arm = 0
   armor = MediumArmor()
   shield = Shield()
@@ -7507,7 +7507,7 @@ class Isaac(Unit):
   weapon = weapons.BroadSword
   att1 = 2
   off = 5
-  strn = 6
+  strn = 14
   
   fear = 1
   lead_traits = [death_t, human_t]
@@ -7550,8 +7550,8 @@ class Necromancer(Human):
   global_skills = [ElusiveShadow, LordOfBones]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = None
   shield = Shield()
@@ -7560,7 +7560,7 @@ class Necromancer(Human):
   att1 = 1
   damage = 2
   off = 3
-  strn = 3
+  strn = 4
   
   comon = 5
   fear = 6
@@ -7608,8 +7608,8 @@ class VampireCount(Undead):
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Helophobia, BloodLord, ChaliceOfBlood]
 
   dfs = 6
-  res = 4
-  hres = 3
+  res = 14
+  hres = 6
   arm = 0
   armor = MediumArmor()
 
@@ -7618,7 +7618,7 @@ class VampireCount(Undead):
   weapon2 = weapons.VampireBite
   att2 = 1
   off = 6
-  strn = 7
+  strn = 14
 
   common = 2
   lead_traits = [human_t, blood_drinker_t, bat_t, wolf_t]
@@ -7657,14 +7657,14 @@ class VarGhul(Undead):
   global_skills = [BloodLord, NightFerocity, Scavenger, ]
 
   dfs = 3
-  res = 4
-  hres = 1
+  res = 14
+  hres = 8
   arm = 2
 
   weapon1 = weapons.ImmenseClaws
   att1 = 2
   off = 4
-  strn = 6
+  strn = 12
 
   common = 6
   fear = 2
@@ -7715,8 +7715,8 @@ class VladDracul(Undead):
   global_skills = [DarkPresence, ElusiveShadow, FearAura, Helophobia, BloodLord, MastersEye]
 
   dfs = 8
-  res = 6
-  hres = 8
+  res = 16
+  hres = 10
   arm = 3
   armor = None
 
@@ -7725,7 +7725,7 @@ class VladDracul(Undead):
   weapon2 = weapons.VampireBite
   att2 = 2
   off = 8
-  strn = 10
+  strn = 16
 
   lead_traits = [human_t, death_t, vampire_t, blood_drinker_t, wolf_t]
   lead_aligments = [hell_t, malignant_t, nature_t, neutral_t, wild_t]
@@ -7765,15 +7765,15 @@ class Adjule(Unit):
   global_skills = [NightFerocity, Furtive, Regroup]
 
   dfs = 2
-  res = 4
-  hres = 4
+  res = 8
+  hres = 5
   arm = 0
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 1
   off = 4
-  strn = 5
+  strn = 8
 
   fear = 0
 
@@ -7812,8 +7812,8 @@ class WailingLady(Undead):
   global_skills = [ElusiveShadow, Ethereal, FearAura, NightFerocity]
 
   dfs = 3
-  res = 6
-  hres = 4
+  res = 14
+  hres = 10
   arm = 0
   armor = None
 
@@ -7822,7 +7822,7 @@ class WailingLady(Undead):
   weapon2 = weapons.Skythe
   att2 = 1
   off = 5
-  strn = 6
+  strn = 16
 
   common = 3
 
@@ -7857,16 +7857,18 @@ class Bat(Unit):
   global_skills = [NightSurvival]
 
   dfs = 1
-  res = 1
-  hres = 0
+  res = 4
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 2
   off = 2
-  strn = 1
+  strn = 3
 
+  common = 8
+  fear = 6
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -7899,8 +7901,8 @@ class BlackKnight(Undead):
   global_skills = [FearAura, NightFerocity, NightSurvival]
 
   dfs = 3
-  res = 5
-  hres = 2
+  res = 11
+  hres = 6
   arm = 1
   armor = HeavyArmor()
 
@@ -7909,9 +7911,11 @@ class BlackKnight(Undead):
   weapon2 = weapons.BroadSword
   att2 = 1
   off = 5
-  strn = 4
+  strn = 14
   offensive_skills = [Charge]
 
+  common = 6
+  fear = 0
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -7945,8 +7949,8 @@ class BloodKnight(Undead):
   global_skills = [FearAura, NightFerocity]
 
   dfs = 5
-  res = 5
-  hres = 2
+  res = 13
+  hres = 5
   arm = 1
   armor = HeavyArmor()
   shield = Shield()
@@ -7956,7 +7960,7 @@ class BloodKnight(Undead):
   weapon2 = weapons.BloodDrinker
   att2 = 1
   off = 6
-  strn = 6
+  strn = 15
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -7990,8 +7994,8 @@ class CryptHorror(Undead):
   global_skills = [FearAura, NightFerocity]
 
   dfs = 3
-  res = 4
-  hres = 1
+  res = 10
+  hres = 4
   arm = 2
   armor = None
 
@@ -8000,7 +8004,7 @@ class CryptHorror(Undead):
   weapon2 = weapons.ToxicFangs
   att2 = 1
   off = 4
-  strn = 4
+  strn = 12
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -8032,8 +8036,8 @@ class DireWolf(Undead):
   global_skills = [BloodyBeast, FearAura, NightFerocity]
 
   dfs = 3
-  res = 5
-  hres = 1
+  res = 11
+  hres = 5
   arm = 2
   armor = None
 
@@ -8042,7 +8046,7 @@ class DireWolf(Undead):
   weapon2 = weapons.Bite
   att2 = 1
   off = 5
-  strn = 5
+  strn = 12
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -8080,8 +8084,8 @@ class Draugr(Unit):
   global_skills = [Scavenger, NightFerocity, Regroup]
 
   dfs = 4
-  res = 4
-  hres = 1
+  res = 10
+  hres = 4
   arm = 2
 
   weapon1 = weapons.ToxicClaw
@@ -8089,7 +8093,7 @@ class Draugr(Unit):
   weapon2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 6
+  strn = 14
 
   pref_corpses = 1
 
@@ -8129,8 +8133,8 @@ class FellBat(Undead):
   global_skills = [ElusiveShadow, Fly, Helophobia, NightSurvival]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 9
+  hres = 4
   arm = 0
 
   weapon1 = weapons.Claw
@@ -8138,7 +8142,7 @@ class FellBat(Undead):
   weapon2 = weapons.Bite
   att2 = 2
   off = 5
-  strn = 4
+  strn = 11
 
   common = 5
 
@@ -8176,8 +8180,8 @@ class Ghoul(Human):
   global_skills = [Furtive]
 
   dfs = 2
-  res = 3
-  hres = 0
+  res = 8
+  hres = 4
   arm = 0
   armor = None
 
@@ -8186,7 +8190,7 @@ class Ghoul(Human):
   weapon2 = weapons.Bite
   att2 = 1
   off = 3
-  strn = 3
+  strn = 9
 
   common = 10
   populated_land = 1
@@ -8223,8 +8227,8 @@ class GraveGuard(Undead):
   global_skills = [FearAura, NightFerocity]
 
   dfs = 4
-  res = 5
-  hres = 1
+  res = 10
+  hres = 4
   arm = 2
   armor = HeavyArmor()
   shield = Shield()
@@ -8232,7 +8236,7 @@ class GraveGuard(Undead):
   weapon1 = weapons.Spear
   att1 = 1
   off = 5
-  strn = 5
+  strn = 12
 
   common = 5
 
@@ -8268,15 +8272,15 @@ class Settler2(Human):
   resolve = 2
 
   dfs = 1
-  res = 1
-  hres = 0
+  res = 4
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Fist
   att1 = 1
   off = 1
-  strn = 1
+  strn = 4
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -8310,14 +8314,14 @@ class Skeleton(Undead):
   global_skills = [SkeletonLegion]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 9
+  hres = 6
   arm = 0
 
   weapon1 = weapons.Claw
   att1 = 2
   off = 3
-  strn = 3
+  strn = 9
 
   common = 8
   fear = 0
@@ -8352,14 +8356,14 @@ class SkeletonWarrior(Undead):
   global_skills = [SkeletonLegion]
 
   dfs = 4
-  res = 4
-  hres = 1
+  res = 11
+  hres = 8
   arm = 1
 
   weapon1 = weapons.RustSword
   att1 = 2
   off = 3
-  strn = 3
+  strn = 10
 
   common = 8
   fear = 0
@@ -8394,15 +8398,15 @@ class SpectralInfantry(Unit):
   global_skills = []
 
   dfs = 3
-  res = 5
-  hres = 1
+  res = 11
+  hres = 6
   arm = 0
   armor = MediumArmor()
 
   weapon1 = weapons.BronzeSpear
   att1 = 1
   off = 4
-  strn = 5
+  strn = 12
 
   fear = 0
 
@@ -8440,8 +8444,8 @@ class Vampire(Undead):
   global_skills = [ElusiveShadow, Helophobia, Fly, NightFerocity]
 
   dfs = 4
-  res = 4
-  hres = 3
+  res = 11
+  hres = 7
   arm = 0
   armor = None
 
@@ -8450,7 +8454,7 @@ class Vampire(Undead):
   weapon2 = weapons.VampireBite
   att2 = 1
   off = 4
-  strn = 5
+  strn = 13
 
   common = 5
   populated_land = 1
@@ -8488,8 +8492,8 @@ class Vargheist(Undead):
   global_skills = [ElusiveShadow, FearAura, Fly, Helophobia, NightSurvival, TheBeast]
 
   dfs = 4
-  res = 5
-  hres = 5
+  res = 12
+  hres = 8
   arm = 2
 
   weapon1 = weapons.VampireBite
@@ -8497,7 +8501,7 @@ class Vargheist(Undead):
   weapon2 = weapons.Claw
   att2 = 2
   off = 5
-  strn = 7
+  strn = 15
 
   fear = 6
   populated_land = 1
@@ -8535,16 +8539,16 @@ class Zombie(Undead, Ground):
   # global_skills = [Spread]
 
   dfs = 1
-  res = 3
-  hres = 0
+  res = 12
+  hres = 1
   arm = 0
 
   weapon1 = weapons.ZombieBite
   att1 = 1
   off = 2
-  strn = 2
-  pn = 0
   # offensive_skills = [Surrounded]
+  strn = 9
+  pn = 0
 
   fear = 0
   populated_land = 1
@@ -9586,8 +9590,8 @@ class DevoutOfChaos(Human):
   global_skills = [ElusiveShadow]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 6
+  hres = 3
   arm = 0
   armor = None
   shield = Shield()
@@ -9596,7 +9600,7 @@ class DevoutOfChaos(Human):
   att1 = 1
   damage = 2
   off = 3
-  strn = 3
+  strn = 10
   pn = 0
   
   fear = 6
@@ -9637,17 +9641,17 @@ class Inquisitor(Human):
   global_skills = [Exaltation, Furtive]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 7
+  hres = 2
   arm = 0
   armor = LightArmor()
 
   att1 = 2
   damage = 3
   off = 3
-  strn = 3
-  pn = 0
   offensive_skills = [ShadowHunter]
+  pn = 0
+  strn = 6
 
   common = 6
 
@@ -9686,8 +9690,8 @@ class VampireLord(Undead):
   global_skills = [ElusiveShadow, Helophobia, BloodLord]
 
   dfs = 5
-  res = 4
-  hres = 3
+  res = 12
+  hres = 6
   arm = 0
   armor = MediumArmor()
 
@@ -9696,7 +9700,7 @@ class VampireLord(Undead):
   weapon2 = weapons.VampireBite
   att2 = 1
   off = 4
-  strn = 5
+  strn = 14
 
   common = 2
   lead_traits = [human_t, blood_drinker_t, bat_t, wolf_t]
@@ -9734,17 +9738,17 @@ class WarMonger(Human):
   global_skills = [Furtive, Organization, Regroup]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 4
   arm = 0
   armor = LightArmor()
 
   att1 = 2
   damage = 3
   off = 3
-  strn = 3
   pn = 0
   offensive_skills = [ShadowHunter]
+  strn = 9
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -9776,8 +9780,8 @@ class Archer(Human):
   resolve = 4
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 7
+  hres = 1
   arm = 0
   armor = None
 
@@ -9786,8 +9790,8 @@ class Archer(Human):
   weapon2 = weapons.Fist
   att2 = 1
   off = 2
-  strn = 2
   offensive_skills = [Withdrawall]
+  strn = 7
   
   fear = 5
   populated_land = 1
@@ -9826,15 +9830,15 @@ class Akhlut(Unit):
   global_skills = [Furtive]
 
   dfs = 3
-  res = 5
-  hres = 2
+  res = 12
+  hres = 8
   arm = 2
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 2
   off = 5
-  strn = 6
+  strn = 14
 
   fear = 2
 
@@ -9874,8 +9878,8 @@ class BlackOrc(Unit):
   global_skills = [BloodyBeast]
 
   dfs = 3
-  res = 4
-  hres = 0
+  res = 12
+  hres = 6
   arm = 2
   armor = HeavyArmor
 
@@ -9883,7 +9887,7 @@ class BlackOrc(Unit):
   att1 = 2
   weapon2 = weapons.Claw
   off = 5
-  strn = 5
+  strn = 4
 
   fear = 2
   populated_land = 1
@@ -9923,15 +9927,15 @@ class BlizzardWarrior(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
   weapon1 = weapons.BronzeAxe
   att1 = 2
   off = 3
-  strn = 3
+  strn = 10
 
   common = 10
   fear = 5
@@ -9970,8 +9974,8 @@ class SonOfWind(Human):
   global_skills = [Furtive]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = LightArmor()
   shield = Shield()
@@ -9979,7 +9983,7 @@ class SonOfWind(Human):
   weapon1 = weapons.Scimitar
   att1 = 3
   off = 5
-  strn = 3
+  strn = 10
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -10057,15 +10061,15 @@ class Crocodile(Unit):
   global_skills = [Ambushment, Furtive]
 
   dfs = 3
-  res = 4
-  hres = 2
+  res = 11
+  hres = 4
   arm = 3
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 1
   off = 4
-  strn = 4
+  strn = 12
 
   fear = 2
   sort_chance = 100
@@ -10106,8 +10110,8 @@ class DesertNomad(Human):
   global_skills = [Undisciplined]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 9
+  hres = 3
   arm = 1
   armor = None
   shield = None
@@ -10118,8 +10122,8 @@ class DesertNomad(Human):
   att2 = 2
   damage = 2
   off = 4
-  strn = 3
   offensive_skills = []
+  strn = 9
   
   fear = 3
   populated_land = 1
@@ -10159,15 +10163,15 @@ class DevourerOfDemons(Unit):
   global_skills = [Furtive, Ethereal, FearAura]
 
   dfs = 4
-  res = 6
-  hres = 2
+  res = 14
+  hres = 8
   arm = 0
   armor = None
 
   weapon1 = weapons.SoulDrain
   att1 = 1
   off = 8
-  strn = 8
+  strn = 15
 
   fear = 2
   populated_land = 1
@@ -10244,8 +10248,8 @@ class GiantBear(Unit):
   global_skills = [Undisciplined]
 
   dfs = 2
-  res = 4
-  hres = 2
+  res = 12
+  hres = 6
   arm = 2
   armor = None
 
@@ -10254,7 +10258,7 @@ class GiantBear(Unit):
   weapon2 = weapons.Bite
   att2 = 1
   off = 4
-  strn = 6
+  strn = 11
 
   common = 6
   sort_chance = 90
@@ -10290,15 +10294,15 @@ class GiantCrocodile(Unit):
   global_skills = [Ambushment, Furtive]
 
   dfs = 3
-  res = 6
-  hres = 4
+  res = 13
+  hres = 6
   arm = 5
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 1
   off = 4
-  strn = 6
+  strn = 15
 
   fear = 2
   sort_chance = 100
@@ -10337,8 +10341,8 @@ class GiantOfTheLostTribe(Unit):
   global_skills = []
 
   dfs = 4
-  res = 6
-  hres = 4
+  res = 12
+  hres = 6
   arm = 2
   armor = None
 
@@ -10347,7 +10351,7 @@ class GiantOfTheLostTribe(Unit):
   att2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 6
+  strn = 12
   
   common = 4
   fear = 4
@@ -10389,8 +10393,8 @@ class GiantWolf(Unit):
   global_skills = [BloodyBeast, Furtive, NightFerocity]
 
   dfs = 3
-  res = 4
-  hres = 1
+  res = 10
+  hres = 2
   arm = 1
   armor = None
 
@@ -10399,7 +10403,7 @@ class GiantWolf(Unit):
   att2 = weapons.Claw
   att2 = 1
   off = 4
-  strn = 7
+  strn = 12
   
   common = 6
   fear = 4
@@ -10441,15 +10445,15 @@ class Ghost(Undead):
   global_skills = [ElusiveShadow, Ethereal, FearAura]
 
   dfs = 3
-  res = 4
-  hres = 4
+  res = 12
+  hres = 8
   arm = 0
   armor = None
 
   weapon1 = weapons.Skythe
   att1 = 1
   off = 4
-  strn = 4
+  strn = 10
 
   common = 7
 
@@ -10480,8 +10484,8 @@ class Goblin(Unit):
   global_skills = [BloodyBeast, Furtive, Undisciplined]
 
   dfs = 4
-  res = 1
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = None
 
@@ -10490,8 +10494,8 @@ class Goblin(Unit):
   weapon2 = weapons.Claw
   att2 = 1
   off = 2
-  strn = 1
   offensive_skills = [Ambushment, Skirmisher] 
+  strn = 7
   
   fear = 3
   populated_land = 1
@@ -10507,7 +10511,6 @@ class Goblin(Unit):
     self.favsoil = [waste_t, grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t, swamp_t]
     self.favhill = [0, 1]
-
 
 
 class ClayGolem(Unit):
@@ -10534,8 +10537,8 @@ class ClayGolem(Unit):
   global_skills = []
 
   dfs = 3
-  res = 2
-  hres = 2
+  res = 12
+  hres = 12
   arm = 2
   armor = None
 
@@ -10544,8 +10547,8 @@ class ClayGolem(Unit):
   weapon2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 5
   offensive_skills = [] 
+  strn = 10
   
   fear = 3
   populated_land = 0
@@ -10587,15 +10590,15 @@ class Harpy(Unit):
   global_skills = [Furtive]
 
   dfs = 4
-  res = 3
-  hres = 0
+  res = 7
+  hres = 2
   arm = 1
   armor = None
 
   weapon1 = weapons.Talon
   att1 = 2
   off = 3
-  strn = 3
+  strn = 8
   
   common = 7
   fear = 1
@@ -10636,8 +10639,8 @@ class HellHound(Undead):
   global_skills = [BloodyBeast, ElusiveShadow, NightFerocity, Regroup]
 
   dfs = 3
-  res = 5
-  hres = 2
+  res = 12
+  hres = 5
   arm = 2
   armor = None
 
@@ -10646,7 +10649,7 @@ class HellHound(Undead):
   weapon2 = weapons.Claw
   att2 = 1
   off = 4
-  strn = 6
+  strn = 13
   
   fear = 2
 
@@ -10685,15 +10688,15 @@ class Hyena(Unit):
   global_skills = [BloodyBeast, Furtive]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 9
+  hres = 2
   arm = 1
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 1
   off = 4
-  strn = 5
+  strn = 10
   
   common = 8
   fear = 5
@@ -10735,16 +10738,16 @@ class Hunter(Human):
   global_skills = [Furtive,  Undisciplined]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 7
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.ShortBow
   att1 = 1
   off = 3
-  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
+  strn = 8
 
   common = 8
   fear = 6
@@ -10786,15 +10789,15 @@ class KillerMantis(Human):
   global_skills = [Furtive, Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
   weapon1 = weapons.MantisClaw
   att1 = 2
   off = 5
-  strn = 4
+  strn = 9
 
   common = 5
   fear = 6
@@ -10835,8 +10838,8 @@ class NomadsRider(Human):
   global_skill = [Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 9
+  hres = 2
   arm = 1
   armor = None
 
@@ -10845,8 +10848,8 @@ class NomadsRider(Human):
   weapon2 = weapons.Hoof
   att2 = 2
   off = 4
-  strn = 3
   offensive_skills = [Skirmisher, Withdrawall]
+  strn = 11
 
   common = 7
   fear = 3
@@ -10886,16 +10889,16 @@ class OrcArcher(Unit):
   global_skills = [BloodyBeast, Undisciplined]
 
   dfs = 3
-  res = 2
-  hres = 0
+  res = 10
+  hres = 4
   arm = 1
   armor = None
 
   weapon1 = weapons.Bow
   att1 = 2
   off = 2
-  strn = 3
   offensive_skills = [Ambushment, Skirmisher, Withdrawall]
+  strn = 10
   
   common = 10
   fear = 4
@@ -10936,15 +10939,15 @@ class OrcWarrior(Unit):
   global_skills = [BloodyBeast, Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 10
+  hres = 4
   arm = 1
   armor = None
 
   weapon1 = weapons.Sword
   att1 = 2
   off = 3
-  strn = 3
+  strn = 10
   
   common = 12
   fear = 4
@@ -10986,8 +10989,8 @@ class Levy(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 1
   arm = 0
   armor = None
   shield = Shield()
@@ -10995,7 +10998,7 @@ class Levy(Human):
   weapon1 = weapons.BronzeSpear
   att1 = 1
   off = 2
-  strn = 2
+  strn = 8
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -11030,7 +11033,7 @@ class LizardMan(Human):
   global_skills = []
 
   dfs = 4
-  res = 3
+  res = 8
   hres = 2
   arm = 2
   armor = None
@@ -11041,7 +11044,7 @@ class LizardMan(Human):
   weapon2 = weapons.Claw
   att2 = 4
   off = 4
-  strn = 3
+  strn = 10
 
   common = 8
   fear = 5
@@ -11081,7 +11084,7 @@ class LizardManInfantry(Human):
   global_skills = []
 
   dfs = 4
-  res = 3
+  res = 9
   hres = 2
   arm = 2
   armor = HeavyArmor()
@@ -11090,7 +11093,7 @@ class LizardManInfantry(Human):
   weapon1 = weapons.Trident
   att1 = 2
   off = 4
-  strn = 4
+  strn = 11
 
   common = 6
   fear = 5
@@ -11130,16 +11133,16 @@ class Mandeha(Unit):
   global_skills = [DeepestDarkness, FearAura]
 
   dfs = 5
-  res = 8
-  hres = 4
+  res = 20
+  hres = 14
   arm = 2
   armor = None
 
   weapon1 = weapons.FleshEater
   att1 = 2
   off = 6
-  strn = 14
   offensive_skills = []
+  strn = 122
 
   fear = 2
 
@@ -11175,8 +11178,8 @@ class Mammot(Unit):
   resolve = 5
 
   dfs = 4
-  res = 5
-  hres = 3
+  res = 14
+  hres = 4
   arm = 4
   armor = None
 
@@ -11185,7 +11188,7 @@ class Mammot(Unit):
   weapon2 = weapons.Crush
   att2 = 1
   off = 4
-  strn = 6
+  strn = 16
 
   common = 8
   fear = 5
@@ -11276,15 +11279,15 @@ class Ogre(Unit):
   global_skills = [BloodyBeast]
 
   dfs = 2
-  res = 5
-  hres = 2
+  res = 11
+  hres = 4
   arm = 2
   armor = None
 
   weapon1 = weapons.GreatClub
   att1 = 1
   off = 3
-  strn = 5
+  strn = 11
 
   common = 6
   fear = 2
@@ -11325,15 +11328,15 @@ class PaleOne(Unit):
   global_skills = []
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 9
+  hres = 2
   arm = 0
   armor = LightArmor
 
   weapon1 = weapons.BronzeSpear
   att1 = 2
   off = 3
-  strn = 3
+  strn = 9
 
   fear = 5
   populated_land = 0
@@ -11375,15 +11378,15 @@ class Peasant(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 7
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Pitchfork
   att1 = 1
   off = 1
-  strn = 2
+  strn = 6
 
   fear = 5
 
@@ -11422,15 +11425,15 @@ class PeasantLevy(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = None
 
   weapon1 = weapons.BronzeSpear
   att1 = 1
   off = 1
-  strn = 2
+  strn = 7
 
   common = 6
   fear = 5
@@ -11468,15 +11471,15 @@ class Raider(Human):
   global_skills = [Furtive, Undisciplined]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = LightArmor()
 
   weapon1 = weapons.BronzeSpear
   att1 = 1
   off = 3
-  strn = 2
+  strn = 8
   
   common = 10
   fear = 4
@@ -11517,8 +11520,8 @@ class Rider(Human):
   global_skills = [Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 11
+  hres = 3
   arm = 1
   armor = None
 
@@ -11527,8 +11530,8 @@ class Rider(Human):
   weapon2 = weapons.Hoof
   att2 = 1
   off = 4
-  strn = 4
   offensive_skills = [Charge]
+  strn = 11
 
   common = 6
   fear = 4
@@ -11568,16 +11571,16 @@ class Satyr(Human):
   global_skills = []
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 10
+  hres = 3
   arm = 0
   armor = None
 
   weapon1 = weapons.BronzeSpear
   att1 = 1
   off = 3
-  strn = 4
   offensive_skills = [Charge]
+  strn = 10
 
   common = 6
   fear = 4
@@ -11621,14 +11624,14 @@ class ShamanOfTheLostTribe(Human):
   global_skills = [Furtive]
 
   dfs = 2
-  res = 1
-  hres = 0
+  res = 5
+  hres = 1
   arm = 0
 
   weapon1 = weapons.Staff
   att1 = 2
   off = 2
-  strn = 1
+  strn = 7
 
   common = 5
   fear = 6
@@ -11672,8 +11675,8 @@ class Slave(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 1
-  res = 2
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = None
 
@@ -11682,7 +11685,7 @@ class Slave(Human):
   weapon2 = weapons.Fist
   att2 = 1
   off = 2
-  strn = 2
+  strn = 5
 
   fear = 5
 
@@ -11721,8 +11724,8 @@ class SlaveHunter(Human):
   global_skills = [Undisciplined]
 
   dfs = 2
-  res = 2
-  hres = 0
+  res = 8
+  hres = 1
   arm = 0
   armor = None
 
@@ -11731,8 +11734,8 @@ class SlaveHunter(Human):
   weapon2 = weapons.Fist
   att2 = 1
   off = 3
-  strn = 3
   offensive_skills = [Ambushment, Skirmisher]
+  strn = 8
 
   fear = 6
   populated_land = 1
@@ -11772,8 +11775,8 @@ class SlaveWarrior(Human):
   global_skills = [PyreOfCorpses, Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 8
+  hres = 2
   arm = 0
   armor = None
   shield = Shield()
@@ -11781,8 +11784,8 @@ class SlaveWarrior(Human):
   weapon1 = weapons.Sword
   att1 = 1
   off = 3
-  strn = 3
   pn = 0
+  strn = 8
 
   fear = 5
   populated_land = 1
@@ -11819,7 +11822,7 @@ class Troglodyte(Unit):
   resolve = 6
 
   dfs = 2
-  res = 3
+  res = 9
   hres = 2
   arm = 0
   armor = None
@@ -11827,7 +11830,7 @@ class Troglodyte(Unit):
   weapon1 = weapons.Claw
   att1 = 1
   off = 2
-  strn = 4
+  strn = 9
 
   common = 8
   fear = 1
@@ -11868,15 +11871,15 @@ class Troll(Unit):
   resolve = 5
 
   dfs = 3
-  res = 5
-  hres = 3
+  res = 12
+  hres = 8
   arm = 5
   armor = None
 
   weapon1 = weapons.GreatClub
   att1 = 2
   off = 3
-  strn = 6
+  strn = 113
 
   common = 5
   fear = 2
@@ -11918,8 +11921,8 @@ class Warg(Unit):
   global_skills = [BloodyBeast, Furtive, Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 10
+  hres = 2
   arm = 1
   armor = None
 
@@ -11928,7 +11931,7 @@ class Warg(Unit):
   weapon2 = weapons.Claw
   att2 = 1
   off = 4
-  strn = 5
+  strn = 13
   
   common = 6
   fear = 4
@@ -11971,8 +11974,8 @@ class WargRider(Unit):
   global_skills = [BloodyBeast, Furtive, Undisciplined]
 
   dfs = 3
-  res = 3
-  hres = 1
+  res = 11
+  hres = 6
   arm = 1
   armor = None
 
@@ -11983,7 +11986,7 @@ class WargRider(Unit):
   weapon3 = weapons.Bite
   att3 = 1  
   off = 4
-  strn = 4
+  strn = 11
   
   common = 4
   fear = 3
@@ -12024,15 +12027,15 @@ class Warrior(Human):
   global_skills = [PyreOfCorpses]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 9
+  hres = 2
   arm = 0
   armor = None
 
   weapon1 = weapons.Sword
   att1 = 2
   off = 3
-  strn = 3
+  strn = 11
 
   fear = 5
   populated_land = 1
@@ -12077,15 +12080,15 @@ class Warlock(Unit):
   global_skills = [Furtive]
 
   dfs = 2
-  res = 1
-  hres = 0
+  res = 6
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Staff
   att1 = 2
   off = 2
-  strn = 2
+  strn = 6
 
   common = 4
   fear = 5
@@ -12129,15 +12132,15 @@ class WarlockApprentice(Unit):
   global_skills = []
 
   dfs = 2
-  res = 1
-  hres = 0
+  res = 5
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Staff
   att1 = 2
   off = 2
-  strn = 2
+  strn = 4
 
   common = 7
   fear = 5
@@ -12177,7 +12180,7 @@ class WetOne(Unit):
   global_skills = []
 
   dfs = 3
-  res = 3
+  res = 8
   hres = 1
   arm = 0
   armor = None
@@ -12185,7 +12188,7 @@ class WetOne(Unit):
   weapon1 = weapons.StoneSpear
   att1 = 1
   off = 3
-  strn = 3
+  strn = 7
 
   fear = 7
   populated_land = 0
@@ -12230,15 +12233,15 @@ class Witch(Unit):
   global_skills = [Furtive]
 
   dfs = 2
-  res = 1
-  hres = 0
+  res = 5
+  hres = 1
   arm = 0
   armor = None
 
   weapon1 = weapons.Staff
   att1 = 2
   off = 2
-  strn = 2
+  strn = 5
 
   common = 5
   fear = 6
@@ -12279,15 +12282,15 @@ class WoodlandSpirit(Unit):
   global_skills = []
 
   dfs = 5
-  res = 5
-  hres = 5
+  res = 11
+  hres = 8
   arm = 0
   armor = None
 
   weapon1 = weapons.Branch
   att1 = 3
   off = 3
-  strn = 5
+  strn = 11
 
   common = 4
   fear = 1
@@ -12323,16 +12326,16 @@ class Wolf(Unit):
   global_skills = [Furtive, NightFerocity]
 
   dfs = 3
-  res = 3
-  hres = 0
+  res = 10
+  hres = 3
   arm = 0
   armor = None
 
   weapon1 = weapons.Bite
   att1 = 1
   off = 3
-  strn = 5
   offensive_skills = [Ambushment]
+  strn = 10
   
   common = 8
   fear = 4
@@ -12373,8 +12376,8 @@ class WolfRider(Unit):
   global_skills = [BloodyBeast, Furtive, Undisciplined]
 
   dfs = 4
-  res = 2
-  hres = 0
+  res = 10
+  hres = 5
   arm = 0
   armor = None
 
@@ -12383,7 +12386,7 @@ class WolfRider(Unit):
   weapon2 = weapons.Bite
   att2 = 1
   off = 3
-  strn = 3
+  strn = 10
   offensive_skills = [Ambushment] 
   
   common = 8
