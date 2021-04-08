@@ -14,7 +14,7 @@ buildings_value = 20
 ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
-HOLY.ai = 0
+HOLY.ai = 1
 TRANS = valahia()
 TRANS.ai = 1
 

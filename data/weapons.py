@@ -224,8 +224,8 @@ class BronzeSpear(Weapon):
   name = "Bronze spear"
   desc = ""
   ranking = 1.2
-  damage = 3
-  critical = 2
+  damage = 5
+  critical = 3
   range_max = 3 
   range_min = 2
   pn = 0
@@ -525,7 +525,7 @@ class LongSpear(Weapon):
   name = "long spear"
   desc = ""
   ranking = 1.4
-  damage = 5
+  damage = 7
   critical = 8
   range_max = 4
   range_min = 3

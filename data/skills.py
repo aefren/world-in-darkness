@@ -99,13 +99,14 @@ class BattleFocus(Skill):
 
 class BlessedWeapons(Skill):
   name = "armas bendecidas"
-  desc = "+2 damage if target is malignant."
+  desc = "+2 strn if target is malignant or hell."
   effect = "self"
   ranking = 1.2
   type = "generic"
 
   def run(self, itm):
-    if itm.target and malignant_t in itm.target.traits:
+    if (itm.target and itm.target.aligment == malignant_t
+        or itm.target == hell_t):
       itm.strn_mod += 2
 
 
@@ -134,7 +135,7 @@ class BloodRaining(Skill):
 
   def run(self, itm):
     itm.effects += [self.name]
-    if malignant_t in itm.traits:
+    if itm.aligment in [malignant_t, hell_t]:
       itm.resolve_mod += 1
       itm.moves_mod += 1
       itm.res_mod += 2
@@ -249,7 +250,7 @@ class DarkPresence(Skill):
   def run(self, itm):
     if (itm.nation in self.itm.belongs
         and malignant_t in itm.traits 
-        and vampire_t not in itm.traits and self.name not in itm.effects):
+        and self.name not in itm.effects):
       if itm.pos and itm.pos.day_night == 0:
         itm.effects.append(self.name + str(f" ({day_t})"))
         itm.res_mod += 1
@@ -322,7 +323,7 @@ class DHLevels(Skill):
 
   def run_after_combat(self, itm):
     if (itm.target.hp_total < 1
-        and malignant_t in itm.target.traits):
+        and itm.target.aligment in [malignant_t, hell_t]):
       itm.demon_souls += sum(itm.target.deads) // itm.squads
       print(f"deads {sum(itm.target.deads)}.")
     if itm.demon_souls >= 20:
@@ -366,9 +367,6 @@ class Eclipse(Skill):
       itm.dfs_mod -= 1
       itm.off_mod -= 1
       if itm.range[1] > 5: itm.off_mod -= 1
-    if malignant_t in itm.traits:
-      itm.off_mod += 2
-      itm.strn_mod += 2
 
   def tile_run(self, itm):
     self.turns -= 1
@@ -617,7 +615,7 @@ class HolyAura(Skill):
   tags = ["holy aura"]
 
   def run(self, itm):
-    if death_t in itm.target.traits or malignant_t in itm.target.traits:
+    if itm.target.aligment in [malignant_t, hell_t]:
       itm.effects += [f"{self.name}"]
       itm.moves_mod -= 2
       itm.off_mod -= 2
@@ -699,22 +697,6 @@ class ImpalingRoots(Skill):
 
 
 
-class Inspiration(Skill):
-  name = "inspiraci�n"
-  desc = "+1 hit roll, +2 resolve."
-  effect = "friend"
-  ranking = 1.2
-  type = "generic"
-  tags = [ "leader"]
-
-  def run(self, itm):
-    if self.itm == itm: return
-    if itm.nation not in self.itm.belongs: return
-    itm.effects.append(self.name)
-    itm.hit_rolls_mod += 1
-    itm.resolve_mod += 2
-
-
 
 class Intoxicated(Skill):
   name = intoxicated_t
@@ -736,6 +718,46 @@ class Intoxicated(Skill):
       itm.nation.log[-1] += [msg]
       itm.hp_total -= damage
       if itm.info: sleep(loadsound("spell34", channel=ch5) / 2)
+
+
+class Inspiration(Skill):
+  name = "inspiraci�n"
+  desc = "+1 hit roll, +2 resolve."
+  effect = "friend"
+  ranking = 1.2
+  type = "generic"
+  tags = [ "leader"]
+
+  def run(self, itm):
+    if self.itm == itm: return
+    if itm.nation not in self.itm.belongs: return
+    itm.effects.append(self.name)
+    itm.hit_rolls_mod += 1
+    itm.resolve_mod += 2
+
+
+class LeadershipExceeded(Skill):
+  name = "leadership exceeded"
+  desc = ""
+  effect = "leading"
+  ranking = 1
+  type = "generic"
+  tags = [ "leader"]
+
+  def run(self, itm):
+    if itm.leader == None: return
+    if itm.leader.extra_leading>= 1:
+      itm.effects += [f"{self.name} {itm.leader.extra_leading}%."]
+      factor = itm.leader.extra_leading
+      if factor >= 60: 
+        itm.moves_mod -= 3
+        itm.resolve_mod -= 3
+      elif factor >= 40: 
+        itm.moves_mod -= 2
+        itm.resolve_mod -= 2
+      elif factor >= 20: 
+        itm.moves_mod -= 1
+        itm.resolve_mod -= 1
 
 
 
@@ -774,7 +796,7 @@ class LocustSwarm(Skill):
 
 class LordOfBones(Skill):
   name = "se�or de los huesos"
-  desc = """if unit is skeleton +1 att, +1 dfs, +1 off."""
+  desc = """if unit is skeleton, skeleton warrior +1 att, +1 dfs, +1 off."""
   effect = "leading"
   ranking = 1.2
   type = "generic"
@@ -792,7 +814,7 @@ class LordOfBones(Skill):
 
 class BloodLord(Skill):
   name = "señor de sangre"
-  desc = "+1 strn, +1 moves, +1 resolve if unit is blood drinker."
+  desc = "+2 strn, +1 moves, +1 resolve if unit is blood drinker."
   effect = "leading"
   ranking = 1.2
   type = "generic"
@@ -840,12 +862,12 @@ class MastersEye(Skill):
     itm.effects.append(self.name)
     itm.hit_rolls_mod += 1
     if death_t in itm.traits:
-      itm.effects += [f"{death_t}."]
+      itm.effects += [f" {death_t}."]
       itm.moves_mod += 1
       itm.res_mod += 1
       itm.strn_mod += 1
-    if malignant_t in itm.traits:
-      itm.effects += [f"{malignant_t}"]
+    if itm.aligment == malignant_t:
+      itm.effects += [f" {malignant_t}"]
       itm.resolve_mod += 1
 
 
@@ -1007,18 +1029,19 @@ class Organization(Skill):
 
 class PikeSquare (Skill):
   effect = "self"
-  desc = "+1 att if 20 units, +2 att if 40 units. Enemy can not charge."
+  desc = "+1 att1 if 2 squadss, +2 att1 if 3 squads. Enemy can not charge."
   name = "formaci�n de picas"
   ranking = 1.1
   type = "generic"
 
   def run(self, itm):
-    if (itm.squads >= 2 and itm.target
-        and itm.dist in range(itm.weapon1.range_min, itm.weapon1.range_max + 1)):
-      itm.effects.append(self.name) 
+    if itm.target == None: return
+    if itm.dist not in range(itm.weapon1.range_min, itm.weapon1.range_max + 1): return
+    if itm.squads >= 2:
+      itm.effects.append(self.name+str( 1)) 
       itm.att1_mod += 1
     elif itm.squads >= 3:
-      itm.effects.append(self.name) 
+      itm.effects.append(self.name + str( 2)) 
       itm.att1_mod += 2
     if itm.target: 
       itm.target.can_charge = 0
@@ -1283,8 +1306,9 @@ class SecondSun(Skill):
 
   def run(self, itm):
     if itm.pos and itm.pos.day_night == 0:itm.effects += [self.name]
-    if malignant_t in itm.traits and itm.pos and itm.pos.day_night == 0:
-      itm.effects += [burned_t]
+    if (itm.aligment in [malignant_t, hell_t] and itm.pos 
+        and itm.pos.day_night == 0):
+      itm.effects += [ burned_t]
       itm.moves -= 2
       itm.dfs_mod -= 2
       itm.off_mod -= 2
@@ -1298,7 +1322,7 @@ class SecondSun(Skill):
     if any(i not in [Rain.name, Storm.name] for i in [ev.name for ev in itm.events]):
       for uni in itm.units:
         roll = basics.roll_dice(2)
-        if malignant_t in uni.traits: 
+        if uni.aligment in [malignant_t, hell_t]: 
           uni.hp_total -= roll
           msg = f"{self.name} {kills_t} {roll//uni.hp}."
           uni.log[-1] += [msg]
@@ -1505,7 +1529,7 @@ class WailingWinds(Skill):
 
   def run(self, itm):
     itm.effects += [self.name]
-    if any(i not in itm.traits for i in [death_t, malignant_t]):
+    if any(i not in itm.traits for i in [death_t]):
       itm.resolve_mod -= 1
 
 

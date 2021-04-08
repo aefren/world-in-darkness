@@ -160,6 +160,50 @@ class Spell:
     itm.pos.world.log[-1] += [msg]
 
 
+class FeastForBaal(Spell):
+  name = "feast for baal"
+  cast = 1
+  cost = 0
+  type = spell_t
+  tags = ["feeding", "cannibalize"]
+
+  def ai_run(self, itm):
+    if FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] and itm.pos.corpses: self.run(itm) 
+
+  def run(self, itm):
+    itm.update()
+    if (FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] 
+        and itm.pos.corpses):
+      corpses = sum(sum(i.deads) for i in itm.pos.corpses)
+      sk = FeedingFrenzy(itm)
+      if corpses >= itm.units: 
+        sk.turns = 5
+        sk.name += f" full" 
+        times = itm.units
+        for cr in itm.pos.corpses:
+          if times <= 0: break
+          for r in range(times):
+            if cr.deads[0] < 1: break
+            cr.deads[0] -= 1
+            times -= 1
+            if times < 1: break
+      elif corpses >= 50 * itm.units / 100: 
+        sk.turns = 3
+        sk.name += f" half"
+        itm.pos.corpses = []
+      else: 
+        sk.turns = 1
+        sk.name += f" low"
+        itm.pos.corpses = [] 
+      itm.other_skills += [sk]
+      msg = f"{itm} cannivalizes {corpses} {corpses_t}"
+      itm.log[-1] += [msg]
+      if itm.show_info: sleep(loadsound("spell37") // 2)
+    else:
+      itm.log[-1] += [f"can not cannivalize"] 
+      if itm.show_info: loadsound("errn1")
+
+
 
 class BlessingWeapons(Spell):
   name = "bendecir armas"
@@ -255,8 +299,8 @@ class CastBloodRain(Spell):
 
 
 
-class Cannibalize(Spell):
-  name = "cannibalize"
+class EatCorpses(Spell):
+  name = "eat corpse"
   cast = 1
   cost = 0
   type = spell_t
@@ -567,6 +611,7 @@ class EnchantedForests(Spell):
 
 
 class FeastOfFlesh(Spell):
+  name = "feast of flesh"
   desc = "sacrifica 200 población para invocar ogros a su servicio. +50 unrest."
   cast = 4
   cost = 20

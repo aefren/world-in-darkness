@@ -1,24 +1,23 @@
 #!/usr/bin/env python
 import copy
-# from math import ceil, floor
-# from pdb import Pdb
-# from random import randint, shuffle, choice, uniform
-# from time import sleep, process_time
 
-import numpy as np
-
-import basics
+from data import weapons
 from data.events import *
 from data.lang.es import *
 from data.names import *
 from data.skills import *
-from data import weapons
+
+import basics
+import numpy as np
+
+
+# from math import ceil, floor
+# from pdb import Pdb
+# from random import randint, shuffle, choice, uniform
+# from time import sleep, process_time
 # from log_module import *
 # from screen_reader import *
 # from sound import *
-
-
-
 class Empty:
   pass
 
@@ -107,6 +106,7 @@ class Building:
     self.surf = [forest_t, none_t, river_t, swamp_t]    
     self.hill = [0, 1]
     self.upgrade = []
+    self.units = []
     if self.base:
       base = self.base(self.nation, self.pos)
       self.food_pre = base.food
@@ -199,7 +199,7 @@ class Building:
     say = 1
     x = 0
     while True:
-      sleep(0.05)
+      sleep(0.001)
       if say:
         av_units = [i.name for i in self.av_units]
         upgrades = [i.name for i in self.upgrade]
@@ -242,6 +242,7 @@ class Building:
 
   def update(self):
     self.is_complete = 1 if self.resource_cost[0] >= self.resource_cost[1] else 0
+    self.units = [uni for uni in self.units if uni.hp_total >= 1]
 
 
 
@@ -999,6 +1000,9 @@ class Nation:
     self.buildings = []
     self.cities = []
     self.city_names = []
+    self.leadernames1 = []
+    self.leadernames2 = []
+    self.leadernames3 = []
     
     # terrenos de comida.
     self.for_food = Empty()
@@ -1384,6 +1388,7 @@ class Nation:
     logging.info(f"setup_commanders for {self}")
     comms = self.get_free_comms()
     comms.sort(key=lambda x: x.ranking)
+    comms.sort(key=lambda x: x.pos.around_threat + x.pos.threat,reverse=True)
     if info: logging.debug(f"{comms=:}.")
     for com in comms:
       leadership = com.leadership
@@ -1391,14 +1396,18 @@ class Nation:
       if com.pos.city and com.pos.nation in com.belongs:
         threats += [com.pos.city.seen_threat] 
       threat = max(threats)
-      if threat < com.pos.defense*0.6: leadership *= 0.6
+      if threat < com.pos.defense * 0.6: leadership *= 0.6
+      # if com is random.
+      if self in com.pos.world.random_nations:
+        logging.debug(f"is random") 
+        leadership = com.leadership
       if com.leading < leadership: com.create_group(leadership - com.leading)
     
     comms = [com for com in self.units_comm if com.leads]
     [com.set_lead_disband() for com in comms]
     for com in comms:
       for uni in com.leads: 
-        if uni.squads < uni.max_squads*0.5: basics.ai_join_units(uni) 
+        if uni.squads < uni.max_squads * 0.5: basics.ai_join_units(uni) 
     [com.set_army_auto() for com in comms]
 
   def start_turn(self):
@@ -1524,6 +1533,7 @@ class Nation:
 
 class Unit:
   name = str()
+  namemode = None
   nick = str()
   units = 0
   unique = 0
@@ -1659,10 +1669,11 @@ class Unit:
     self.history.raids = 0
     self.history.turns = 1
     self.nation = nation
+    self.set_name()
     self.defensive_skills = [i(self) for i in self.defensive_skills]
     self.global_skills = [i(self) for i in self.global_skills]
     self.offensive_skills = [i(self) for i in self.offensive_skills]
-    self.other_skills = [i for i in self.other_skills]
+    # self.other_skills = [LeadershipExceeded(self)]
     self.squads_position = [self]
     self.traits = [i for i in self.traits]
     self.terrain_skills = [i(self) for i in self.terrain_skills]
@@ -1671,7 +1682,9 @@ class Unit:
     if self.weapon3: self.weapon3 = self.weapon3(self)
     
     self.mp = [i for i in self.mp]
+    self.extra_leading = 0
     self.food_total = self.food * self.units
+    self.leading = 0
     self.upkeep_total = self.upkeep * self.units
 
     self.battle_log = []
@@ -1754,6 +1767,9 @@ class Unit:
   def basic_info(self):
     sp.speak(f"{self}", 1)
     if self.leads: sp.speak(f" leads {self.leading} ({len(self.leads)}) ")
+    if self.extra_leading >= 1:
+      loadsound("set7", vol=0.5)
+      sp.speak(f"leadership limit exceeded {self.extra_leading}.")
     if self.other_skills:
       loadsound("set9", channel=ch5)
       for sk in self.other_skills: sp.speak(f"{sk.name}")
@@ -1884,7 +1900,7 @@ class Unit:
       if target.armor_ign + target.armor_ign_mod == 0: armor -= pn
       else: 
         if info: logging.debug(f"{target} ignora pn.")
-      armor = basics.get_armor_mod(armor)
+      armor = self.get_armor_mod(armor)
       if info: logging.debug(f"roll{roll} necesita {armor}.")
       if roll >= armor and armor > 0:
         self.hits_armor_blocked[-1] += 1
@@ -1924,11 +1940,11 @@ class Unit:
     damage = weapon.damage
     damage += self.strn + self.strn_mod
     damage -= target.res + target.res_mod
-    if damage < 1: damage = 0
+    if damage < 1: damage = 1
     head_damage = weapon.damage
     head_damage += self.strn + self.strn_mod
     head_damage -= target.hres + target.hres_mod
-    if head_damage < 1: head_damage = 0
+    if head_damage < 1: head_damage = 1
     self.temp_log += [
     f"{self} {attacking_t}. dist {self.dist}",
       f"effects {self.effects}", ]
@@ -1962,7 +1978,6 @@ class Unit:
     # Wound setting.
     if weapon.hit_to: 
       hit_to = weapon.hit_to
-      #Pdb().set_trace()
     if weapon.wounds:
       if self.combat_wounds(res, self.strn + self.strn_mod, info) == None: return
     
@@ -1972,7 +1987,7 @@ class Unit:
     if hit_to == "body": res = self.target.res + self.target.res_mod
     elif hit_to == "head": res = self.target.hres + self.target.hres_mod
     damage += strn - res
-    if damage < 1: damage = 0
+    if damage < 1: damage = 1
     
     # Pn setting.
     pn = weapon.pn
@@ -1999,7 +2014,7 @@ class Unit:
           if info: logging.debug(f"off_need1  {off_need}.")
           off_need -= target.dfs + target.dfs_mod
           if info: logging.debug(f"off_need2 {off_need}.")
-          off_need = basics.get_hit_mod(off_need)
+          off_need = self.get_hit_mod(off_need)
           if info: logging.debug(f"off_need3 {off_need}.")
           if hit_roll >= off_need:
             self.strikes[-1] += 1
@@ -2195,16 +2210,20 @@ class Unit:
             try:
               if i.leader == None: 
                 i.log[-1][-1][1][0] += [msg, msg2]
-            except: Pdb().set_trace()
+            except: pass
             i.nation.log[-1][-1][1][0] += [msg, msg2]
-            i.pos.world.log[-1][-1][1][0] += [msg, msg2]
+            try:
+              i.pos.world.log[-1][-1][1][0] += [msg, msg2]
+            except: Pdb().set_trace()
             i.add_corpses(target.pos)
             if self.pos != target.pos and self in self.pos.units: self.pos.units.remove(self)
           if self.hp_total < 1 or self.retreats:
             msg = f"{target} ({target.nation}) a vencido."
             if target.show_info: sp.speak(msg)
             logging.info(msg)
-            target.log[-1][-1][1][0] += [msg]
+            try:
+              target.log[-1][-1][1][0] += [msg]
+            except: pass
             target.nation.log[-1][-1][1][0] += [msg]
             target.pos.world.log[-1][-1][1][0] += [msg]
             self.nation.log[-1].append(msg)
@@ -2223,7 +2242,8 @@ class Unit:
             msg = f"{self} ({self.nation}) ha vencido."
             try:
               if i.leader == None:self.log[-1][-1][1][0] += [msg]
-            except: Pdb().set_trace()
+            # except: Pdb().set_trace()
+            except: pass
             self.nation.log[-1][-1][1][0] += [msg]
             target.nation.log[-1][-1][1][0] += [msg]
             target.pos.world.log[-1][-1][1][0] += [msg]
@@ -2342,7 +2362,7 @@ class Unit:
     if info:logging.info(f"shield.")
     if target.shield:
       roll = basics.roll_dice(1)
-      shield = basics.get_armor_mod(target.shield.dfs)
+      shield = self.get_armor_mod(target.shield.dfs)
       if shield > roll: 
         self.hits_shield_blocked[-1] += 1
         return 1
@@ -2355,7 +2375,7 @@ class Unit:
     if info: logging.debug(f"wound_need1 {wound_need}.")
     wound_need -= res
     if info: logging.debug(f"wound_need2 {wound_need}.")
-    wound_need = basics.get_wound_mod(wound_need)
+    wound_need = self.get_wound_mod(wound_need)
     if info: logging.debug(f"wound_need3 {wound_need}.")
     if wound_roll < wound_need:
       self.hits_resisted[-1] += 1
@@ -2446,7 +2466,9 @@ class Unit:
       _units.sort(key=lambda x: x.units, reverse=True)
       _units.sort(key=lambda x: x.ranged, reverse=True)
       _units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
-      target = _units[0]
+      try:
+        target = _units[0]
+      except: Pdb().set_trace()
     
     attackers = self.squads_position
     defenders = target.squads_position
@@ -2461,7 +2483,7 @@ class Unit:
     if attackers[0].leader: leader1 = attackers[0].leader
     squads1 = [i.name for i in leader1.squads_position]
     leader2 = defenders[0]
-    if defenders[0].leader: leader2 = attackers[0].leader
+    if defenders[0].leader: leader2 = defenders[0].leader
     squads2 = [i.name for i in leader2.squads_position]
     msg2 = [f"{attacking_t} {leader1}, {ranking_t} {leader1.ranking}.",
             f"{squads1}.",
@@ -2473,7 +2495,6 @@ class Unit:
       it.nation.log[-1] += copy.deepcopy([msg])
       it.log[-1] += copy.deepcopy([msg])
     self.pos.world.log[-1] += [copy.deepcopy(msg)]
-    
     
     # Start of combat
     while attackers and defenders:
@@ -2512,7 +2533,7 @@ class Unit:
       self.update()
       if info: logging.debug(f"total huídos {self.fled}.")
 
-  def create_group(self, score, dynamic=1, info=1):
+  def create_group(self, score, dynamic=1, chosen_units=None, info=1):
     if score < 0: return
     logging.info(f"{self} crea grupo de {score}")
     self.group_base = score
@@ -2521,8 +2542,8 @@ class Unit:
       for i in self.leads:
         if i.pos == self.pos or self.pos in i.goto_pos: 
           self.group_score -= i.ranking
-    sq = [s for s in self.pos.get_near_tiles(3) if s.around_threat + s.threat == 0]
     units = [] 
+    sq = [s for s in self.pos.get_near_tiles(3) if s.around_threat + s.threat == 0]
     for s in sq:
       for u in s.units:
         if u.leadership or u.goto: continue
@@ -2533,6 +2554,7 @@ class Unit:
         if u == self or u.pos.around_threat + u.pos.threat: continue
         if u.scout and u.pos.get_distance(u.pos, self.pos) > 2: continue
         units += [u]
+    if chosen_units: units = chosen_units
     shuffle(units)
     units.sort(key=lambda x: x.pos.get_distance(self.pos, x.pos))
     
@@ -2547,7 +2569,7 @@ class Unit:
     for i in units:
       if info: logging.debug(f"score {self.group_score}.")
       if info: logging.debug(f"encuentra a {i}")
-      if self.group_score > 0 and i not in self.leads:
+      if self.group_score - i.ranking > -2 and i not in self.leads:
         self.leads.append(i)
         i.leader = self
         i.scout = 0
@@ -2574,6 +2596,14 @@ class Unit:
       self.pos.units.remove(self)
       self.nation.update(self.pos.scenary)
 
+  def get_armor_mod(self, num):
+    if num >= 5: return 2
+    if num >= 4: return 3
+    if num >= 3: return 4
+    if num >= 2: return 5
+    if num >= 1: return 6
+    if num <= 0: return 0
+
   def get_favland(self, pos):
     go = 1
     if pos.soil.name not in self.favsoil: go = 0
@@ -2583,20 +2613,26 @@ class Unit:
 
   def get_fear(self):
     fear = 1
-    fear += self.fear/2
+    fear += self.fear / 2
     return fear
+
   def get_hire_units(self, sound="in1"):
     sleep(loadsound(sound) / 2)
     say = 1
     x = 0
-    units = [i for i in self.pos.units if self.nation not in i.belongs]
+    units = []
+    for bu in self.pos.buildings: 
+      if bu.nation in self.pos.world.random_nations: 
+        units += [i for i in bu.av_units]
     for uni in units:
       uni._go = 1
-      for t in uni.tags:
+      for t in uni.traits:
         if t not in self.lead_traits: uni._go = 0
+      if uni.aligment not in self.lead_aligments: uni._go = 0
+      
     units = [i for i in units if i._go == 1]
     while True:
-      sleep(0.01)
+      sleep(0.001)
       if say:
         if units: 
           cost = units[x].gold * self.hire_rate
@@ -2634,6 +2670,13 @@ class Unit:
           if event.key == pygame.K_ESCAPE:
             return sleep(loadsound("back1") / 2)
 
+  def get_hit_mod(self, num):
+    if num >= 4: return 2
+    elif num >= 1: return 3
+    elif num >= -2: return 4
+    elif num >= -5: return 5 
+    else: return 6
+
   def get_retreat_pos(self, info=0):
     if info: logging.info(f"retreat_pos")
     if info:logging.debug(f"pocición inicial {self.pos} {self.pos.cords}.")
@@ -2655,13 +2698,21 @@ class Unit:
       if s.cost <= self.mp[1]: return sq[0]
 
   def get_skills(self):
-    self.skills = [i for i in self.global_skills + self.terrain_skills + 
-                   self.defensive_skills + self.offensive_skills + self.other_skills]
+    self.skills = [i for i in self.global_skills + self.terrain_skills  
+                   +self.defensive_skills + self.offensive_skills   
+                   +self.other_skills]
     self.skills_tags = []
     for sk in self.skills:
       self.skills_tags += sk.tags
     return self.skills
   
+  def get_wound_mod(self, num):
+    if num >= 2: return 2
+    elif num >= 1: return 3
+    elif num >= 0: return 4
+    elif num >= -1: return 5 
+    else: return 6
+
   def go_home(self):
     tiles = self.nation.tiles
     tiles.sort(key=lambda x: x.threat)
@@ -2679,7 +2730,7 @@ class Unit:
     x = 0
     self.update()
     while True:
-      sleep(0.1)
+      sleep(0.01)
       if say:
         effects = [e for e in self.effects]
         if self.armor: armor = self.armor.name
@@ -2848,7 +2899,6 @@ class Unit:
 
   def launch_event(self):
     pass
-
   
   def maintenanse(self):
     # logging.debug(f"mantenimiento de {self} de {self.nation}.")
@@ -3078,7 +3128,7 @@ class Unit:
       self.goto = []
       self.stopped = 1
       msg = f"{self} {self.nation}  detenido."
-      #self.log[-1].append(msg)
+      # self.log[-1].append(msg)
       if info: logging.debug(msg)
       if self.show_info:
         sp.speak(msg=msg)
@@ -3131,9 +3181,12 @@ class Unit:
   def moving_unit(self, info=0):
     if info: logging.debug(f"mueve cerca {self} {self.id}.")
     if self.goto == []: 
-      if info: logging.debug(f"sin goto")
+      if info: logging.debug(f"sin goto.")
       return
-    
+    if isinstance(self.goto[0][0], str):
+      if info: logging.debug(f"goto es str.")
+      self.goto = []
+      return
     mp = min(i.mp[0] for i in self.leads + [self])
     cost = self.goto[0][0]
     goto = self.goto[0][1]
@@ -3420,7 +3473,7 @@ class Unit:
     say = 1 
     x = 0
     while True:
-      sleep(0.01)
+      sleep(0.001)
       if say:
         sp.speak(f"{items[x]}.", 1)
         say = 0
@@ -3479,9 +3532,10 @@ class Unit:
     self.squads_position = self.leads + [self]
     if layout == "defensive1":
       if self.info: logging.debug(f"layout {layout}.")
-      self.squads_position.sort(key = lambda x: x.levy,reverse=True)
-      self.squads_position.sort(key = lambda x: x.ranged,reverse=True)
-      self.squads_position.sort(key = lambda x: x.leadership)
+      self.squads_position.sort(key=lambda x: x.levy, reverse=True)
+      self.squads_position.sort(key=lambda x: x.ranged, reverse=True)
+      self.squads_position.sort(key=lambda x: x.leadership)
+
   def set_attack(self):
     if self.mp[0] < 0: return
     logging.debug(f"ataque hidden.")
@@ -3578,14 +3632,13 @@ class Unit:
     logging.info(f"set_leads for {self}")
     self.update()
     leading = self.leads
-    av_units = [uni for uni in self.pos.units if uni.leadership == 0
-                and uni not in self.leads]
+    av_units = self.set_lead_traits(self.pos.units)
     t = 0
     say = 1
     x = 0
     items = [leading, av_units]
     while True:
-      sleep(0.01)
+      sleep(0.001)
       if say:
         if items[t] == []: sp.speak(f"{empty_t}.")
         else: 
@@ -3618,6 +3671,8 @@ class Unit:
             say = 1
             if x >= len(items[t]): x = len(items[t]) - 1
             loadsound("s1")
+          if event.key == pygame.K_F1:
+            sp.speak(f"{leadership_t} {sum([it.units for it in leading])} {of_t} {self.leadership}.", 1)
           if event.key == pygame.K_i:
             if items[t]: items[t][x].info(self.nation)
           if event.key == pygame.K_p:
@@ -3631,13 +3686,15 @@ class Unit:
             unit = items[t][x]
             say = 1  
             if unit in av_units:
-              sp.speak(f"{unit} added to {self}.")
+              sleep(loadsound("selected1") / 2)
+              sp.speak(f"{added_t}.", 1)
               unit.leader = self
               leading += [unit]
               av_units.remove(unit)
               self.squads_position.insert(0, unit)
             elif unit in leading:
-              sp.speak(f"{unit} removed from {self}.")
+              sleep(loadsound("set4") / 2)
+              sp.speak(f"{removed_t}.", 1)
               unit.leader = None
               av_units += [unit]
               leading.remove(unit)
@@ -3660,19 +3717,22 @@ class Unit:
   def set_lead_traits(self, units):
     _units = []
     for uni in units:
-      go = 1
+      if uni in self.leads: continue
+      if uni.leadership: continue
+      if uni.nation not in self.belongs: continue
       for tr in uni.traits:
-        if tr not in self.lead_traits: go = 0
-      if uni.aligment not in self.lead_aligments: go = 0
-      if go: _units += [uni]
+        if tr not in self.lead_traits: continue
+      if uni.aligment not in self.lead_aligments: continue
+      _units += [uni]
     return _units
+
   def set_lead_disband(self):
     leadership = self.leadership
     threats = [self.pos.around_threat]
     if self.pos.city and self.pos.nation in self.belongs:
       threats += [self.pos.city.seen_threat] 
     threat = max(threats)
-    if (threat < self.pos.defense*0.6
+    if (threat < self.pos.defense * 0.6
         and self.goal == None and self.pos.nation in self.belongs): 
       leadership *= 0.6
     if self.leading > leadership:
@@ -3680,10 +3740,11 @@ class Unit:
                if uni != self and uni.squads > 1]
       
       items.sort(key=lambda x: x.ranking)
-      items.sort(key=lambda x: x.squads,reverse=True)
+      items.sort(key=lambda x: x.squads, reverse=True)
       if items: 
         if self.leading > self.leadership + 10:items[0].split(2)
         elif self.leading > self.leadership:items[0].split(2)
+
   def set_level(self):
     level = self.level
     for i in self.exp_tree:
@@ -3692,6 +3753,20 @@ class Unit:
         break
     
     if self.level > level: self.level_up()
+
+  def set_name(self):
+    if self.namemode == None: return
+    while True:
+      if 1 in self.namemode:
+        self.nick = choice(self.nation.leadernames1)
+      if 2 in self.namemode:
+        self.nick += " "  
+        self.nick += choice(self.nation.leadernames2)
+      if 3 in self.namemode:
+        self.nick += " "  
+        self.nick += choice(self.nation.leadernames3)
+      if basics.has_name(self.nation.units, self.nick) == None: return
+      else: self.nick = str()
 
   def set_ranking(self):
     self.ranking_off = 0
@@ -3719,29 +3794,21 @@ class Unit:
     elif self.off + self.off_mod >= 4: self.ranking_off *= 1.3 + (self.off + self.off_mod) / 10
     else: self.ranking_off *= 1 + (self.off + self.off_mod) / 20
     self.ranking_off_l += ["off", self.ranking_off]
-    if self.strn + self.strn_mod >= 8: self.ranking_off *= 3 + (self.strn + self.strn_mod) / 10
-    elif self.strn + self.strn_mod >= 6: self.ranking_off *= 2.5 + (self.strn + self.strn_mod) / 10
-    elif self.strn + self.strn_mod >= 4: self.ranking_off *= 1.5 + (self.strn + self.strn_mod) / 10
-    else: self.ranking_off *= 1 + (self.strn + self.strn_mod) / 10
+    self.ranking_off += (self.strn + self.strn_mod) * 2
     self.ranking_off_l += ["strn", self.ranking_off]
     self.ranking_off *= 1 + (self.moves + self.moves_mod) / 20
-    self.ranking_off_l += ["moves", self.ranking_off]
     self.ranking_off = round(self.ranking_off / 20)
   
+    self.ranking_off_l += ["moves", self.ranking_off]
     self.ranking_dfs = self.hp_total
     self.ranking_dfs_l = ["hp", self.ranking_dfs]
     if self.dfs + self.dfs_mod >= 8: self.ranking_dfs *= 3 + (self.dfs + self.dfs_mod) / 10
     elif self.dfs + self.dfs_mod >= 6: self.ranking_dfs *= 2 + (self.dfs + self.dfs_mod) / 10
     else: self.ranking_dfs *= 1 + (self.dfs + self.dfs_mod) / 10
     self.ranking_dfs_l += ["dfs", self.ranking_dfs]
-    if self.res + self.res_mod >= 8: self.ranking_dfs *= 3 + (self.res + self.res_mod) / 10
-    elif self.res + self.res_mod >= 6: self.ranking_dfs *= 2.5 + (self.res + self.res_mod) / 10
-    elif self.res + self.res_mod >= 4: self.ranking_dfs *= 2 + (self.res + self.res_mod) / 10
-    else: self.ranking_dfs *= 1 + (self.res + self.res_mod) / 10
+    self.ranking_dfs += (self.res + self.res_mod) * 2
     self.ranking_dfs_l += ["res", self.ranking_dfs]
-    if self.hres + self.hres_mod >= 4: self.ranking_dfs *= 3 + (self.hres + self.hres_mod) / 10
-    elif self.hres + self.hres_mod >= 2: self.ranking_dfs *= 2 + (self.hres + self.hres_mod) / 10
-    else: self.ranking_dfs *= 1 + (self.hres + self.hres_mod) / 10
+    self.ranking_dfs += (self.hres + self.hres_mod) * 2
     self.ranking_dfs_l += ["h res", self.ranking_dfs]
     if self.arm + self.arm_mod >= 8: self.ranking_dfs *= 3 + (self.arm + self.arm_mod) / 10
     elif self.arm + self.arm_mod >= 6: self.ranking_dfs *= 2.5 + (self.arm + self.arm_mod) / 10
@@ -3828,6 +3895,7 @@ class Unit:
     for sk in skills:
       if sk.type == "generic":
         if info: logging.debug(sk.name)
+        print(sk.name)
         sk.run(self)
     
     self.skill_names.sort()
@@ -3962,10 +4030,9 @@ class Unit:
     self.restoring()
     self.set_hidden(self.pos)
     if (self.goal and self.goal[0] == "stalking"
-        or (self.leader and self.leader.goal and self.leader.goal[0] == "stalking") 
-        or self.scout
-        and self.ai == 1):
-      if self.leadership == 0 and self.will_less == 0: 
+        or self.leader == None 
+        or self.scout and self.ai == 1):
+      if self.will_less == 0: 
         self.oportunist_attack(self)
     self.join_group()
     if self.goto: 
@@ -4012,7 +4079,7 @@ class Unit:
     if self.hp_total > 0: self.squads = ceil(self.units / self.min_units)
     if self.squads > self.max_squads:
       self.hp_total = (self.min_units * self.max_squads) * self.hp
-    self.food_total = self.food * self.units + sum(i.food*i.units for i in self.leads)
+    self.food_total = self.food * self.units + sum(i.food * i.units for i in self.leads)
     self.spells_tags = []
     for sp in self.spells: self.spells_tags += sp.tags
     if self.leader and self.leader.hp_total < 1: self.leader = None
@@ -4047,6 +4114,8 @@ class Unit:
     self.leads = [i for i in self.leads if i.hp_total >= 1 and self.nation in i.belongs]
     self.squads_position = [i for i in self.squads_position if i.hp_total >= 1]
     self.leading = sum(i.units for i in self.leads)
+    if self.leadership: 
+      self.extra_leading = self.leading * 100 / self.leadership - 100
     self.group_ranking = self.ranking + sum(i.ranking for i in self.leads)
     self.hp_total = round(self.hp_total)
     self.ranking = round(self.ranking)
@@ -4577,7 +4646,6 @@ class Druid(Elf):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.align = Wild
     self.spells = [HealingRoots, SummonClayGolem, SummonFalcons]
 
 
@@ -4631,6 +4699,7 @@ class KeeperOfTheGrove (Elf):
     self.align = Wild
 
 
+
 class PathFinder(Elf):
   name = "Path finder"
   units = 5
@@ -4680,6 +4749,7 @@ class PathFinder(Elf):
     self.align = Wild
 
 
+
 class PriestessOfTheMoon(Elf):
   name = "priestess of the moon"
   units = 1
@@ -4727,7 +4797,7 @@ class PriestessOfTheMoon(Elf):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = []  # [Entangling Roots ]
+    self.spells = []
     self.align = Wild
 
 
@@ -4784,7 +4854,7 @@ class AwakenTree(Elf):
 
 class BladeDancer(Elf):
   name = "danzante de la espada"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 5
   type = "infantry"
@@ -4831,21 +4901,21 @@ class BladeDancer(Elf):
 
 class DemonHunter(Elf):
   name = "demon hunter"
-  units = 5
-  min_units = 5
-  max_squads = 5
+  units = 1
+  min_units = 1
+  max_squads = 1
   type = "infantry"
   traits = [elf_t]
   aligment = wild_t
   size = 2
   gold = 500
-  upkeep = 80
+  upkeep = 90
   resource_cost = 25
   food = 3
   pop = 25
   terrain_skills = [Burn, DarkVision, DesertSurvival, ForestSurvival, MountainSurvival, SwampSurvival]
 
-  hp = 18
+  hp = 24
   mp = [2, 2]
   moves = 6
   resolve = 7
@@ -4917,9 +4987,9 @@ class Driad(Elf):
 
 class EternalGuard(Elf):
   name = "guardia eterna"
-  units = 40
+  units = 20
   min_units = 20
-  max_squads = 4
+  max_squads = 3
   type = "infantry"
   traits = [elf_t]
   aligment = wild_t
@@ -5011,7 +5081,7 @@ class ForestBear(Unit):
   max_squads = 10
   type = "beast"
   traits = [bear_t]
-  aligment = wild_t
+  aligment = nature_t
   size = 3
   gold = 300
   upkeep = 25
@@ -5228,9 +5298,9 @@ class ForestGuard(Elf):
 
 class ForestRider(Elf):
   name = "forest rider"
-  units = 10
-  min_units = 50
-  max_squads = 8
+  units = 5
+  min_units = 5
+  max_squads = 6
   type = "cavalry"
   mounted = 1
   traits = [elf_t]
@@ -5317,7 +5387,7 @@ class ElvesSettler(Human):
 
 class Huntress(Elf):
   name = huntresse_t
-  units = 10
+  units = 5
   min_units = 5
   max_squads = 5
   type = "infantry"
@@ -5364,7 +5434,7 @@ class Huntress(Elf):
 
 class WoodArcher(Elf):
   name = "alto arquero silvano"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 5
   type = "infantry"
@@ -5677,7 +5747,7 @@ class ImprovedBarracks(Barracks, Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [CrossBowManHalberdier,  Legatus]
+    self.av_units = [CrossBowManHalberdier, Legatus]
     self.resource_cost = [0, 200]
     self.size = 0
 
@@ -5800,6 +5870,7 @@ class FieldsOfJupiter(TheMarbleTemple, Building):
 # Commanders
 class Augur(Unit):
   name = "augur"
+  namemode = [1, 2, 3]
   units = 5
   min_units = 5
   max_squads = 1
@@ -5848,7 +5919,8 @@ class Augur(Unit):
 
 class Aquilifer(Human):
   name = "aquilifer"
-  units = 5
+  namemode = [1, 2, 3]
+  units = 10
   min_units = 10
   max_squads = 1
   is_leader = 1
@@ -5858,7 +5930,7 @@ class Aquilifer(Human):
   aligment = neutral_t
   size = 2
   gold = 1500
-  upkeep = 100
+  upkeep = 80
   resource_cost = 35
   food = 5
   pop = 100
@@ -5893,12 +5965,14 @@ class Aquilifer(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [RecruitPeasants]
+    self.spells = [RecruitLevy]
     self.align = Wild
+
 
 
 class Ballistarius(Human):
   name = "Ballistarius"
+  namemode = [1, 2]
   units = 5
   min_units = 10
   max_squads = 1
@@ -5907,8 +5981,8 @@ class Ballistarius(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 700
-  upkeep = 60
+  gold = 500
+  upkeep = 100
   resource_cost = 25
   food = 5
   pop = 40
@@ -5919,7 +5993,7 @@ class Ballistarius(Human):
   power = 2
   power_max = 6
   power_res = 2
-  mp = [2,2]
+  mp = [2, 2]
   moves = 6
   resolve = 8
   global_skills = [Organization]
@@ -5946,13 +6020,15 @@ class Ballistarius(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [RecruitPeasants]
+    self.spells = []
     self.align = Wild
     self.mp = [2, 2]
 
 
+
 class Centurion(Human):
   name = "centurion"
+  namemode = [1, 2]
   units = 5
   min_units = 10
   max_squads = 1
@@ -5962,7 +6038,7 @@ class Centurion(Human):
   aligment = neutral_t
   size = 2
   gold = 500
-  upkeep = 120
+  upkeep = 90
   resource_cost = 25
   food = 5
   pop = 40
@@ -5973,7 +6049,7 @@ class Centurion(Human):
   power = 2
   power_max = 6
   power_res = 2
-  mp = [2,2]
+  mp = [2, 2]
   moves = 6
   resolve = 8
   global_skills = [HoldPositions, Organization]
@@ -6000,27 +6076,29 @@ class Centurion(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [RecruitPeasants]
+    self.spells = [RecruitLevy]
     self.align = Wild
     self.mp = [2, 2]
 
 
+
 class Decarion(Human):
   name = "decarion"
+  namemode = [1, 2]
   units = 1
   min_units = 10
   max_squads = 1
-  leadership = 40
+  leadership = 50
   type = "infantry"
   traits = [human_t]
   aligment = neutral_t
   size = 2
   gold = 400
-  upkeep = 80
+  upkeep = 140
   resource_cost = 15
   food = 5
   pop = 40
-  terrain_skills = [ForestSurvival, MountainSurvival]
+  terrain_skills = []
   tags = ["commander"]
 
   hp = 10
@@ -6030,7 +6108,7 @@ class Decarion(Human):
   mp = [2, 2]
   moves = 6
   resolve = 8
-  global_skills = [Organization]
+  global_skills = [LeadershipExceeded, Organization]
 
   dfs = 4
   res = 9
@@ -6054,23 +6132,25 @@ class Decarion(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [RecruitPeasants]
+    self.spells = []
     self.align = Wild
     self.mp = [2, 2]
 
 
+
 class Decurion(Human):
   name = "Decurion"
+  namemode = [1, 2]
   units = 1
   min_units = 10
   max_squads = 1
-  leadership = 60
+  leadership = 70
   type = "infantry"
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 800
-  upkeep = 100
+  gold = 500
+  upkeep = 180
   resource_cost = 20
   food = 5
   pop = 40
@@ -6108,7 +6188,7 @@ class Decurion(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [RecruitPeasants]
+    self.spells = []
     self.align = Wild
     self.mp = [2, 2]
 
@@ -6116,6 +6196,7 @@ class Decurion(Human):
 
 class Flamen(Human):
   name = "flamen"
+  namemode = [1, 2, 3]
   units = 1
   min_units = 5
   max_squads = 1
@@ -6126,7 +6207,7 @@ class Flamen(Human):
   aligment = sacred_t
   size = 2
   gold = 1300
-  upkeep = 800
+  upkeep = 400
   resource_cost = 30
   food = 3
   pop = 40
@@ -6162,6 +6243,7 @@ class Flamen(Human):
 
 class Legatus(Human):
   name = "legatus"
+  namemode = [1, 2, 3]
   units = 10
   min_units = 10
   max_squads = 1
@@ -6171,7 +6253,7 @@ class Legatus(Human):
   aligment = neutral_t
   size = 2
   gold = 1000
-  upkeep = 100
+  upkeep = 70
   resource_cost = 40
   food = 5
   pop = 40
@@ -6213,8 +6295,10 @@ class Legatus(Human):
     self.mp = [2, 2]
 
 
+
 class PontifexMaximus(Unit):
   name = "pontifex maximus"
+  namemode = [1, 2, 3]
   units = 5
   min_units = 5
   max_squads = 1
@@ -6225,8 +6309,8 @@ class PontifexMaximus(Unit):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 3000
-  upkeep = 100
+  gold = 2000
+  upkeep = 150
   resource_cost = 30
   food = 5
   pop = 80
@@ -6392,7 +6476,7 @@ class RebornOne(Human):
 
 class Velites(Human):
   name = "velites "
-  units = 30
+  units = 20
   min_units = 10
   max_squads = 6
   type = "infantry"
@@ -6434,8 +6518,8 @@ class Velites(Human):
 
 class ImperialGuard(Human):
   name = "guardia imperial"
-  units = 20
-  min_units = 20
+  units = 10
+  min_units = 10
   max_squads = 3
   type = "infantry"
   traits = [human_t]
@@ -6475,8 +6559,8 @@ class ImperialGuard(Human):
 
 class Hastati(Human):
   name = "hastati"
-  units = 20
-  min_units = 20
+  units = 10
+  min_units = 10
   max_squads = 3
   type = "infantry"
   traits = [human_t]
@@ -6517,7 +6601,7 @@ class Hastati(Human):
 
 class Principes(Human):
   name = "principes"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 6
   type = "infantry"
@@ -6601,7 +6685,7 @@ class Halberdier(Human):
 
 class SacredWarrior(Human):
   name = sacred_warrior_t
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 6
   type = "infantry"
@@ -6645,7 +6729,7 @@ class SacredWarrior(Human):
 
 class KnightsTemplar (Human):
   name = knights_templar_t
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 6
   type = "infantry"
@@ -6771,7 +6855,7 @@ class CrossBowMan(Human):
 
 class Arquebusier(Human):
   name = "Arquebusier"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 5
   type = "infantry"
@@ -6809,7 +6893,7 @@ class Arquebusier(Human):
 
 class Musket(Human):
   name = "musquet"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 5
   type = "infantry"
@@ -6847,7 +6931,7 @@ class Musket(Human):
 
 class Equite(Human):
   name = equites_t
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 6
   type = "cavalry"
@@ -6895,8 +6979,8 @@ class Equite(Human):
 
 class Equites2(Human):
   name = feudal_knight_t
-  units = 10
-  min_units = 10
+  units = 5
+  min_units = 5
   max_squads = 6
   type = "cavalry"
   mounted = 1
@@ -7407,15 +7491,13 @@ class BoierLord(Unit):
   strn = 11
   
   fear = 6
-  lead_traits = [human_t, blood_drinker_t]
+  lead_traits = [human_t, blood_drinker_t, vampire_t, ]
   lead_aligments = [malignant_t, wild_t, neutral_t]
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.align = Hell
     self.corpses = [Zombie]
-    self.spells = [RecruitLevy, RecruitSlaveWarriors]
-
+    self.spells = [RecruitLevy]
 
 
 
@@ -7460,12 +7542,13 @@ class Paznic(Unit):
   strn = 8
   
   fear = 6
-  lead_traits = [death_t]
+  lead_traits = [death_t, wolf_t]
   lead_aligments = [malignant_t]
 
   def __init__(self, nation):
     super().__init__(nation)
     self.corpses = [SkeletonWarrior]
+
 
 
 class Isaac(Unit):
@@ -7516,7 +7599,7 @@ class Isaac(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [SummonDraugr, SummonSkeletonWarriors, SummonSpectralInfantry]
+    self.spells = [SummonSkeletonWarriors, SummonSpectralInfantry]
     self.align = Hell
     self.corpses = [Zombie]
 
@@ -7527,7 +7610,7 @@ class Necromancer(Human):
   units = 10
   min_units = 1
   max_squads = 1
-  leadership = 50
+  leadership = 40
   type = "infantry"
   wizard = 1
   traits = [human_t]
@@ -7586,7 +7669,7 @@ class VampireCount(Undead):
   max_squads = 1
   leadership = 80
   type = "beast"
-  traits = [death_t, blood_drinker_t, vampire_t]
+  traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
   gold = 1500
@@ -7620,8 +7703,8 @@ class VampireCount(Undead):
   off = 6
   strn = 14
 
-  common = 2
-  lead_traits = [human_t, blood_drinker_t, bat_t, wolf_t]
+  common = 5
+  lead_traits = [human_t, blood_drinker_t, bat_t, vampire_t, wolf_t]
   lead_aligments = [hell_t, malignant_t, nature_t, wild_t]
 
   def __init__(self, nation):
@@ -7668,13 +7751,13 @@ class VarGhul(Undead):
 
   common = 6
   fear = 2
-  lead_traits = [death_t, human_t, blood_drinker_t]
+  lead_traits = [human_t, blood_drinker_t]
   lead_aligments = [malignant_t, hell_t, wild_t]
   populated = 1
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [Cannibalize]
+    self.spells = [EatCorpses]
     self.align = Hell
     self.corpses = [CryptHorror]
     self.favhill = [0, 1]
@@ -7727,13 +7810,13 @@ class VladDracul(Undead):
   off = 8
   strn = 16
 
-  lead_traits = [human_t, death_t, vampire_t, blood_drinker_t, wolf_t]
-  lead_aligments = [hell_t, malignant_t, nature_t, neutral_t, wild_t]
+  lead_traits = [bat_t, blood_drinker_t, death_t, human_t, vampire_t, wolf_t]
+  lead_aligments = [malignant_t, nature_t, neutral_t, wild_t]
   pref_corpses = 1
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [CastBloodRain, CastRainOfToads, Returning]  # , BloodStorm, DarkMantle, SummonBloodKnight]
+    self.spells = [CastBloodRain, CastRainOfToads, Returning, SummonBloodKnight]  # , BloodStorm
     self.corpses = []
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [forest_t, none_t]
@@ -7749,7 +7832,7 @@ class Adjule(Unit):
   max_squads = 5
   type = beast_t
   traits = [death_t]
-  aligment = wild_t
+  aligment = malignant_t
   size = 2
   gold = 230
   upkeep = 13
@@ -7795,7 +7878,7 @@ class WailingLady(Undead):
   max_squads = 1
   ethereal = 1
   type = "infantry"
-  traits = [death_t, malignant_t]
+  traits = [death_t]
   aligment = hell_t
   size = 2
   gold = 666
@@ -7834,7 +7917,7 @@ class WailingLady(Undead):
 
 class Bat(Unit):
   name = bat_t
-  units = 30
+  units = 40
   min_units = 10
   max_squads = 20
   poisonres = 1
@@ -7843,7 +7926,7 @@ class Bat(Unit):
   aligment = nature_t
   size = 1
   gold = 435
-  upkeep = 2
+  upkeep = 1
   resource_cost = 15
   food = 2
   pop = 20
@@ -7869,6 +7952,7 @@ class Bat(Unit):
 
   common = 8
   fear = 6
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -7879,7 +7963,7 @@ class Bat(Unit):
 
 class BlackKnight(Undead):
   name = black_knight_t
-  units = 10
+  units = 5
   min_units = 5
   max_squads = 6
   type = "cavalry"
@@ -7889,7 +7973,7 @@ class BlackKnight(Undead):
   size = 3
   gold = 1400
   upkeep = 80
-  resource_cost = 22
+  resource_cost = 18
   food = 0
   pop = 35
   terrain_skills = [DarkVision, Burn, NightSurvival]
@@ -7916,6 +8000,7 @@ class BlackKnight(Undead):
 
   common = 6
   fear = 0
+
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Hell
@@ -7936,7 +8021,7 @@ class BloodKnight(Undead):
   aligment = malignant_t
   size = 2
   gold = 1200
-  upkeep = 120
+  upkeep = 60
   resource_cost = 25
   food = 0
   pop = 20
@@ -7973,8 +8058,8 @@ class BloodKnight(Undead):
 
 class CryptHorror(Undead):
   name = crypt_horror_t
-  units = 8
-  min_units = 4
+  units = 4
+  min_units = 2
   max_squads = 20
   type = "beast"
   traits = [death_t]
@@ -8015,8 +8100,8 @@ class CryptHorror(Undead):
 
 class DireWolf(Undead):
   name = dire_wolf_t
-  units = 6
-  min_units = 3
+  units = 4
+  min_units = 2
   max_squads = 20
   type = "beast"
   traits = [death_t, wolf_t]
@@ -8099,7 +8184,7 @@ class Draugr(Unit):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.spells = [Cannibalize]
+    self.spells = [EatCorpses]
     self.align = Hell
     Ground.__init__(self)
     self.corpses = [Skeleton]
@@ -8155,7 +8240,7 @@ class FellBat(Undead):
 
 class Ghoul(Human):
   name = ghoul_t
-  units = 10
+  units = 20
   min_units = 10
   max_squads = 5
   poisonres = 1
@@ -8198,15 +8283,14 @@ class Ghoul(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.align = Hell
-    self.spells = [Cannibalize]
+    self.spells = [EatCorpses]
     self.corpses = [Draugr]
 
 
 
 class GraveGuard(Undead):
   name = grave_guard_t
-  units = 10
+  units = 5
   min_units = 5
   max_squads = 8
   type = "infantry"
@@ -8332,6 +8416,7 @@ class Skeleton(Undead):
     self.corpses = []
 
 
+
 class SkeletonWarrior(Undead):
   name = skeleton_warrior_t
   units = 10
@@ -8374,9 +8459,10 @@ class SkeletonWarrior(Undead):
     self.corpses = []
 
 
+
 class SpectralInfantry(Unit):
   name = "infantería espectral"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 10
   type = "infantry"
@@ -8425,7 +8511,7 @@ class Vampire(Undead):
   min_units = 1
   max_squads = 10
   type = "beast"
-  traits = [death_t, blood_drinker_t, vampire_t]
+  traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
   gold = 700
@@ -8473,7 +8559,7 @@ class Vargheist(Undead):
   min_units = 1
   max_squads = 3
   type = "beast"
-  traits = [death_t, blood_drinker_t, vampire_t]
+  traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
   gold = 620
@@ -8539,8 +8625,8 @@ class Zombie(Undead, Ground):
   # global_skills = [Spread]
 
   dfs = 1
-  res = 12
-  hres = 1
+  res = 10
+  hres = 4
   arm = 0
 
   weapon1 = weapons.ZombieBite
@@ -8832,6 +8918,12 @@ class HolyEmpire(Nation):
 
   def __init__(self):
     super().__init__()
+    # City names.
+    self.city_names = holy_empire_citynames
+    # Leader names.
+    self.leadernames1 = praenomen
+    self.leadernames2 = nomen
+    self.leadernames3 = cognomen
     # Casilla inicial permitida.
     self.hill = [0]
     self.soil = [plains_t, grassland_t]
@@ -8852,8 +8944,6 @@ class HolyEmpire(Nation):
     self.av_buildings = [Fields, PlaceOfProphecy, Pastures, TrainingCamp, SawMill, Quarry]
     # Cities.
     self.av_cities = [Hamlet]
-    # city names.
-    self.city_names = roman_citynames
   
     # terrenos de comida.
     self.for_food.soil = [grassland_t, plains_t]
@@ -8957,6 +9047,7 @@ class WoodElves(Nation):
     self.start_units = [ForestGuard, ForestGuard, PathFinder]
 
 
+
 class valahia(Nation):
   name = valahia_t
   nick = nation_phrase2_t
@@ -9054,9 +9145,9 @@ class BrigandLair(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Raider]
+    self.av_units = [Raider, WarlockApprentice]
     self.resource_cost = [0, 20]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t, none_t, swamp_t]
     self.hill = [0, 1]
     self.upgrade = []
@@ -9078,11 +9169,11 @@ class Campment(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Rider, Warrior, WarlockApprentice]
+    self.av_units = [Rider, Warrior, Warlord]
     self.resource_cost = [0, 40]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t , swamp_t, none_t]
-    self.hill = [0, 1]
+    self.soil = [grassland_t, plains_t]
+    self.surf = [forest_t , none_t]
+    self.hill = [0]
     self.upgrade = []
 
 
@@ -9104,9 +9195,9 @@ class CaveOfDarkRites(Building):
     super().__init__(nation, pos)
     self.av_units = [Harpy, Satyr, Witch]
     self.resource_cost = [0, 40]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t, swamp_t]
-    self.hill = [0, 1]
+    self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
+    self.surf = [forest_t]
+    self.hill = [1]
     self.upgrade = []
 
 
@@ -9128,10 +9219,11 @@ class CaveOfGhouls(Building):
     super().__init__(nation, pos)
     self.av_units = [Ghoul, VarGhul]
     self.resource_cost = [0, 50]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [grassland_t, plains_t, waste_t, tundra_t]
     self.surf = [forest_t, none_t]
-    self.hill = [0, 1]
+    self.hill = [1]
     self.upgrade = []
+
 
 
 class DececratedCemetery(Building):
@@ -9149,12 +9241,13 @@ class DececratedCemetery(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Skeleton, Ghoul]
+    self.av_units = [Skeleton, Ghoul, Necromancer]
     self.resource_cost = [0, 60]
-    self.soil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.soil = [plains_t, tundra_t, waste_t]
     self.surf = [forest_t, none_t]
-    self.hill = [0, 1]
+    self.hill = [0]
     self.upgrade = []
+
 
 
 class FightingPit(Building):
@@ -9172,11 +9265,11 @@ class FightingPit(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [OrcWarrior, OrcArcher]
+    self.av_units = [OrcWarrior, OrcArcher, OrcCaptain]
     self.resource_cost = [0, 50]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t, none_t]
-    self.hill = [0, 1]
+    self.hill = [0]
     self.upgrade = []
 
 
@@ -9246,7 +9339,7 @@ class HiddenTemple(Building):
     super().__init__(nation, pos)
     self.av_units = [Flagellant, Inquisitor, Warrior]
     self.resource_cost = [0, 60]
-    self.soil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.soil = [grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
     self.hill = [0, 1]
     self.upgrade = []
@@ -9270,7 +9363,7 @@ class HyenasLair(Building):
     super().__init__(nation, pos)
     self.av_units = [Hyena]
     self.resource_cost = [0, 20]
-    self.soil = [waste_t, grassland_t]
+    self.soil = [plains_t, waste_t, ]
     self.surf = [forest_t, none_t]
     self.hill = [0, 1]
     self.upgrade = []
@@ -9316,7 +9409,7 @@ class MammotsCave(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [BlizzardWarrior, GiantOfTheLostTribe, Mammot, ShamanOfTheLostTribe]
+    self.av_units = [BlizzardWarrior, GiantOfTheLostTribe, Mammot, ShamanOfTheWind]
     self.resource_cost = [0, 50]
     self.soil = [tundra_t]
     self.surf = [forest_t, none_t]
@@ -9342,7 +9435,7 @@ class NecromancersLair(Building):
     super().__init__(nation, pos)
     self.av_units = [Necromancer, Skeleton]
     self.resource_cost = [0, 40]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t, swamp_t]
     self.hill = [0, 1]
     self.upgrade = []
@@ -9366,7 +9459,7 @@ class OathStone(Building):
     super().__init__(nation, pos)
     self.av_units = [Troglodyte, Satyr]
     self.resource_cost = [0, 35]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
     self.surf = [none_t]
     self.hill = [1]
     self.upgrade = []
@@ -9388,9 +9481,9 @@ class OpulentCrypt(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [GraveGuard, VampireLord]
+    self.av_units = [Vampire, VampireLord]
     self.resource_cost = [0, 50]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
+    self.soil = [plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t , none_t]
     self.hill = [0, 1]
     self.upgrade = []
@@ -9414,9 +9507,9 @@ class StalagmiteCavern(Building):
     super().__init__(nation, pos)
     self.av_units = [PaleOne, WetOne]
     self.resource_cost = [0, 50]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t , swamp_t, none_t]
-    self.hill = [0, 1]
+    self.soil = [grassland_t, plains_t, tundra_t]
+    self.surf = [forest_t , none_t]
+    self.hill = [0]
     self.upgrade = []
 
 
@@ -9438,9 +9531,9 @@ class TroglodyteCave(Building):
     super().__init__(nation, pos)
     self.av_units = [Troglodyte, Witch]
     self.resource_cost = [0, 50]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t , swamp_t, none_t]
-    self.hill = [0, 1]
+    self.soil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.surf = [forest_t , none_t]
+    self.hill = [0]
     self.upgrade = []
 
 
@@ -9462,8 +9555,8 @@ class TrollCave(Building):
     super().__init__(nation, pos)
     self.av_units = [Troll]
     self.resource_cost = [0, 60]
-    self.soil = [waste_t, grassland_t, plains_t, tundra_t]
-    self.surf = [forest_t, none_t]
+    self.soil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.surf = [none_t]
     self.hill = [1]
     self.upgrade = []
 
@@ -9484,7 +9577,7 @@ class UnderworldEntrance(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghost, HellHound, Skeleton, WailingLady, Witch]
+    self.av_units = [Ghost, HellHound, DevoutOfChaos, WailingLady, Witch]
     self.resource_cost = [0, 80]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, swamp_t, none_t]
@@ -9508,11 +9601,11 @@ class WisperingWoods(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Driad]
+    self.av_units = [Driad, Druid, ForestBear, ForestGiant]
     self.resource_cost = [0, 60]
     self.soil = [grassland_t, plains_t, tundra_t]
     self.surf = [forest_t]
-    self.hill = [0, 1]
+    self.hill = [0]
     self.upgrade = []
 
 
@@ -9563,34 +9656,86 @@ class WolfLair(Building):
     self.hill = [0]
     self.upgrade = []
 
+
+
 # Commanders.
-class DevoutOfChaos(Human):
-  name = "devout of chaos"
+class CannibalWarlord(Human):
+  name = "canibal warlord"
   units = 1
   min_units = 1
   max_squads = 1
+  leadership = 60
   type = "infantry"
-  wizard = 1
-  traits = [human_t, malignant_t]
+  traits = [human_t]
+  aligment = hell_t
   size = 2
-  gold = 1200
-  upkeep = 600
-  resource_cost = 20
-  food = 3
-  pop = 15
+  gold = 400
+  upkeep = 140
+  resource_cost = 15
+  food = 5
+  pop = 40
   terrain_skills = []
 
   hp = 10
+  power = 2
+  power_max = 6
+  power_res = 2
   mp = [2, 2]
-  moves = 5
-  resolve = 5
-  power = 10
-  power_max = 30
-  power_res = 5
+  moves = 6
+  resolve = 8
+  global_skills = [LeadershipExceeded, Organization]
+
+  dfs = 4
+  res = 9
+  hres = 4
+  arm = 0
+  armor = MediumArmor()
+  shield = Shield()
+  defensive_skills = []
+
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
+  off = 4
+  strn = 12
+  offensive_skills = []
+
+  can_hire = 1
+  common = 8
+  lead_traits = [human_t]
+  lead_aligments = [neutral_t, wild_t]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = []
+
+
+
+class DevoutOfChaos(Human):
+  name = "devout of chaos"
+  units = 10
+  min_units = 10
+  max_squads = 3
+  type = "infantry"
+  traits = [human_t]
+  aligment = hell_t
+  size = 2
+  gold = 300
+  upkeep = 30
+  resource_cost = 20
+  food = 3
+  pop = 25
+  terrain_skills = [Burn, ]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  resolve = 7
   global_skills = [ElusiveShadow]
 
   dfs = 2
-  res = 6
+  res = 8
   hres = 3
   arm = 0
   armor = None
@@ -9598,10 +9743,8 @@ class DevoutOfChaos(Human):
 
   weapon1 = weapons.Sword
   att1 = 1
-  damage = 2
-  off = 3
+  off = 4
   strn = 10
-  pn = 0
   
   fear = 6
   sort_chance = 100
@@ -9612,7 +9755,6 @@ class DevoutOfChaos(Human):
   def __init__(self, nation):
     super().__init__(nation)
     self.spells = []
-    self.align = Hell
     self.corpses = [BlackKnight]
     self.favhill = [0, 1]
     self.favsurf = [forest_t] 
@@ -9621,16 +9763,17 @@ class DevoutOfChaos(Human):
 
 class Inquisitor(Human):
   name = inquisitors_t
-  units = 10
+  units = 1
   min_units = 10
   max_squads = 1
+  leadership = 40
   type = "infantry"
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 600
-  upkeep = 30
-  resource_cost = 22
+  gold = 400
+  upkeep = 160
+  resource_cost = 18
   food = 4
   pop = 20
 
@@ -9654,11 +9797,13 @@ class Inquisitor(Human):
   strn = 6
 
   common = 6
+  lead_traits = [human_t]
+  lead_aligments = [neutral_t, sacred_t]
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.align = Wild
     self.corpses = [Zombie]
+
 
 
 class VampireLord(Undead):
@@ -9703,7 +9848,7 @@ class VampireLord(Undead):
   strn = 14
 
   common = 2
-  lead_traits = [human_t, blood_drinker_t, bat_t, wolf_t]
+  lead_traits = [bat_t, blood_drinker_t, human_t, vampire_t, wolf_t]
   lead_aligments = [malignant_t, nature_t, wild_t]
 
   def __init__(self, nation):
@@ -9711,7 +9856,169 @@ class VampireLord(Undead):
     self.spells = [BloodHeal, RecruitLevy]
     self.corpses = []
     self.favhill = [0, 1]
-    self.favsurf = [forest_t, none_t, swamp_t]
+    self.favsurf = [forest_t, none_t]
+
+
+
+class WarlockApprentice(Unit):
+  name = "warlock aprentice"
+  units = 1
+  min_units = 10
+  max_squads = 1
+  leadership = 20
+  type = "infantry"
+  traits = [human_t]
+  aligment = wild_t
+  size = 2
+  gold = 470
+  upkeep = 16
+  resource_cost = 16
+  food = 3
+  pop = 20
+  terrain_skills = []
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  power = 5
+  power_max = 15
+  power_res = 3
+  resolve = 6
+  global_skills = []
+
+  dfs = 2
+  res = 5
+  hres = 1
+  arm = 0
+  armor = None
+
+  weapon1 = weapons.Staff
+  att1 = 2
+  off = 2
+  strn = 4
+
+  common = 7
+  fear = 5
+  lead_traits = [beast_t, human_t, blood_drinker_t, death_t, wolf_t]
+  lead_aligments = [malignant_t, death_t, wild_t, nature_t]
+  populated_land = 1
+  sort_chance = 80
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.corpses = [Zombie]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t, none_t]
+    self.spells += [Curse]
+
+
+
+class Warlock(Unit):
+  name = "warlock"
+  units = 1
+  min_units = 1
+  max_squads = 1
+  leadership = 40
+  type = "infantry"
+  wizard = 1
+  traits = [human_t]
+  aligment = wild_t
+  size = 2
+  gold = 700
+  upkeep = 32
+  resource_cost = 22
+  food = 3
+  pop = 35
+  terrain_skills = [ForestSurvival, SwampSurvival, MountainSurvival]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  power = 10
+  power_max = 30
+  power_res = 5
+  resolve = 6
+  global_skills = [Furtive]
+
+  dfs = 2
+  res = 6
+  hres = 1
+  arm = 0
+  armor = None
+
+  weapon1 = weapons.Staff
+  att1 = 2
+  off = 2
+  strn = 6
+
+  common = 4
+  fear = 5
+  lead_traits = [human_t, blood_drinker_t]
+  lead_aligments = [death_t, wild_t, nature_t]
+  populated_land = 1
+  sort_chance = 80
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.corpses = [Skeleton]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t, none_t]
+    self.spells = [Curse, SummonClayGolem, SummonWoodlandSpirit]
+
+
+
+class Warlord(Human):
+  name = "warlord"
+  units = 1
+  min_units = 10
+  max_squads = 1
+  leadership = 60
+  type = "infantry"
+  traits = [human_t]
+  aligment = wild_t
+  size = 2
+  gold = 400
+  upkeep = 140
+  resource_cost = 15
+  food = 5
+  pop = 40
+  terrain_skills = []
+  tags = ["commander"]
+
+  hp = 10
+  power = 2
+  power_max = 6
+  power_res = 2
+  mp = [2, 2]
+  moves = 6
+  resolve = 8
+  global_skills = [LeadershipExceeded, Organization]
+
+  dfs = 4
+  res = 9
+  hres = 4
+  arm = 0
+  armor = MediumArmor()
+  shield = Shield()
+  defensive_skills = []
+
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
+  off = 4
+  strn = 12
+  offensive_skills = []
+
+  can_hire = 1
+  common = 8
+  lead_traits = [human_t]
+  lead_aligments = [neutral_t, wild_t]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = [RecruitPeasants]
+    self.mp = [2, 2]
 
 
 
@@ -9752,7 +10059,6 @@ class WarMonger(Human):
 
   def __init__(self, nation):
     super().__init__(nation)
-    self.align = Wild
     self.corpses = [Zombie]
 
 
@@ -9857,7 +10163,7 @@ class Akhlut(Unit):
 
 class BlackOrc(Unit):
   name = "orco negro"
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 16
   type = "infantry"
@@ -9951,47 +10257,6 @@ class BlizzardWarrior(Human):
 
 
 
-class SonOfWind(Human):
-  name = "hijo del viento"
-  units = 10
-  min_units = 10
-  max_squads = 4
-  type = "infantry"
-  traits = [human_t]
-  aligment = wild_t
-  size = 2
-  gold = 50
-  upkeep = 20
-  resource_cost = 16
-  food = 3
-  pop = 30
-  terrain_skills = [Burn, DarkVision, DesertSurvival, Raid, MountainSurvival]
-
-  hp = 10
-  mp = [2, 2]
-  moves = 7
-  resolve = 6
-  global_skills = [Furtive]
-
-  dfs = 3
-  res = 8
-  hres = 2
-  arm = 0
-  armor = LightArmor()
-  shield = Shield()
-
-  weapon1 = weapons.Scimitar
-  att1 = 3
-  off = 5
-  strn = 10
-
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.align = Wild
-    self.corpses = [Zombie]
-    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
-
-
 
 class Population(Human):
   name = "population"
@@ -10035,6 +10300,52 @@ class Population(Human):
     self.favhill = [1]
     self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
     self.favsurf = [none_t, forest_t]
+
+
+class CannibalWarrior(Human):
+  name = "cannibal warrior"
+  units = 20
+  min_units = 10
+  max_squads = 10
+  type = "infantry"
+  traits = [human_t]
+  aligment = hell_t
+  size = 2
+  gold = 320
+  upkeep = 5
+  resource_cost = 10
+  food = 2
+  pop = 25
+  terrain_skills = [Burn, Raid]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 6
+  resolve = 6
+  global_skills = [PyreOfCorpses]
+
+  dfs = 3
+  res = 9
+  hres = 2
+  arm = 0
+  armor = None
+
+  weapon1 = weapons.Sword
+  att1 = 1
+  strn = 10
+  off = 3
+
+  common = 10
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Zombie]
+    self.favsoil = [grassland_t, plains_t, tundra_t]
+    self.favsurf = [forest_t, none_t]
 
 
 
@@ -10271,6 +10582,7 @@ class GiantBear(Unit):
     self.favsurf = [forest_t, none_t]
 
 
+
 class GiantCrocodile(Unit):
   name = "giant crocodile"
   units = 1
@@ -10315,6 +10627,7 @@ class GiantCrocodile(Unit):
     self.favhill = [0]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [swamp_t]
+
 
 
 class GiantOfTheLostTribe(Unit):
@@ -10376,7 +10689,7 @@ class GiantWolf(Unit):
   max_squads = 6
   type = "beast"
   traits = [wolf_t]
-  aligment = animal_t
+  aligment = nature_t
   size = 3
   gold = 320
   upkeep = 25
@@ -10420,6 +10733,7 @@ class GiantWolf(Unit):
     self.favsurf = [none_t, forest_t]
 
 
+
 class Ghost(Undead):
   name = "ghost"
   units = 1
@@ -10435,7 +10749,7 @@ class Ghost(Undead):
   resource_cost = 20
   food = 0
   pop = 10
-  terrain_skills = [DarkVision, Fly, MountainSurvival, ForestSurvival, 
+  terrain_skills = [DarkVision, Fly, MountainSurvival, ForestSurvival,
                     SwampSurvival]
 
   hp = 15
@@ -10459,6 +10773,7 @@ class Ghost(Undead):
 
   def __init__(self, nation):
     super().__init__(nation)
+
 
 
 class Goblin(Unit):
@@ -10511,6 +10826,7 @@ class Goblin(Unit):
     self.favsoil = [waste_t, grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t, swamp_t]
     self.favhill = [0, 1]
+
 
 
 class ClayGolem(Unit):
@@ -10735,7 +11051,7 @@ class Hunter(Human):
   mp = [2, 2]
   moves = 5
   resolve = 4
-  global_skills = [Furtive,  Undisciplined]
+  global_skills = [Furtive, Undisciplined]
 
   dfs = 2
   res = 7
@@ -10913,6 +11229,60 @@ class OrcArcher(Unit):
     self.favhill = [1]    
     self.favsoil = [waste_t, grassland_t, plains_t, tundra_t]
     self.favsurf = [none_t, forest_t]
+
+
+
+class OrcCaptain(Human):
+  name = "orc captain"
+  units = 1
+  min_units = 1
+  max_squads = 1
+  leadership = 70
+  type = "infantry"
+  traits = [orc_t]
+  aligment = malignant_t
+  size = 2
+  gold = 400
+  upkeep = 140
+  resource_cost = 15
+  food = 5
+  pop = 40
+  terrain_skills = []
+
+  hp = 10
+  power = 2
+  power_max = 6
+  power_res = 2
+  mp = [2, 2]
+  moves = 6
+  resolve = 8
+  global_skills = [LeadershipExceeded, Organization]
+
+  dfs = 4
+  res = 9
+  hres = 4
+  arm = 0
+  armor = MediumArmor()
+  shield = Shield()
+  defensive_skills = []
+
+  weapon1 = weapons.GreatSword
+  att1 = 2
+  weapon2 = weapons.Pugio
+  att2 = 1
+  off = 4
+  strn = 12
+  offensive_skills = []
+
+  can_hire = 1
+  common = 9
+  lead_traits = [orc_t]
+  lead_aligments = [malignant_t]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.spells = []
+    self.mp = [2, 2]
 
 
 
@@ -11365,7 +11735,7 @@ class Peasant(Human):
   aligment = neutral_t
   size = 2
   gold = 80
-  upkeep = 2
+  upkeep = 1
   resource_cost = 7
   food = 3
   pop = 40
@@ -11498,7 +11868,7 @@ class Raider(Human):
 
 class Rider(Human):
   name = rider_t
-  units = 20
+  units = 10
   min_units = 10
   max_squads = 4
   type = "cavalry"
@@ -11510,7 +11880,7 @@ class Rider(Human):
   upkeep = 20
   resource_cost = 16
   food = 6
-  pop = 32
+  pop = 22
   terrain_skills = [Burn, Raid]
 
   hp = 14
@@ -11530,8 +11900,8 @@ class Rider(Human):
   weapon2 = weapons.Hoof
   att2 = 1
   off = 4
-  offensive_skills = [Charge]
   strn = 11
+  offensive_skills = [Charge]
 
   common = 6
   fear = 4
@@ -11636,7 +12006,63 @@ class ShamanOfTheLostTribe(Human):
   common = 5
   fear = 6
 
+  common = 7
   lead_traits = [bear_t, falcon_t, human_t, lizard_t, wolf_t]
+  lead_aligments = [neutral_t, wild_t]
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Hell
+    Ground.__init__(self)
+    self.corpses = [Skeleton]
+    self.favhill = [0, 1]
+    self.favsoil = [tundra_t]
+    self.favsurf = [forest_t, none_t, swamp_t]
+    self.spells += [CastStorm, SummonGiantBears]
+
+
+
+class ShamanOfTheWind(Human):
+  name = "shaman of the wind"
+  units = 1
+  min_units = 1
+  max_squads = 10
+  leadership = 60
+  type = "infantry"
+  traits = [human_t]
+  aligment = wild_t
+  size = 2
+  gold = 700
+  upkeep = 30
+  resource_cost = 18
+  food = 3
+  pop = 8
+  terrain_skills = [ForestSurvival, MountainSurvival]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 5
+  power = 10
+  power_max = 20
+  power_res = 10
+  resolve = 7
+  global_skills = [Furtive]
+
+  dfs = 2
+  res = 5
+  hres = 1
+  arm = 0
+
+  weapon1 = weapons.Staff
+  att1 = 2
+  off = 2
+  strn = 7
+
+  common = 5
+  fear = 6
+
+  common = 7
+  lead_traits = [bear_t, human_t, mammot_t, wolf_t]
   lead_aligments = [neutral_t, wild_t]
 
   def __init__(self, nation):
@@ -11797,6 +12223,47 @@ class SlaveWarrior(Human):
     self.corpses = [Zombie]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t, none_t]
+
+
+class SonOfWind(Human):
+  name = "hijo del viento"
+  units = 10
+  min_units = 10
+  max_squads = 4
+  type = "infantry"
+  traits = [human_t]
+  aligment = wild_t
+  size = 2
+  gold = 50
+  upkeep = 20
+  resource_cost = 16
+  food = 3
+  pop = 30
+  terrain_skills = [Burn, DarkVision, DesertSurvival, Raid, MountainSurvival]
+
+  hp = 10
+  mp = [2, 2]
+  moves = 7
+  resolve = 6
+  global_skills = [Furtive]
+
+  dfs = 3
+  res = 8
+  hres = 2
+  arm = 0
+  armor = LightArmor()
+  shield = Shield()
+
+  weapon1 = weapons.Scimitar
+  att1 = 3
+  off = 5
+  strn = 10
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Zombie]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
 
 
 
@@ -12037,123 +12504,17 @@ class Warrior(Human):
   off = 3
   strn = 11
 
+  common = 10
   fear = 5
   populated_land = 1
   sort_chance = 70
 
-  common = 10
-
   def __init__(self, nation):
     super().__init__(nation)
     self.align = Wild
     self.corpses = [Zombie]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [forest_t, none_t]
-
-
-
-class Warlock(Unit):
-  name = "warlock"
-  units = 1
-  min_units = 1
-  max_squads = 1
-  leadership = 40
-  type = "infantry"
-  wizard = 1
-  traits = [human_t]
-  aligment = wild_t
-  size = 2
-  gold = 700
-  upkeep = 32
-  resource_cost = 22
-  food = 3
-  pop = 35
-  terrain_skills = [ForestSurvival, SwampSurvival, MountainSurvival]
-
-  hp = 10
-  mp = [2, 2]
-  moves = 6
-  power = 10
-  power_max = 30
-  power_res = 5
-  resolve = 6
-  global_skills = [Furtive]
-
-  dfs = 2
-  res = 6
-  hres = 1
-  arm = 0
-  armor = None
-
-  weapon1 = weapons.Staff
-  att1 = 2
-  off = 2
-  strn = 6
-
-  common = 4
-  fear = 5
-  populated_land = 1
-  sort_chance = 80
-
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.align = Wild
-    self.corpses = [Skeleton]
-    self.favsoil = [grassland_t, plains_t, tundra_t]
-    self.favsurf = [forest_t, none_t]
-    self.spells = [Curse, SummonClayGolem, SummonWoodlandSpirit]
-
-
-
-class WarlockApprentice(Unit):
-  name = "warlock aprentice"
-  units = 1
-  min_units = 10
-  max_squads = 1
-  leadership = 20
-  type = "infantry"
-  traits = [human_t]
-  aligment = wild_t
-  size = 2
-  gold = 470
-  upkeep = 16
-  resource_cost = 16
-  food = 3
-  pop = 20
-  terrain_skills = []
-
-  hp = 10
-  mp = [2, 2]
-  moves = 6
-  power = 5
-  power_max = 15
-  power_res = 3
-  resolve = 6
-  global_skills = []
-
-  dfs = 2
-  res = 5
-  hres = 1
-  arm = 0
-  armor = None
-
-  weapon1 = weapons.Staff
-  att1 = 2
-  off = 2
-  strn = 4
-
-  common = 7
-  fear = 5
-  populated_land = 1
-  sort_chance = 80
-
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.align = Wild
-    self.corpses = [Zombie]
-    self.favsoil = [grassland_t, plains_t, tundra_t]
-    self.favsurf = [forest_t, none_t]
-    self.spells += [Curse]
 
 
 
@@ -12210,7 +12571,7 @@ class Witch(Unit):
   units = 1
   min_units = 1
   max_squads = 1
-  leadership = 50
+  leadership = 30
   type = "infantry"
   wizard = 1
   traits = [human_t]
@@ -12243,8 +12604,10 @@ class Witch(Unit):
   off = 2
   strn = 5
 
-  common = 5
+  common = 6
   fear = 6
+  lead_traits = [beast_t, human_t, blood_drinker_t, death_t]
+  lead_aligments = [malignant_t, death_t, wild_t, nature_t]
   populated_land = 1
   sort_chance = 80
 
@@ -12428,6 +12791,7 @@ class Death(Nation):
     self.av_units = [Ghoul, Necromancer, Skeleton, Vargheist, VarGhul, Zombie]
 
 
+
 class Nature(Nation):
   name = nature_t
   info = 0
@@ -12436,6 +12800,7 @@ class Nature(Nation):
     super().__init__()
     self.log = [[nature_t]]
     self.av_units = [Akhlut, Crocodile, Hyena, GiantBear, GiantWolf, Mammot, Wolf]
+
 
 
 class Neutral(Nation):
@@ -12447,6 +12812,7 @@ class Neutral(Nation):
     super().__init__()
     self.log = [["neutral"]]
     self.av_units = []
+
 
 
 class Orcs(Nation):
@@ -12476,7 +12842,6 @@ class Wild(Nation):
 
 
 # Spells.
-from data.spells import *
 
 random_buildings = [
   BrigandLair, Campment, CaveOfDarkRites, CaveOfGhouls,
@@ -12484,3 +12849,5 @@ random_buildings = [
   LizardsBog, NecromancersLair, MammotsCave, OathStone, OpulentCrypt,
   TroglodyteCave, TrollCave, UnderworldEntrance, WisperingWoods, WolfLair,
   WargsCave]
+
+from data.spells import *

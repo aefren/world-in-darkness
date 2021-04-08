@@ -30,29 +30,12 @@ def ai_join_units(itm, count=1, info=0):
 
 def has_name(items, name):
   names = [i.name for i in items]
+  names = [i.nick for i in items]
   for i in items:
-    if i.type == building_t and i.base: names.append(i.base.name)
-    else: names.append(i.name)
+    if i.type == building_t and i.base: names += [i.base.name]
   if name in names: return True
 
 
-
-def get_armor_mod(num):
-  if num >= 5: return 2
-  if num >= 4: return 3
-  if num >= 3: return 4
-  if num >= 2: return 5
-  if num >= 1: return 6
-  if num <= 0: return 0
-
-
-
-def get_hit_mod(num):
-  if num >= 4: return 2
-  elif num >= 1: return 3
-  elif num >= -2: return 4
-  elif num >= -5: return 5 
-  else: return 6
 
 
 
@@ -64,7 +47,7 @@ def get_unit(items, nation=None, sound=None):
   x = 0
   say = 1
   while True:
-    sleep(0.1)
+    sleep(0.001)
     if say:
       items[x].basic_info()
       say = 0
@@ -84,14 +67,6 @@ def get_unit(items, nation=None, sound=None):
         return items[x]
       if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
         return
-
-
-def get_wound_mod(num):
-  if num >= 2: return 2
-  elif num >= 1: return 3
-  elif num >= 0: return 4
-  elif num >= -1: return 5 
-  else: return 6
 
 
 
