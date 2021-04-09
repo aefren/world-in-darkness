@@ -1200,7 +1200,7 @@ class Skirmisher(Skill):
     if itm.target and itm.dist < itm.range[1]: 
       if itm.target.hp_total < 1: return
       if basics.roll_dice(1) >= 4: 
-        dist = randint(2, itm.moves + itm.moves_mod)
+        dist = randint(1, itm.moves + itm.moves_mod)
         itm.dist += dist
         itm.target.dist += dist
         msg = f"{self}: {itm} go back {dist}."
@@ -1559,7 +1559,7 @@ class Withdrawall(Skill):
     if itm.target  and itm.hp_total >= 1:
       if itm.target.ranking < self.ranking * 1.5: return
       if itm.dist > itm.target.range[1]: return
-      base = itm.moves - self.moves_mod
+      base = itm.moves - itm.moves_mod
       base -= self.target.moves+self.target.moves_mod
       if basics.roll_dice(2) + base >= 9:
         itm.retreats = 1

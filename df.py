@@ -3830,11 +3830,11 @@ class Game:
     if event.type == pygame.KEYDOWN:
       if ctrl:
         if event.key == pygame.K_7:
-          pos.add_unit(Zombie, hell_t, 1)
+          pos.add_unit(OrcArcher, hell_t, 1)
         if event.key == pygame.K_8:
-          pos.add_unit(VladDracul, hell_t, 1)
+          pos.add_unit(Archer, hell_t, 1)
         if event.key == pygame.K_9:
-          pos.add_unit(Levy, holy_empire_t, 1)
+          pos.add_unit(PeasantLevy, holy_empire_t, 1)
         if event.key == pygame.K_0:
           pos.add_unit(Velites, holy_empire_t, 1)
         if event.key == pygame.K_b:
