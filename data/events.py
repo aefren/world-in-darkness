@@ -103,7 +103,7 @@ class Revolt(Event):
     if info: print(f'revisando eventos de {self.itm}.')
     if self.itm.pos.world.turn < 2: return
     for t in self.itm.tiles:
-      if t.pop == 0 or t.is_city: continue
+      if t.pop == 0: continue
       roll = basics.roll_dice(1)
       order = basics.get_unrest_mod(t.public_order)
       if info: print(f'{t} {t.cords}. {roll = :}, {order =:}, {t.public_order =:}.')

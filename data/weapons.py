@@ -159,8 +159,8 @@ class Bow(Weapon):
   desc = ""
   ranking = 1.2
   ammo = 20
-  damage = 2
-  critical = 1
+  damage = 3
+  critical = 2
   range_max = 20
   range_min = 6
 

@@ -30,7 +30,7 @@ def ai_join_units(itm, count=1, info=0):
 
 def has_name(items, name):
   names = [i.name for i in items]
-  names = [i.nick for i in items]
+  names += [i.nick for i in items]
   for i in items:
     if i.type == building_t and i.base: names += [i.base.name]
   if name in names: return True
@@ -75,7 +75,7 @@ def get_unrest_mod(num):
   if num <= -60: return  4
   if num <= -40: return 3
   if num <= -20: return 2
-  if num <= 0: return 1
+  if num <= 20: return 1
   else: return 0
 
 

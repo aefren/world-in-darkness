@@ -691,7 +691,7 @@ class RaiseDead(Spell):
     
     msg = f"{itm} lanza {self.name}."
     logging.info(msg)
-    raised.auto_attack = 1
+    raised.auto_attack()
     raised.pos = tile
     raised.pos.units.append(raised)
     msg = f"reanimados {raised}."
@@ -868,6 +868,23 @@ class SightFromFuture(Spell):
     for t in tiles:
       for uni in t.units:
         if uni.nation not in itm.belongs: uni.revealed = 1
+
+
+class SummonBloodKnight(Spell):
+  name = "summon blood knight"
+  type = summoning_t
+  cast = 1
+  cost = 20
+  unit = BloodKnight
+  tags = ["summon"]
+
+  def ai_run(self, itm):
+    if itm.nation.upkeep_limit and itm.nation.upkeep > itm.nation.upkeep_limit: return self.msg_upkeep_limit(itm) 
+    self.init(itm)
+
+  def run(self, itm):
+    unit = itm.pos.add_unit(self.unit, itm.nation.name)
+    self.set_msg1(itm, unit)
 
 
 

@@ -25,9 +25,10 @@ class Skill:
   unrest = 1
   index = 0
   nation = None
+  passive_ranking = 1
+  ranking = 1
   show = 1
   sound = None
-  ranking = 1
   tags = []
   # types: "generic", "before combat", "after combat", "before attack", "after attack", "start turn".
   type = 0 
@@ -78,9 +79,11 @@ class BattleBrothers(Skill):
   def run(self, itm):
     if itm.units >= 30: 
       itm.effects.append(self.name + str(2))
+      itm.ranking *= self.ranking
       itm.resolve_mod += 2
     elif itm.units >= 20:
-      itm.effects.append(self.name + str(1)) 
+      itm.effects.append(self.name + str(1))
+      itm.ranking *= self.ranking 
       itm.resolve_mod += 1
 
 
@@ -93,7 +96,10 @@ class BattleFocus(Skill):
   type = "generic"
 
   def run(self, itm):
-    if itm.mp[0] == itm.mp[1]: itm.hit_rolls_mod += 1
+    if itm.mp[0] == itm.mp[1]: 
+      self.effects += [self.name]
+      itm.ranking *= self.ranking
+      itm.hit_rolls_mod += 1
 
 
 
@@ -213,6 +219,7 @@ class ChaliceOfBlood(Skill):
   name = "ChaliceOfBlood"
   desc = "After attack round restores 1 hp if the unit has make damage on the enemy."
   effect = "self"
+  passive_ranking = 1.2
   ranking = 1.2
   type = "after attack"
 
@@ -229,7 +236,7 @@ class Charge(Skill):
   name = "carga"
   desc = "charge damage = 1"
   effect = "self"
-  ranking = 1.2
+  ranking = 1.3
   type = "generic"
 
   def run(self, itm):
@@ -272,8 +279,9 @@ class DarkVision(Skill):
   type = "generic"
 
   def run(self, itm):
-    itm.effects.append(self.name) 
-    itm.dark_vision = 1
+    if itm.pos and itm.pos.day_night:
+      itm.effects.append(self.name) 
+      itm.dark_vision = 1
 
 
 
@@ -303,7 +311,7 @@ class DesertSurvival(Skill):
   name = "sobreviviente del decierto"
   desc = "ventajas sin definir."
   effect = "self"
-  ranking = 1.1
+  passive_ranking = 1.1
   type = "generic"
 
   def run(self, itm):
@@ -362,7 +370,6 @@ class Eclipse(Skill):
 
   def run(self, itm):
     itm.effects.append(self.name)
-    itm.stealth_mod += 2
     if itm.dark_vision == 0 and itm.pos and itm.pos.day_night == 0:
       itm.dfs_mod -= 1
       itm.off_mod -= 1
@@ -379,7 +386,6 @@ class Fanatism(Skill):
   name = fanatism_t
   desc = "+1 att, +1 str, -2 dfs, +1 moves, +1 resolve if enemy is death."
   effect = "self"
-  ranking = 1.2
   type = "generic"
 
   def run(self, itm):
@@ -394,10 +400,10 @@ class Fanatism(Skill):
 
 
 class FearAura(Skill):
+  name = fearaura_t
   effect = "enemy"
   desc = "if target is not mindless. -2 resolve, -2 moves, -1 off, -1 dfs."
-  name = fearaura_t
-  ranking = 1.2
+  ranking = 1.3
   type = "generic"  
   tags = ["fear aura"]
 
@@ -421,8 +427,9 @@ class FeedingFrenzy(Skill):
   type = "generic"
 
   def run(self, itm):
-    itm.moves_mod += 1
-    itm.res_mod += 1
+    itm.moves_mod += 2
+    itm.res_mod += 3
+    itm.hres_mod += 3
     itm.strn_mod += 3 
 
 
@@ -464,7 +471,7 @@ class ForestSurvival(Skill):
     itm.forest_survival = 1 
     if itm.pos and itm.pos.surf.name == forest_t: 
       itm.effects.append(self.name)
-      # itm.can_hide = 1
+      itm.ranking *= self.ranking
       itm.stealth_mod += 2
 
 
@@ -526,6 +533,7 @@ class Ethereal(Skill):
 
   def run(self, itm):
     itm.armor_ign_mod = 1
+    itm.dfs_mod += 10
 
 
 
@@ -838,10 +846,10 @@ class MassSpears(Skill):
   type = "generic"
 
   def run(self, itm):
-    if itm.units >= 30:
+    if itm.squads >= 3:
       itm.effects.append(self.name + str(2)) 
       itm.off_mod += 2
-    elif itm.units >= 20:
+    elif itm.squads >= 2:
       itm.effects.append(self.name + str(1)) 
       itm.off_mod += 1
     if itm.target: itm.target.can_charge = 0
@@ -1180,10 +1188,10 @@ class SkeletonLegion(Skill):
   type = 0
 
   def run(self, itm):
-    if itm.units >= 30:
+    if itm.squads >= 3:
       itm.effects.append(self.name + str(2)) 
       itm.att1_mod += 2
-    elif itm.units >= 20:
+    elif itm.units >= 2:
       itm.effects.append(self.name + str(1)) 
       itm.att1_mod += 1
 
@@ -1193,7 +1201,7 @@ class Skirmisher(Skill):
   name = "skirmisher"
   desc = "units backs up a maximum half of self moves in distanse on combat."
   effect = "self"
-  ranking = 1.2
+  passive_ranking = 1.2
   type = "before attack"
 
   def run(self, itm):
@@ -1213,7 +1221,7 @@ class Spread(Skill):
   desc = "resucita y une enemigos caidos a la unidad."
   cast = 4
   name = "Plaga zombie"
-  ranking = 1.1
+  passive_ranking = 1.2
   type = "after attack"
 
   def run(self, itm):
@@ -1277,7 +1285,7 @@ class Scream(Skill):
   name = "grito ardiente"
   effect = "selv"
   desc = "if roll >= 3 enemy morale check fails.."
-  ranking = 1.3
+  passive_ranking = 1.4
   type = "before attack"
 
   def run(self, itm):
@@ -1381,8 +1389,8 @@ class TerrainEffects(Skill):
 
 class TheBeast(Skill):
   name = "la bestia"  
-  effect = "self"
   desc = "Randomly kills population in position."
+  effect = "self"
   turns = 0
   type = "start turn"
 
@@ -1432,7 +1440,7 @@ class ToxicArrows(Skill):
   name = "toxic arrows"
   desc = "poisons target."
   effect = "self"
-  ranking = 1.3
+  passive_ranking = 1.2
   type = "after attack"
 
   def run(self, itm):
@@ -1456,7 +1464,7 @@ class ToxicClaws(Skill):
   name = "ToxicClawicas."
   desc = "units loses x damage per turn during x turns."
   effect = "self"
-  ranking = 1.2
+  passive_ranking = 1.2
   type = "after attack"
 
   def run(self, itm):
@@ -1552,7 +1560,7 @@ class Withdrawall(Skill):
   name = "withdrawall"
   desc = "unit will withdraw from combat if a dise roll is 6 and enemy is at 3 or less distanse.."
   effect = "self"
-  ranking = 1.2
+  passive_ranking = 1.2
   type = "after attack"
 
   def run(self, itm):

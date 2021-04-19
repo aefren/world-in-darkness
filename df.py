@@ -331,7 +331,9 @@ class Terrain:
     self.around_tundra = 0
     self.around_volcano = 0
     self.buildings_tags = []
+    self.buildings_nation = []
     self.coast = 0
+    self.units_aligment = []
     self.units_effects = []
     self.units_traits = []
     self.units_tags = []
@@ -366,11 +368,13 @@ class Terrain:
 
     # datos finales.
     for uni in self.units:
+      self.units_aligment += [uni.aligment]
       self.units_effects += uni.effects
       self.units_tags += uni.tags
       self.units_traits += uni.traits
-      for bu in self.buildings:
-        self.buildings_tags += bu.tags
+    for bu in self.buildings:
+      self.buildings_tags += bu.tags
+      self.buildings_nation += [bu.nation]
     if self.soil.name == ocean_t and any(i for i in [self.around_plains,
                                                      self.around_grassland, self.around_desert, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
       self.coast = 1
@@ -1125,7 +1129,9 @@ class Ai:
         if itm.leadership: rnd -= rnd * 0.2
         if info: logging.debug(f"{rnd=:}, {itm.pos.threat=:}.")
         if rnd > itm.pos.threat:
-          itm.auto_attack()
+          try:
+            itm.auto_attack()
+          except: Pdb().set_trace()
           if any(i <= 0 for i in [itm.mp[0], itm.hp_total]): return
         
         # moves. 
@@ -1983,8 +1989,17 @@ class Ai:
           msg = f"will reduce the unrest or public_order."
           uni.log[-1] += [msg]
           continue
+        buildings = [bu for bu in uni.pos.buildings 
+                     if bu.nation in uni.pos.world.random_nations]
+        if buildings:
+          uni.get_hire_units(auto=1)
+          msg = f"will stay until destroy buildings."
+          uni.log[-1] += [msg]
+          logging.debug(msg)
+          continue
         sq = uni.pos.city.tiles
-        sq = [s for s in sq if uni.can_pass(s) and s.nation == uni.nation]
+        sq = [s for s in sq if uni.can_pass(s) and s.nation == uni.nation
+              and s.get_distance(uni.pos, s) <= 1]
         sq.sort(key=lambda x: len(x.buildings), reverse=True)
         sq.sort(key=lambda x: uni.pos.get_distance(x, uni.pos))
         sq.sort(key=lambda x: x.public_order)
@@ -2200,17 +2215,18 @@ class Ai:
               nation.devlog[-1] += [msg]
               logging.debug(msg)
               continue
-            if t.is_city and t.around_threat + t.threat == 0 and u.pos.around_threat + u.pos.threat and u.garrison:
+            if (t.is_city and t.around_threat + t.threat == 0 
+                and s.around_threat + s.threat and u.garrison):
               msg = f"breaks by threat." 
               nation.devlog[-1] += [msg]
               logging.debug(msg)
               continue
-            if u.pos.is_city and u.garrison and len(u.pos.units) < 3:
+            if s.is_city and u.garrison and len(u.pos.units) < 3:
               msg = f"breaks by city less than 3 garrison.."
               nation.devlog[-1] += [msg]
               logging.debug(msg) 
               continue
-            if t.is_city == 0 and u.pos.around_threat + u.pos.threat and u.garrison:
+            if t.is_city == 0 and s.around_threat + s.threat and u.garrison:
               msg = f"breakcs by unit defending."
               nation.devlog[-1] += [msg]
               logging.debug(msg)
@@ -2222,6 +2238,23 @@ class Ai:
               continue
             if t.is_city == 0 and u.pos.city != t.city and u.garrison:
               msg = f"breakcs by unit not same city."
+              nation.devlog[-1] += [msg]
+              logging.debug(msg) 
+              continue
+            buildings = [bu for bu in s.buildings 
+                     if bu.nation in s.world.random_nations]
+            if t.around_threat + t.threat < 1 and buildings:
+              msg = f"destroying enemy building."
+              nation.devlog[-1] += [msg]
+              logging.debug(msg) 
+              continue
+            if t.around_threat + t.threat < 1 and s.unrest >= 15:
+              msg = f"unit is reducing unrest."
+              nation.devlog[-1] += [msg]
+              logging.debug(msg) 
+              continue
+            if t.around_threat + t.threat < 1 and s.public_order < 50:
+              msg = f"unit is reducing public order."
               nation.devlog[-1] += [msg]
               logging.debug(msg) 
               continue
@@ -2317,15 +2350,14 @@ class Ai:
   def ai_train(self, nation):
     logging.info(f"entrenamiento {nation}. turno {world.turn}.")
     init = time()
-    if nation.commander_request:
-      logging.debug(f"can not train units due to commander request.")
-      return
     nation.update(nation.map)
     for ct in nation.cities:
       logging.debug(f"{ct}.")
       if ct.production: continue
+      if ct.commander_request:
+        logging.debug(f"can not train units due to commander request.")
+        continue
       ct.set_seen_units()
-      # ct.update()
       upkeep_limit = nation.upkeep_limit
       logging.debug(f"upkeep_limit ={upkeep_limit}.")
       units = [it(nation) for it in ct.all_av_units if it.settler == 0 and it.leadership == 0]
@@ -2339,6 +2371,7 @@ class Ai:
       logging.debug(f"military limit. {ct.military_percent} de {ct.military_limit}.")
       units = ct.set_train_type(units)
       logging.debug(f"entrenables {len(units)}.")
+      
       if ct.defense_total_percent >= 100 and ct.military_percent > ct.military_limit:
         logging.debug(f"military limit.")
         units = [i for i in units if i.pop == 0]
@@ -2368,7 +2401,7 @@ class Ai:
         # ct.update()
         logging.debug(f"{ct.defense_total_percent =: }.")
         if ct.production: continue
-        nation.commander_request = 1
+        ct.commander_request = 1
         units = [it(nation) for it in ct.all_av_units if it.leadership]
         shuffle(units)
         logging.debug(f"available commanders {len(units)}.")
@@ -2379,7 +2412,7 @@ class Ai:
           if req_unit(uni, nation, ct):
             logging.debug(f"{uni} suma upkeep {nation.upkeep+uni.upkeep }.")
             ct.train(uni)
-            nation.commander_request = 0
+            ct.commander_request = 0
             break
 
   def ai_unit_cast(self, nation, info=0):
@@ -3279,6 +3312,7 @@ def req_unit(itm, nation, city):
     return 0
   items = nation.units + nation.production
   if itm.unique and basics.has_name(items, itm.name) == 1:
+    city.commander_request = 0
     error(info=nation.show_info, msg="unidad única.")
     return 0
   return 1
@@ -3830,13 +3864,13 @@ class Game:
     if event.type == pygame.KEYDOWN:
       if ctrl:
         if event.key == pygame.K_7:
-          pos.add_unit(OrcArcher, hell_t, 1)
+          pos.add_unit(ForestGuard, wood_elves_t, 1)
         if event.key == pygame.K_8:
-          pos.add_unit(Archer, hell_t, 1)
+          pos.add_unit(Aquilifer, holy_empire_t, 1)
         if event.key == pygame.K_9:
-          pos.add_unit(PeasantLevy, holy_empire_t, 1)
+          pos.add_unit(Decarion, holy_empire_t, 1)
         if event.key == pygame.K_0:
-          pos.add_unit(Velites, holy_empire_t, 1)
+          pos.add_unit(PathFinder, wood_elves_t, 1)
         if event.key == pygame.K_b:
             pos.buildings += [BrigandLair(Wild, pos)]
         if event.key == pygame.K_F1:
