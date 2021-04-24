@@ -717,7 +717,7 @@ class Sword(Weapon):
   name = "sword"
   desc = ""
   ranking = 1.2
-  damage = 5
+  damage = 3
   critical = 6
   range_max = 1
   range_min = 1

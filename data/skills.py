@@ -54,7 +54,7 @@ class Skill:
 
 class Ambushment(Skill):
   name = "Emboscada"
-  desc = "+1 att, +2 dfs, +2 moves if unit is hidden and unit is in forest, swamp or hill."
+  desc = "+2 dfs, +2 moves if unit is hidden and unit is in forest, swamp or hill."
   effect = "self"
   ranking = 1.2
   type = "generic"
@@ -63,7 +63,7 @@ class Ambushment(Skill):
     if (itm.pos and (itm.pos.hill or itm.pos.surf.name == forest_t 
     or itm.pos.surf.name == swamp_t) and itm.hidden):
       itm.effects += [self.name]
-      itm.att1_mod += 1
+      itm.ln_mod *= 2
       itm.dfs_mod += 2
       itm.moves_mod += 2
 
@@ -462,7 +462,7 @@ class Furtive(Skill):
 
 class ForestSurvival(Skill):
   name = "sobreviviente del bosque"
-  desc = "+2 stealth if unit is on forest."
+  desc = "+4 stealth if unit is on forest."
   effect = "self"
   ranking = 1.1
   type = "generic"
@@ -471,19 +471,20 @@ class ForestSurvival(Skill):
     itm.forest_survival = 1 
     if itm.pos and itm.pos.surf.name == forest_t: 
       itm.effects.append(self.name)
-      itm.ranking *= self.ranking
-      itm.stealth_mod += 2
+      itm.stealth_mod += 4
 
 
 
 class ForestTerrain(Skill):
   effect = "all"
-  desc = "-2 moves for grount unit, -4 move for mounted unit, -1 off, -1 dfs.unit can not charge, ignores forest survival and flying units. +2 stealth."
+  desc = """-2 moves for grount unit, -4 move for mounted unit, -1 off, 
+  -1 dfs.unit can not charge, ignores forest survival and flying units. 
+  +4 stealth."""
   name = "forest terrain"
   type = "generic"
 
   def run(self, itm):
-    itm.stealth_mod += 2
+    itm.stealth_mod += 4
     if itm.forest_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
       itm.charges = 0
@@ -582,13 +583,16 @@ class Storm(Skill):
 
 class HillTerrain(Skill):
   name = "hill terrain"
-  desc = "-2 moves for grount units, -4 move for mounted unit, unit can not charge, -1 dfs, -1 off. ignores forest survival and fying units. +5 range if unit is ranged. +2 stealth."
+  desc = """-2 moves for grount units, -4 move for mounted unit, 
+  unit can not charge, -1 dfs, -1 off. 
+  ignores mountain survival and fying units. +5 range if unit is ranged. 
+  +4 stealth."""
   effect = "all"
   type = "generic"
 
   def run(self, itm):
     if itm.range[1] >= 6: itm.off_mod += 1
-    itm.stealth_mod += 2
+    itm.stealth_mod += 4
     if itm.mountain_survival == 0 and itm.can_fly == 0:
       itm.effects.append(self.name)
       itm.charges = 0
@@ -955,7 +959,8 @@ class mist(Skill):
 
 class Night(Skill):
   name = night_t
-  desc = "-1 off (-2 if unit is ranged), -1dfs (-2 if unit is ranged), -1 resolve,  +2 stealth."
+  desc = """if unit is not dark vision -1 off (-2 if unit is ranged), 
+  -1dfs (-2 if unit is ranged), -1 resolve. +2 stealth."""
   effect = "all"
   type = "generic"
 
@@ -1341,7 +1346,7 @@ class SecondSun(Skill):
 
 class SwampSurvival(Skill):
   effect = "selv"
-  desc3 = "+3 stealth in swams."
+  desc3 = "+4 stealth in swams."
   name = "sobreviviente del pantano"
   ranking = 1.1
   type = "generic"
@@ -1350,13 +1355,14 @@ class SwampSurvival(Skill):
     itm.swamp_survival = 1
     if itm.pos and itm.pos.surf.name == swamp_t:
       itm.effects += [self.name]
-      itm.stealth_mod += 3
+      itm.stealth_mod += 4
 
 
 
 class SwampTerrain(Skill):
   effect = "all"
-  desc = "-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit, unit can not charge. ignores swamp survival and flying units."
+  desc = """-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit, 
+  unit can not charge. ignores swamp survival and flying units."""
   name = "swamp terrain"
   type = "generic"
 

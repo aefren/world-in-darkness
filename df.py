@@ -396,6 +396,7 @@ class Terrain:
     self.grouth_base = self.city.grouth_base
     self.grouth_food = (self.food - self.pop) / self.city.grouth_factor
     for bu in self.buildings:
+      if self.city.nation != bu.nation: continue
       if bu.is_complete == 0: continue
       self.grouth_base += bu.grouth * self.grouth_base / 100
     self.grouth = self.grouth_base + self.grouth_food
@@ -828,10 +829,11 @@ class World:
     tries = 100
     while tries > 0 and value > 0:
       tries -= 1
-      building = self.buildings.pop(0)
-      self.buildings += [building]
+      shuffle(self.buildings)
+      self.buildings.sort(key=lambda x: len(x.units))
+      building = self.buildings[0]
       shuffle(building.av_units)
-      building.av_units.sort(key=lambda x: x.leadership > 1, reverse=True)
+      #building.av_units.sort(key=lambda x: x.leadership > 1, reverse=True)
       if info: logging.debug(f"adding unit from {building}.")
       for uni in building.av_units:
         logging.debug(f"adding {uni.name}.")
@@ -3866,9 +3868,9 @@ class Game:
         if event.key == pygame.K_7:
           pos.add_unit(ForestGuard, wood_elves_t, 1)
         if event.key == pygame.K_8:
-          pos.add_unit(Aquilifer, holy_empire_t, 1)
+          pos.add_unit(OrcWarrior, orcs_t, 1)
         if event.key == pygame.K_9:
-          pos.add_unit(Decarion, holy_empire_t, 1)
+          pos.add_unit(Warrior, holy_empire_t, 1)
         if event.key == pygame.K_0:
           pos.add_unit(PathFinder, wood_elves_t, 1)
         if event.key == pygame.K_b:
