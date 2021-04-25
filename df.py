@@ -875,7 +875,7 @@ class World:
             if info: logging.debug(f"added {squad}")
         value -= uni.ranking
         self.log[-1] += [f"{uni} {added_t} {in_t} {building.pos} {building.pos.cords}."]
-        if info: logging.info(f"{uni}. ranking {uni.ranking}.")
+        if info: logging.debug(f"{uni}. ranking {uni.ranking}.")
         break
   
   def autum_events(self):
@@ -2450,9 +2450,7 @@ class Ai:
       
       uni.update()
       uni.split(5)
-      uni.pos.units.remove(uni)
-      uni.nation.units.remove(uni)
-      uni.city.pop_back += uni.pop
+      uni.disband()
       logging.debug(f"{uni} disuelta.")
 
 # funciones.
@@ -3065,6 +3063,8 @@ def menu_nation(nation, sound="book_open01"):
           sp.speak(f"scouts {len(nations[x].units_scout)}", 1)
         if event.key == pygame.K_2:
           sp.speak(f"comms {len(nations[x].units_comm)}", 1)
+        if event.key == pygame.K_3:
+          sp.speak(f"{nation.upkeep_limit=: }.",1)
         if event.key == pygame.K_F12:
           sp.speak(f"pdb on.")
           Pdb().set_trace()
@@ -3656,11 +3656,11 @@ class Game:
     world.building_restoration()
     
     if world.difficulty_type == "dynamic": 
-      difficulty = world.difficulty * sum(i.score for i in world.nations) / 100 
+      difficulty = world.nations_score 
     else: difficulty = world.difficulty
     if world.random_score < difficulty:
       # init = time()
-      world.add_random_unit(world.difficulty_change)
+      world.add_random_unit(world.nations_score - world.random_score/2)
       # print(f"add_random_unit. {time()-init}.")
       world.update(scenary)
       

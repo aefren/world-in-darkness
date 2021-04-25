@@ -408,8 +408,11 @@ class City:
           self.nation.log[-1].append(msg)
           if self.nation.show_info: sleep(loadsound("notify6", channel=ch2) * 0.2)
 
-  def check_events(self):
-    [event.run() for event in self.events]
+  def check_events(self,info=1):
+    logging.info(f"check_event for {self}.")
+    for ev in self.events:
+      if info: logging.debug(f"{str(ev)}.")
+      ev.run()
 
   def check_tile_req(self, pos):
     go = 1
@@ -494,7 +497,7 @@ class City:
     self.population_grouth()
     
     if self.pop_back > 0: 
-      pop_back = randint(20, 40) * self.pop_back / 100
+      pop_back = self.pop_back/3
       self.add_pop(pop_back)
       self.pop_back -= pop_back
       logging.debug(f"regresan {pop_back} civiles.")
@@ -872,7 +875,7 @@ class City:
     if self.production == []: self.prod_progress = itm.resource_cost
     self.production.append(itm)
     self.nation.gold -= itm.gold
-    self.reduce_pop(itm.pop)
+    self.reduce_pop(itm.pop*itm.units)
     if self.nation.show_info: 
       sleep(loadsound("set6"))
       sp.speak(f"{added_t} {itm} {cost_t} {itm.gold}")
@@ -1062,7 +1065,7 @@ class Nation:
   def add_city(self, itm, unit):
     itm = itm(unit.nation, unit.pos)
     scenary = unit.pos.scenary
-    pop = unit.pop
+    pop = unit.total_pop
     pos = unit.pos
     itm.pop = pop
     
@@ -1577,6 +1580,7 @@ class Unit:
   upkeep = 0
   resource_cost = 0
   pop = 0
+  total_pop = 0
   food = 0
   sk = []
   terrain_skills = []
@@ -1657,6 +1661,7 @@ class Unit:
   group_score = 0
   group_base = 0
   hidden = 0
+  hired = 0
   lead_traits = []
   lead_alignment = []
   leader = None
@@ -1801,7 +1806,7 @@ class Unit:
     sp.speak(f"{belongs}.")
     sp.speak(f"hp {self.hp_total}.")
     if self.hidden:
-      loadsound("hidden1", vol=0.5)
+      loadsound("hidden1", vol=0.25)
       sp.speak(f"{hidden_t}.")
     if self.nation == self.pos.world.nations[self.pos.world.player_num]:
       sp.speak(f"mp {self.mp[0]} {of_t} {self.mp[1]}.")
@@ -2492,9 +2497,8 @@ class Unit:
       _units.sort(key=lambda x: x.units, reverse=True)
       _units.sort(key=lambda x: x.ranged, reverse=True)
       _units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
-      try:
-        target = _units[0]
-      except: Pdb().set_trace()
+      if _units: target = _units[0]
+      else: return
     
     attackers = self.squads_position
     defenders = target.squads_position
@@ -2591,7 +2595,7 @@ class Unit:
     for i in units:
       if info: logging.debug(f"{self.leadership=: } {self.leading=: }.")
       if info: logging.debug(f"encuentra a {i}")
-      if self.leading + i.units < self.leadership + 5:
+      if self.leading + i.units < leadership + 5:
         self.leads.append(i)
         i.leader = self
         i.scout = 0
@@ -2605,12 +2609,12 @@ class Unit:
           if info: logging.debug(f"grupo creado.") 
           break
 
-  def disband(self, unhire=0):
-    if unhire: 
+  def disband(self, hired=0):
+    if self.hired: 
       self.pos.units.remove(self)
       self.nation.update(self.pos.scenary) 
     elif self.city and self.can_recall:
-      self.city.pop_back += self.pop
+      self.city.pop_back += self.total_pop
       if self in self.nation.units: self.nation.units.remove(self)
       self.pos.units.remove(self)
       self.nation.update(self.pos.scenary)
@@ -2811,6 +2815,7 @@ class Unit:
           f"{size_t} {self.size}.",
           f"{gold_t} {self.gold}, {upkeep_t} {self.upkeep} ({self.upkeep_total}).",
           f"{resources_t} {self.resource_cost}.",
+          f"{population_t} self.pop} ({self.cpop})>",
           f"{food_t} {self.food}, {population_t} {self.pop}.",
           f"effects {effects}.",
           f"terrain skills {terrain_skills}.",
@@ -2936,10 +2941,7 @@ class Unit:
       self.nation.gold -= self.upkeep_total
       logging.debug(f"{self} cobra {self.upkeep_total}.")
     elif self.upkeep > 0 and self.nation.gold < self.upkeep:
-      self.pos.units.remove(self)
-      self.nation.units.remove(self)
-      self.city.pop_back += self.pop
-      logging.debug(f"se disuelve")
+      self.disband()
 
   def move_set(self, goto):
     logging.debug(f"move_set {self} on {self.pos} {self.pos.cords}.")
@@ -3644,6 +3646,7 @@ class Unit:
       self.nation.gold -= cost
       target.belongs = [self.nation]
       target.pos = self.pos
+      targed.hired = 1
       if self.show_info: 
         msg = f"{self} has hired {target} by {cost}."
         sp.speak(msg)
@@ -4116,8 +4119,11 @@ class Unit:
     if self.units < 0: self.units = 0
     if self.power < 0: self.power = 0
     if self.mp[0] < 0: self.mp[0] = 0
+    self.total_pop = self.pop * self.units
     self.upkeep_total = self.upkeep * self.units
-    if death_t in self.traits: self.can_recall = 0
+    if death_t in self.traits: 
+      self.can_recall = 0
+      self.pop = 0
     if self.can_hide: self.hidden = 1
     if self.can_charge and self.target == None: self.charges = 1
     if self.revealed: self.hidden = 0
@@ -4717,7 +4723,7 @@ class KeeperOfTheGrove (Elf):
   upkeep = 50
   resource_cost = 30
   food = 3
-  pop = 20
+  pop = 2
   terrain_skills = [DarkVision, ForestSurvival]
 
   hp = 10
@@ -4770,7 +4776,7 @@ class PathFinder(Elf):
   upkeep = 20
   resource_cost = 20
   food = 6
-  pop = 30
+  pop = 20
   terrain_skills = [DarkVision, ForestSurvival]
 
   hp = 12
@@ -4823,7 +4829,7 @@ class PriestessOfTheMoon(Elf):
   upkeep = 500
   resource_cost = 35
   food = 6
-  pop = 30
+  pop = 20
   terrain_skills = [DarkVision, ForestSurvival]
 
   hp = 26
@@ -4874,7 +4880,7 @@ class AwakenTree(Elf):
   upkeep = 140
   resource_cost = 30
   food = 4
-  pop = 30
+  pop = 0
   terrain_skills = [ForestSurvival]
 
   hp = 50
@@ -4924,7 +4930,7 @@ class BladeDancer(Elf):
   upkeep = 25
   resource_cost = 24
   food = 3
-  pop = 45
+  pop = 1.4
   terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
   hp = 10
@@ -5015,7 +5021,7 @@ class Driad(Elf):
   upkeep = 45
   resource_cost = 30
   food = 3
-  pop = 10
+  pop = 2
   terrain_skills = [Burn, DarkVision, ForestSurvival]
 
   hp = 40
@@ -5060,7 +5066,7 @@ class EternalGuard(Elf):
   upkeep = 25
   resource_cost = 25
   food = 4
-  pop = 60
+  pop = 2
   terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
   hp = 10
@@ -5107,7 +5113,7 @@ class Falcon(Elf):
   upkeep = 28
   resource_cost = 18
   food = 3
-  pop = 20
+  pop = 0
   terrain_skills = [Fly, ForestSurvival]
 
   hp = 3
@@ -5151,7 +5157,7 @@ class ForestBear(Unit):
   upkeep = 25
   resource_cost = 22
   food = 5
-  pop = 20
+  pop = 0
   terrain_skills = [ForestSurvival]
 
   hp = 16
@@ -5198,7 +5204,7 @@ class ForestEagle(Elf):
   upkeep = 40
   resource_cost = 25
   food = 4
-  pop = 10
+  pop = 0
   terrain_skills = [Fly, ForestSurvival]
 
   hp = 7
@@ -5241,7 +5247,7 @@ class GreatEagle(Elf):
   upkeep = 200
   resource_cost = 35
   food = 6
-  pop = 30
+  pop = 0
   terrain_skills = [Fly, ForestSurvival, MountainSurvival]
 
   hp = 30
@@ -5272,10 +5278,10 @@ class GreatEagle(Elf):
 
 class ForestGiant(Unit):
   name = "forest giant"
-  units = 1
-  min_units = 1
+  units = 5
+  min_units = 5
   ln = 5
-  max_squads = 20
+  max_squads = 6
   type = "beast"
   traits = [beast_t]
   aligment = wild_t
@@ -5284,7 +5290,7 @@ class ForestGiant(Unit):
   upkeep = 60
   resource_cost = 24
   food = 5
-  pop = 15
+  pop = 5
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 20
@@ -5332,7 +5338,7 @@ class ForestGuard(Elf):
   upkeep = 8
   resource_cost = 14
   food = 2
-  pop = 20
+  pop = 1.1
   terrain_skills = [Burn, ForestSurvival, Raid]
 
   hp = 10
@@ -5378,7 +5384,7 @@ class ForestRider(Elf):
   upkeep = 40
   resource_cost = 30
   food = 5
-  pop = 30
+  pop = 4
   terrain_skills = [Burn, ForestSurvival, Raid]
 
   hp = 14
@@ -5427,7 +5433,7 @@ class ElvesSettler(Human):
   upkeep = 20
   resource_cost = 40
   food = 20
-  pop = 300
+  pop = 30
   terrain_skills = [ForestSurvival]
 
   hp = 4
@@ -5467,7 +5473,7 @@ class Huntress(Elf):
   upkeep = 12
   resource_cost = 14
   food = 2
-  pop = 20
+  pop = 3
   terrain_skills = [Burn, ForestSurvival]
 
   hp = 10
@@ -5514,7 +5520,7 @@ class WoodArcher(Elf):
   upkeep = 20
   resource_cost = 28
   food = 2
-  pop = 30
+  pop = 3
   terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
   hp = 10
@@ -5561,7 +5567,7 @@ class SisterFromTheDeepth(Elf):
   upkeep = 15
   resource_cost = 22
   food = 2
-  pop = 30
+  pop = 3
   terrain_skills = [Burn, DarkVision, ForestSurvival]
 
   hp = 10
@@ -5610,7 +5616,7 @@ class ElkRider(Elf):
   upkeep = 30
   resource_cost = 25
   food = 5
-  pop = 20
+  pop = 4
   terrain_skills = [Burn, ForestSurvival, Raid]
 
   hp = 16
@@ -5680,7 +5686,6 @@ class Hamlet(City):
 
   def set_capital_bonus(self):
     self.food += 100
-    self.grouth += 5
     self.public_order += 10
     self.upkeep = 0
 
@@ -5941,9 +5946,9 @@ class FieldsOfJupiter(TheMarbleTemple, Building):
 class Augur(Unit):
   name = "augur"
   namelist = [praenomen, nomen, cognomen]
-  units = 5
+  units = 20
   min_units = 5
-  ln = 5
+  ln = 10
   max_squads = 1
   can_hire = 1
   leadership = 30
@@ -5953,10 +5958,10 @@ class Augur(Unit):
   aligment = sacred_t
   size = 2
   gold = 600
-  upkeep = 60
+  upkeep = 20
   resource_cost = 30
   food = 3
-  pop = 40
+  pop = 3
 
   hp = 10
   sight = 2
@@ -5992,7 +5997,7 @@ class Augur(Unit):
 class Aquilifer(Human):
   name = "aquilifer"
   namelist = [praenomen, nomen, cognomen]
-  units = 10
+  units = 30
   ln = 10
   min_units = 10
   max_squads = 1
@@ -6005,10 +6010,10 @@ class Aquilifer(Human):
   aligment = neutral_t
   size = 2
   gold = 1500
-  upkeep = 80
+  upkeep = 25
   resource_cost = 35
   food = 5
-  pop = 100
+  pop = 4
   unique = 1
   tags = ["commander"]
 
@@ -6048,8 +6053,8 @@ class Aquilifer(Human):
 class Ballistarius(Human):
   name = "Ballistarius"
   namelist = [praenomen, nomen]
-  units = 5
-  ln = 5
+  units = 10
+  ln = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
@@ -6062,7 +6067,7 @@ class Ballistarius(Human):
   upkeep = 100
   resource_cost = 25
   food = 5
-  pop = 40
+  pop = 2.5
   terrain_skills = []
   tags = ["commander"]
 
@@ -6106,8 +6111,8 @@ class Ballistarius(Human):
 class Centurion(Human):
   name = "centurion"
   namelist = [praenomen, nomen]
-  units = 5
-  ln = 5
+  units = 20
+  ln = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
@@ -6117,10 +6122,10 @@ class Centurion(Human):
   aligment = neutral_t
   size = 2
   gold = 500
-  upkeep = 90
+  upkeep = 15
   resource_cost = 25
   food = 5
-  pop = 40
+  pop = 2.2
   terrain_skills = []
   tags = ["commander"]
 
@@ -6164,8 +6169,9 @@ class Centurion(Human):
 class Decarion(Human):
   name = "decarion"
   namelist = [praenomen, nomen]
-  units = 1
+  units = 10
   min_units = 10
+  ln = 10
   max_squads = 1
   can_hire = 1
   leadership = 50
@@ -6174,10 +6180,10 @@ class Decarion(Human):
   aligment = neutral_t
   size = 2
   gold = 400
-  upkeep = 100
+  upkeep = 15
   resource_cost = 15
   food = 5
-  pop = 40
+  pop = 2
   terrain_skills = []
   tags = ["commander"]
 
@@ -6221,20 +6227,21 @@ class Decarion(Human):
 class Decurion(Human):
   name = "Decurion"
   namelist = [praenomen, nomen]
-  units = 1
+  units = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
   leadership = 70
   type = "infantry"
+  mounted = 1
   traits = [human_t]
   aligment = neutral_t
   size = 2
   gold = 500
-  upkeep = 150
+  upkeep = 20
   resource_cost = 20
   food = 5
-  pop = 40
+  pop = 3
   terrain_skills = []
   tags = ["commander"]
 
@@ -6278,8 +6285,9 @@ class Decurion(Human):
 class Flamen(Human):
   name = "flamen"
   namelist = [praenomen, nomen, cognomen]
-  units = 1
+  units = 10
   min_units = 5
+  ln = 10
   max_squads = 1
   can_hire = 1
   leadership = 30
@@ -6289,10 +6297,10 @@ class Flamen(Human):
   aligment = sacred_t
   size = 2
   gold = 1300
-  upkeep = 400
+  upkeep = 40
   resource_cost = 30
   food = 3
-  pop = 40
+  pop = 4
 
   hp = 15
   mp = [2, 2]
@@ -6337,10 +6345,10 @@ class Legatus(Human):
   aligment = neutral_t
   size = 2
   gold = 1000
-  upkeep = 70
+  upkeep = 50
   resource_cost = 40
   food = 5
-  pop = 40
+  pop = 4
   terrain_skills = []
   tags = ["commander"]
 
@@ -6383,9 +6391,9 @@ class Legatus(Human):
 class PontifexMaximus(Unit):
   name = "pontifex maximus"
   namelist = [praenomen, nomen, cognomen]
-  units = 5
+  units = 10
   min_units = 5
-  ln = 5
+  ln = 10
   max_squads = 1
   leadership = 40
   unique = 1
@@ -6395,7 +6403,7 @@ class PontifexMaximus(Unit):
   aligment = sacred_t
   size = 2
   gold = 2000
-  upkeep = 150
+  upkeep = 55
   resource_cost = 30
   food = 5
   pop = 80
@@ -6446,7 +6454,7 @@ class Settler(Human):
   upkeep = 10
   resource_cost = 30
   food = 25
-  pop = 500
+  pop = 20
 
   hp = 3
   mp = [2, 2]
@@ -6487,7 +6495,7 @@ class Flagellant(Human):
   upkeep = 6
   resource_cost = 11
   food = 2
-  pop = 30
+  pop = 1.5
   terrain_skills = [Burn]
 
   hp = 10
@@ -6532,7 +6540,7 @@ class RebornOne(Human):
   upkeep = 14
   resource_cost = 14
   food = 3
-  pop = 40
+  pop = 1.7
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6576,7 +6584,7 @@ class Velites(Human):
   upkeep = 15
   resource_cost = 12
   food = 3
-  pop = 50
+  pop = 2.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6619,7 +6627,7 @@ class ImperialGuard(Human):
   upkeep = 30
   resource_cost = 18
   food = 4
-  pop = 30
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6661,7 +6669,7 @@ class Hastati(Human):
   upkeep = 25
   resource_cost = 15
   food = 3
-  pop = 50
+  pop = 2
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6704,7 +6712,7 @@ class Principes(Human):
   upkeep = 40
   resource_cost = 24
   food = 3
-  pop = 40
+  pop = 2.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6747,7 +6755,7 @@ class Halberdier(Human):
   upkeep = 40
   resource_cost = 18
   food = 4
-  pop = 40
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6790,7 +6798,7 @@ class SacredWarrior(Human):
   upkeep = 30
   resource_cost = 16
   food = 3
-  pop = 50
+  pop = 3
   global_skills = [Burn, Raid]
 
   hp = 10
@@ -6835,7 +6843,7 @@ class KnightsTemplar (Human):
   upkeep = 60
   resource_cost = 22
   food = 4
-  pop = 55
+  pop = 5
   global_skills = [Burn, Raid]
 
   hp = 10
@@ -6878,7 +6886,7 @@ class Sagittarii(Human):
   upkeep = 14
   resource_cost = 14
   food = 3
-  pop = 40
+  pop = 2
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -6920,7 +6928,7 @@ class CrossBowMan(Human):
   upkeep = 20
   resource_cost = 18
   food = 3
-  pop = 30
+  pop = 2.5
 
   hp = 10
   mp = [2, 2]
@@ -6961,7 +6969,7 @@ class Arquebusier(Human):
   upkeep = 40
   resource_cost = 25
   food = 3
-  pop = 30
+  pop = 2.5
 
   hp = 10
   mp = [2, 2]
@@ -6999,7 +7007,7 @@ class Musket(Human):
   upkeep = 50
   resource_cost = 30
   food = 3
-  pop = 30
+  pop = 2.5
 
   hp = 10
   mp = [2, 2]
@@ -7035,11 +7043,11 @@ class Equite(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 1800
-  upkeep = 50
+  gold = 300
+  upkeep = 25
   resource_cost = 20
   food = 5
-  pop = 60
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 14
@@ -7084,11 +7092,11 @@ class Equites2(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 1500
-  upkeep = 70
+  gold = 300
+  upkeep = 40
   resource_cost = 22
   food = 6
-  pop = 70
+  pop = 4
   terrain_skills = [Burn, Raid]
 
   hp = 16
@@ -7129,11 +7137,11 @@ class Gryphon(Unit):
   traits = [gryphon_t]
   aligment = wild_t
   size = 4
-  gold = 800
-  upkeep = 90
+  gold = 350
+  upkeep = 60
   resource_cost = 20
   food = 4
-  pop = 20
+  pop = 5
   terrain_skills = [DarkVision, Fly]
 
   hp = 14
@@ -7174,11 +7182,11 @@ class GryphonRiders(Unit):
   traits = [human_t]
   aligment = sacred_t
   size = 4
-  gold = 1200
-  upkeep = 120
+  gold = 300
+  upkeep = 100
   resource_cost = 22
   food = 6
-  pop = 30
+  pop = 6
   terrain_skills = [Burn, DarkVision, Fly, Raid]
 
   hp = 24
@@ -7567,7 +7575,7 @@ class BoierLord(Unit):
   upkeep = 20
   resource_cost = 15
   food = 4
-  pop = 40
+  pop = 4
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -7621,7 +7629,7 @@ class Paznic(Unit):
   upkeep = 20
   resource_cost = 15
   food = 4
-  pop = 40
+  pop = 4
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -7658,7 +7666,7 @@ class Paznic(Unit):
 
 class Isaac(Unit):
   name = "isaac"
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 1
   can_hire = 1
@@ -7671,10 +7679,10 @@ class Isaac(Unit):
   size = 2
   unique = 1
   gold = 1500
-  upkeep = 430
+  upkeep = 43
   resource_cost = 25
   food = 4
-  pop = 70
+  pop = 8
   terrain_skills = [DarkVision]
 
   hp = 30
@@ -7727,10 +7735,10 @@ class Necromancer(Human):
   aligment = malignant_t
   size = 2
   gold = 900
-  upkeep = 60
+  upkeep = 25
   resource_cost = 20
   food = 4
-  pop = 30
+  pop = 6
   terrain_skills = []
 
   hp = 10
@@ -7785,10 +7793,10 @@ class VampireCount(Undead):
   aligment = malignant_t
   size = 2
   gold = 1500
-  upkeep = 600
+  upkeep = 500
   resource_cost = 25
   food = 0
-  pop = 35
+  pop = 50
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
   hp = 40
@@ -7831,7 +7839,7 @@ class VampireCount(Undead):
 class VarGhul(Undead):
   name = varghul_t
   namelist = [ghoul_name1]
-  units = 1
+  units = 5
   min_units = 1
   max_squads = 5
   can_hire = 1
@@ -7841,10 +7849,10 @@ class VarGhul(Undead):
   aligment = malignant_t
   size = 3
   gold = 670
-  upkeep = 30
+  upkeep = 15
   resource_cost = 20
   food = 5
-  pop = 25
+  pop = 4
   terrain_skills = [DarkVision, NightSurvival]
 
   hp = 35
@@ -7898,7 +7906,7 @@ class VladDracul(Undead):
   upkeep = 1666
   resource_cost = 50
   food = 0
-  pop = 666
+  pop = 300
   terrain_skills = [DarkVision, Fly, ForestSurvival, MountainSurvival, NightSurvival]
 
   hp = 60
@@ -7954,7 +7962,7 @@ class Adjule(Unit):
   upkeep = 13
   resource_cost = 14
   food = 0
-  pop = 35
+  pop 0
   terrain_skills = [DarkVision, DesertSurvival, NightSurvival]
 
   hp = 16
@@ -8001,7 +8009,7 @@ class WailingLady(Undead):
   upkeep = 100
   resource_cost = 30
   food = 0
-  pop = 30
+  pop = 0
   terrain_skills = [DarkVision, Fly, ]
 
   hp = 15
@@ -8046,7 +8054,7 @@ class Bat(Unit):
   upkeep = 1
   resource_cost = 15
   food = 2
-  pop = 20
+  pop = 0.5
   terrain_skills = [DarkVision, Fly, ForestSurvival, MountainSurvival, SwampSurvival]
 
   hp = 4
@@ -8090,10 +8098,10 @@ class BlackKnight(Undead):
   aligment = malignant_t
   size = 3
   gold = 1400
-  upkeep = 80
+  upkeep = 30
   resource_cost = 18
   food = 0
-  pop = 35
+  pop = 6.6
   terrain_skills = [DarkVision, Burn, NightSurvival]
 
   hp = 18
@@ -8131,8 +8139,8 @@ class BlackKnight(Undead):
 
 class BloodKnight(Undead):
   name = blood_knight_t
-  units = 1
-  min_units = 1
+  units = 2
+  min_units = 2
   ln = 10
   max_squads = 20
   type = "infantry"
@@ -8140,10 +8148,10 @@ class BloodKnight(Undead):
   aligment = malignant_t
   size = 2
   gold = 1200
-  upkeep = 60
+  upkeep = 40
   resource_cost = 25
   food = 0
-  pop = 20
+  pop = 8
   terrain_skills = [DarkVision, NightSurvival]
 
   hp = 20
@@ -8186,10 +8194,10 @@ class CryptHorror(Undead):
   aligment = malignant_t
   size = 4
   gold = 560
-  upkeep = 25
+  upkeep = 20
   resource_cost = 18
   food = 0
-  pop = 20
+  pop = 4
   terrain_skills = [DarkVision, Fly, NightSurvival]
 
   hp = 15
@@ -8232,7 +8240,7 @@ class DireWolf(Undead):
   upkeep = 30
   resource_cost = 22
   food = 0
-  pop = 25
+  pop = 5
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
   hp = 24
@@ -8278,7 +8286,7 @@ class Draugr(Unit):
   upkeep = 20
   resource_cost = 18
   food = 2
-  pop = 30
+  pop = 5
   terrain_skills = [DarkVision, Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 22
@@ -8330,7 +8338,7 @@ class FellBat(Undead):
   upkeep = 22
   resource_cost = 16
   food = 0
-  pop = 20
+  pop = 4
   terrain_skills = [DarkVision, Fly, ForestSurvival, MountainSurvival, SwampSurvival]
 
   hp = 8
@@ -8376,7 +8384,7 @@ class Ghoul(Human):
   upkeep = 6
   resource_cost = 11
   food = 2
-  pop = 15
+  pop = 1.5
   terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
   hp = 11
@@ -8426,7 +8434,7 @@ class GraveGuard(Undead):
   upkeep = 50
   resource_cost = 18
   food = 0
-  pop = 40
+  pop = 6
   terrain_skills = [Burn, DarkVision, NightSurvival]
 
   hp = 25
@@ -8473,7 +8481,7 @@ class Settler2(Human):
   upkeep = 20
   resource_cost = 30
   food = 20
-  pop = 300
+  pop = 30
   terrain_skills = [DesertSurvival]
 
   hp = 3
@@ -8502,7 +8510,7 @@ class Settler2(Human):
 
 class Skeleton(Undead):
   name = skeleton_t
-  units = 20
+  units = 10
   min_units = 10
   ln = 10
   max_squads = 10
@@ -8515,7 +8523,7 @@ class Skeleton(Undead):
   upkeep = 0
   resource_cost = 10
   food = 0
-  pop = 20
+  pop = 1.2
   terrain_skills = []
 
   hp = 13
@@ -8559,7 +8567,7 @@ class SkeletonWarrior(Undead):
   upkeep = 15
   resource_cost = 14
   food = 0
-  pop = 20
+  pop = 2
   terrain_skills = [Burn]
 
   hp = 18
@@ -8603,7 +8611,7 @@ class SpectralInfantry(Unit):
   upkeep = 10
   resource_cost = 15
   food = 0
-  pop = 45
+  pop = 3.5
   terrain_skills = [Burn, DarkVision, Raid]
 
   hp = 13
@@ -8648,7 +8656,7 @@ class Vampire(Undead):
   upkeep = 50
   resource_cost = 25
   food = 0
-  pop = 40
+  pop = 4
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival, NightSurvival]
 
   hp = 20
@@ -8694,10 +8702,10 @@ class Vargheist(Undead):
   aligment = malignant_t
   size = 3
   gold = 620
-  upkeep = 120
+  upkeep = 40
   resource_cost = 20
   food = 0
-  pop = 50
+  pop = 15
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 45
@@ -8748,7 +8756,7 @@ class Zombie(Undead, Ground):
   upkeep = 0
   resource_cost = 10
   food = 0
-  pop = 10
+  pop = 1.5
 
   hp = 13
   mp = [2, 2]
@@ -8811,7 +8819,7 @@ class Fields(Building):
   local_unique = 1
   size = 6
   gold = 1500
-  food = 100
+  food = 50
   income = 0
   # public_order = 20
   own_terrain = 1
@@ -8832,7 +8840,7 @@ class SmallFarm(Fields, Building):
   level = 2
   base = Fields
   gold = 3500
-  food = 250
+  food = 100
   grouth = 50
   income = 20
   # public_order = 10
@@ -8849,7 +8857,7 @@ class Farm(SmallFarm, Building):
   name = farm_t
   base = SmallFarm
   gold = 15000
-  food = 500
+  food = 200
   grouth = 100
   # income = 100
   # public_order = 30
@@ -9791,7 +9799,7 @@ class WolfLair(Building):
 class CannibalWarlord(Human):
   name = "canibal warlord"
   namelist = [male_name1+romanian_name1, ]
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 1
   can_hire = 1
@@ -9801,10 +9809,10 @@ class CannibalWarlord(Human):
   aligment = hell_t
   size = 2
   gold = 400
-  upkeep = 140
+  upkeep = 18
   resource_cost = 15
   food = 5
-  pop = 40
+  pop = 3
   terrain_skills = []
 
   hp = 10
@@ -9846,7 +9854,7 @@ class CannibalWarlord(Human):
 class GoblinShaman(Human):
   name = "goblin shaman"
   namelist = [goblin_name1]
-  units = 1
+  units = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
@@ -9856,10 +9864,10 @@ class GoblinShaman(Human):
   aligment = malignant_t
   size = 2
   gold = 400
-  upkeep = 120
+  upkeep = 12
   resource_cost = 18
   food = 4
-  pop = 20
+  pop = 3
 
   hp = 7
   mp = [2, 2]
@@ -9893,7 +9901,7 @@ class GoblinShaman(Human):
 class Inquisitor(Human):
   name = inquisitors_t
   namelist = [praenomen, nomen]
-  units = 1
+  units = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
@@ -9903,10 +9911,10 @@ class Inquisitor(Human):
   aligment = sacred_t
   size = 2
   gold = 400
-  upkeep = 160
+  upkeep = 20
   resource_cost = 22
   food = 4
-  pop = 30
+  pop = 4
 
   hp = 10
   mp = [2, 2]
@@ -9940,7 +9948,7 @@ class Inquisitor(Human):
 class OrcCaptain(Human):
   name = "orc captain"
   namelist = [orc_name1, orc_name2]
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 1
   can_hire = 1
@@ -9950,10 +9958,10 @@ class OrcCaptain(Human):
   aligment = malignant_t
   size = 2
   gold = 400
-  upkeep = 140
+  upkeep = 14
   resource_cost = 15
   food = 5
-  pop = 40
+  pop = 4
   terrain_skills = []
 
   hp = 10
@@ -9995,7 +10003,7 @@ class OrcCaptain(Human):
 class ShamanOfTheLostTribe(Human):
   name = "shaman of the lost tribe"
   namelist = [aztec_name1]
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 10
   leadership = 50
@@ -10004,10 +10012,10 @@ class ShamanOfTheLostTribe(Human):
   aligment = wild_t
   size = 2
   gold = 700
-  upkeep = 30
+  upkeep = 15
   resource_cost = 18
   food = 3
-  pop = 8
+  pop = 2
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 10
@@ -10050,7 +10058,7 @@ class ShamanOfTheLostTribe(Human):
 class ShamanOfTheWind(Human):
   name = "shaman of the wind"
   namelist = [cold_name1]
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 10
   leadership = 60
@@ -10059,10 +10067,10 @@ class ShamanOfTheWind(Human):
   aligment = wild_t
   size = 2
   gold = 700
-  upkeep = 30
+  upkeep = 15
   resource_cost = 18
   food = 3
-  pop = 8
+  pop = 3
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 10
@@ -10162,7 +10170,7 @@ class VampireLord(Undead):
 class WarlockApprentice(Unit):
   name = "warlock aprentice"
   namelist = [male_name1, surfname1]
-  units = 1
+  units = 5
   min_units = 10
   max_squads = 1
   leadership = 20
@@ -10171,10 +10179,10 @@ class WarlockApprentice(Unit):
   aligment = wild_t
   size = 2
   gold = 670
-  upkeep = 16
+  upkeep = 20
   resource_cost = 16
   food = 3
-  pop = 20
+  pop = 4
   terrain_skills = []
 
   hp = 10
@@ -10216,7 +10224,7 @@ class WarlockApprentice(Unit):
 class Warlock(Unit):
   name = "warlock"
   namelist = [barbarian_name1, surfname1]
-  units = 1
+  units = 5
   min_units = 1
   max_squads = 1
   can_hire = 1
@@ -10227,10 +10235,10 @@ class Warlock(Unit):
   aligment = wild_t
   size = 2
   gold = 700
-  upkeep = 32
+  upkeep = 30
   resource_cost = 22
   food = 3
-  pop = 35
+  pop = 6
   terrain_skills = [ForestSurvival, SwampSurvival, MountainSurvival]
 
   hp = 10
@@ -10272,7 +10280,7 @@ class Warlock(Unit):
 class Warlord(Human):
   name = "warlord"
   namelist = [barbarian_name1, barbarian_name1+surfname1]
-  units = 1
+  units = 10
   min_units = 10
   max_squads = 1
   can_hire = 1
@@ -10282,10 +10290,10 @@ class Warlord(Human):
   aligment = wild_t
   size = 2
   gold = 480
-  upkeep = 140
+  upkeep = 15
   resource_cost = 15
   food = 5
-  pop = 40
+  pop = 4
   terrain_skills = []
   tags = ["commander"]
 
@@ -10328,7 +10336,7 @@ class Warlord(Human):
 
 class WarMonger(Human):
   name = "warmonger"
-  units = 1
+  units = 10
   min_units = 1
   max_squads = 1
   can_hire = 1
@@ -10339,9 +10347,9 @@ class WarMonger(Human):
   size = 2
   gold = 600
   upkeep = 200
-  resource_cost = 22
+  resource_cost = 25
   food = 4
-  pop = 20
+  pop = 4
 
   hp = 10
   mp = [2, 2]
@@ -10380,10 +10388,10 @@ class Witch(Unit):
   aligment = wild_t
   size = 2
   gold = 666
-  upkeep = 24
+  upkeep = 25
   resource_cost = 22
   food = 3
-  pop = 30
+  pop = 10
   terrain_skills = [ForestSurvival, SwampSurvival]
 
   hp = 8
@@ -10437,7 +10445,7 @@ class Archer(Human):
   upkeep = 6
   resource_cost = 11
   food = 3
-  pop = 45
+  pop = 1.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -10487,7 +10495,7 @@ class Akhlut(Unit):
   upkeep = 60
   resource_cost = 28
   food = 12
-  pop = 25
+  pop = 0
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 30
@@ -10533,10 +10541,10 @@ class BlackOrc(Unit):
   aligment = malignant_t
   size = 3
   gold = 960
-  upkeep = 35
+  upkeep = 25
   resource_cost = 20
   food = 6
-  pop = 40
+  pop = 4
   terrain_skills = [Burn, DarkVision, Raid]
 
   hp = 24
@@ -10586,7 +10594,7 @@ class BlizzardWarrior(Human):
   upkeep = 10
   resource_cost = 11
   food = 3
-  pop = 30
+  pop = 2.5
   terrain_skills = [ColdResist, Burn, Raid]
 
   hp = 11
@@ -10620,51 +10628,6 @@ class BlizzardWarrior(Human):
 
 
 
-class Population(Human):
-  name = "population"
-  units = 50
-  min_units = 10
-  max_squads = 5
-  type = "civil"
-  traits = [human_t]
-  size = 2
-  gold = 60
-  upkeep = 2
-  resource_cost = 8
-  food = 4
-  pop = 20
-  terrain_skills = [Burn, Raid]
-
-  hp = 3
-  mp = [2, 2]
-  moves = 5
-  resolve = 4
-
-  dfs = 1
-  res = 2
-  hres = 0
-  arm = 0
-  armor = None
-
-  att1 = 1
-  off = 1
-  strn = 1
-  pn = 0
-  
-  fear = 5
-  populated_land = 1
-  sort_chance = 70
-
-  def __init__(self, nation):
-    super().__init__(nation)
-    self.align = Wild
-    self.corpses = [Zombie]
-    self.favhill = [1]
-    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
-    self.favsurf = [none_t, forest_t]
-
-
-
 class CannibalWarrior(Human):
   name = "cannibal warrior"
   units = 20
@@ -10679,7 +10642,7 @@ class CannibalWarrior(Human):
   upkeep = 5
   resource_cost = 10
   food = 2
-  pop = 25
+  pop = 1.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -10727,7 +10690,7 @@ class Crocodile(Unit):
   upkeep = 15
   resource_cost = 20
   food = 2
-  pop = 10
+  pop = 4
   terrain_skills = [DarkVision, SwampSurvival]
 
   hp = 15
@@ -10773,10 +10736,10 @@ class DesertNomad(Human):
   aligment = wild_t
   size = 3
   gold = 240
-  upkeep = 30
+  upkeep = 20
   resource_cost = 18
   food = 4
-  pop = 30
+  pop = 1.5
   terrain_skills = [Burn, DesertSurvival, Raid]
 
   hp = 14
@@ -10826,7 +10789,7 @@ class DevourerOfDemons(Unit):
   aligment = wild_t
   size = 5
   gold = 2200
-  upkeep = 1200
+  upkeep = 500
   resource_cost = 50
   food = 0
   pop = 0
@@ -10877,7 +10840,7 @@ class DevoutOfChaos(Human):
   upkeep = 30
   resource_cost = 20
   food = 3
-  pop = 25
+  pop = 1.5
   terrain_skills = [Burn, ]
 
   hp = 10
@@ -10963,10 +10926,10 @@ class GiantBear(Unit):
   aligment = nature_t
   size = 4
   gold = 800
-  upkeep = 48
+  upkeep = 30
   resource_cost = 26
   food = 8
-  pop = 20
+  pop = 5
   terrain_skills = [ForestSurvival, MountainSurvival]
 
   hp = 44
@@ -11011,10 +10974,10 @@ class GiantCrocodile(Unit):
   aligment = nature_t
   size = 3
   gold = 420
-  upkeep = 30
+  upkeep = 25
   resource_cost = 20
   food = 6
-  pop = 20
+  pop = 6
   terrain_skills = [DarkVision, SwampSurvival]
 
   hp = 30
@@ -11050,8 +11013,8 @@ class GiantCrocodile(Unit):
 
 class GiantOfTheLostTribe(Unit):
   name = "giant of the lost tribe"
-  units = 1
-  min_units = 1
+  units = 4
+  min_units = 4
   ln = 7
   max_squads = 10
   type = "beast"
@@ -11059,10 +11022,10 @@ class GiantOfTheLostTribe(Unit):
   aligment = wild_t
   size = 3
   gold = 520
-  upkeep = 42
+  upkeep = 30
   resource_cost = 24
   food = 6
-  pop = 8
+  pop = 4
   terrain_skills = [ColdResist, DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 15
@@ -11112,10 +11075,10 @@ class GiantWolf(Unit):
   aligment = nature_t
   size = 3
   gold = 320
-  upkeep = 25
+  upkeep = 40
   resource_cost = 18
   food = 6
-  pop = 20
+  pop = 3
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 13
@@ -11169,7 +11132,7 @@ class Ghost(Undead):
   upkeep = 20
   resource_cost = 20
   food = 0
-  pop = 10
+  pop = 3
   terrain_skills = [DarkVision, Fly, MountainSurvival, ForestSurvival,
                     SwampSurvival]
 
@@ -11211,7 +11174,7 @@ class Goblin(Unit):
   upkeep = 4
   resource_cost = 12
   food = 2
-  pop = 40
+  pop = 1.2
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, SwampSurvival, Raid]
 
   hp = 6
@@ -11263,10 +11226,10 @@ class ClayGolem(Unit):
   aligment = wild_t
   size = 4
   gold = 1250
-  upkeep = 60
+  upkeep = 10
   resource_cost = 30
   food = 0
-  pop = 50
+  pop = 0
   terrain_skills = []
 
   hp = 60
@@ -11319,7 +11282,7 @@ class Harpy(Unit):
   upkeep = 10
   resource_cost = 16
   food = 0
-  pop = 45
+  pop = 2
   terrain_skills = [Fly, ForestSurvival, MountainSurvival, Raid]
 
   hp = 13
@@ -11366,10 +11329,10 @@ class HellHound(Undead):
   aligment = hell_t
   size = 3
   gold = 160
-  upkeep = 20
+  upkeep = 40
   resource_cost = 30
   food = 0
-  pop = 25
+  pop = 5
   terrain_skills = [DarkVision, DesertSurvival, ForestSurvival, MountainSurvival, NightSurvival]
 
   hp = 28
@@ -11416,10 +11379,10 @@ class Hyena(Unit):
   aligment = nature_t
   size = 2
   gold = 210
-  upkeep = 14
+  upkeep = 24
   resource_cost = 15
   food = 4
-  pop = 65
+  pop = 2
   terrain_skills = [DarkVision, NightSurvival]
 
   hp = 12
@@ -11469,7 +11432,7 @@ class Hunter(Human):
   upkeep = 6
   resource_cost = 12
   food = 3
-  pop = 12
+  pop = 1.5
   terrain_skills = [ForestSurvival, MountainSurvival, Raid]
 
   hp = 10
@@ -11518,10 +11481,10 @@ class KillerMantis(Human):
   aligment = nature_t
   size = 3
   gold = 140
-  upkeep = 11
+  upkeep = 20
   resource_cost = 15
   food = 5
-  pop = 8
+  pop = 3
   terrain_skills = [ForestSurvival, MountainSurvival, SwampSurvival]
 
   hp = 16
@@ -11570,9 +11533,9 @@ class NomadsRider(Human):
   size = 3
   gold = 240
   upkeep = 25
-  resource_cost = 18
+  resource_cost = 25
   food = 5
-  pop = 40
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 14
@@ -11623,7 +11586,7 @@ class OrcArcher(Unit):
   upkeep = 10
   resource_cost = 12
   food = 3
-  pop = 50
+  pop = 2
   terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
   hp = 12
@@ -11671,10 +11634,10 @@ class OrcWarrior(Unit):
   aligment = malignant_t
   size = 2
   gold = 200
-  upkeep = 13
+  upkeep = 7
   resource_cost = 10
   food = 3
-  pop = 30
+  pop = 1.5
   terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
   hp = 12
@@ -11725,7 +11688,7 @@ class Levy(Human):
   upkeep = 4
   resource_cost = 11
   food = 3
-  pop = 30
+  pop = 1.3
   terrain_skills = [Burn, PyreOfCorpses, Raid]
 
   hp = 9
@@ -11767,10 +11730,10 @@ class LizardMan(Human):
   aligment = neutral_t
   size = 2
   gold = 260
-  upkeep = 14
+  upkeep = 10
   resource_cost = 8
   food = 2
-  pop = 30
+  pop = 2
   terrain_skills = [Burn, DarkVision, Raid, SwampSurvival]
 
   hp = 12
@@ -11819,10 +11782,10 @@ class LizardManInfantry(Human):
   aligment = neutral_t
   size = 2
   gold = 420
-  upkeep = 160
+  upkeep = 16
   resource_cost = 18
   food = 2
-  pop = 30
+  pop = 3
   terrain_skills = [Burn, DarkVision, Raid, SwampSurvival]
 
   hp = 12
@@ -11870,7 +11833,7 @@ class Mandeha(Unit):
   upkeep = 540
   resource_cost = 40
   food = 7
-  pop = 30
+  pop = 0
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 80
@@ -11916,10 +11879,10 @@ class Mammot(Unit):
   aligment = nature_t
   size = 4
   gold = 1260
-  upkeep = 185
-  resource_cost = 28
+  upkeep = 15
+  resource_cost = 25
   food = 10
-  pop = 20
+  pop = 5
   terrain_skills = [Burn]
 
   hp = 40
@@ -12017,10 +11980,10 @@ class Ogre(Unit):
   aligment = wild_t
   size = 3
   gold = 560
-  upkeep = 18
-  resource_cost = 18
+  upkeep = 15
+  resource_cost = 15
   food = 6
-  pop = 20
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 22
@@ -12067,10 +12030,10 @@ class PaleOne(Unit):
   aligment = neutral_t
   size = 2
   gold = 340
-  upkeep = 14
+  upkeep = 15
   resource_cost = 12
   food = 1
-  pop = 25
+  pop = 2
   terrain_skills = [DarkVision, Burn, MountainSurvival, Raid]
 
   hp = 10
@@ -12121,7 +12084,7 @@ class Peasant(Human):
   upkeep = 1
   resource_cost = 7
   food = 3
-  pop = 40
+  pop = 1
   terrain_skills = [Burn]
 
   hp = 6
@@ -12165,11 +12128,11 @@ class PeasantLevy(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 100
+  gold = 120
   upkeep = 3
   resource_cost = 9
   food = 3
-  pop = 50
+  pop = 1.2
   terrain_skills = [Burn]
 
   hp = 10
@@ -12202,6 +12165,50 @@ class PeasantLevy(Human):
     self.favhill = [0]
 
 
+class Population(Human):
+  name = "population"
+  units = 50
+  min_units = 10
+  max_squads = 5
+  type = "civil"
+  traits = [human_t]
+  size = 2
+  gold = 60
+  upkeep = 2
+  resource_cost = 8
+  food = 4
+  pop = 1
+  terrain_skills = [Burn, Raid]
+
+  hp = 3
+  mp = [2, 2]
+  moves = 5
+  resolve = 4
+
+  dfs = 1
+  res = 2
+  hres = 0
+  arm = 0
+  armor = None
+
+  att1 = 1
+  off = 1
+  strn = 1
+  pn = 0
+  
+  fear = 5
+  populated_land = 1
+  sort_chance = 70
+
+  def __init__(self, nation):
+    super().__init__(nation)
+    self.align = Wild
+    self.corpses = [Zombie]
+    self.favhill = [1]
+    self.favsoil = [grassland_t, plains_t, tundra_t, waste_t]
+    self.favsurf = [none_t, forest_t]
+
+
 
 class Raider(Human):
   name = raider_t
@@ -12217,7 +12224,7 @@ class Raider(Human):
   upkeep = 10
   resource_cost = 14
   food = 3
-  pop = 25
+  pop = 1.5
   terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, SwampSurvival, Raid]
 
   hp = 10
@@ -12264,10 +12271,10 @@ class Rider(Human):
   aligment = neutral_t
   size = 3
   gold = 320
-  upkeep = 20
+  upkeep = 25
   resource_cost = 16
   food = 6
-  pop = 22
+  pop = 3
   terrain_skills = [Burn, Raid]
 
   hp = 14
@@ -12316,10 +12323,10 @@ class Satyr(Human):
   aligment = wild_t
   size = 2
   gold = 200
-  upkeep = 10
+  upkeep = 15
   resource_cost = 12
   food = 2
-  pop = 12
+  pop = 2
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 15
@@ -12359,7 +12366,7 @@ class Satyr(Human):
 
 class Slave(Human):
   name = "slave"
-  units = 20
+  units = 50
   min_units = 10
   ln = 20
   max_squads = 60
@@ -12368,11 +12375,11 @@ class Slave(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 220
-  upkeep = 2
+  gold = 250
+  upkeep = 1
   resource_cost = 7
   food = 3
-  pop = 20
+  pop = 1
   terrain_skills = [Burn]
 
   hp = 6
@@ -12408,7 +12415,7 @@ class Slave(Human):
 
 class SlaveHunter(Human):
   name = "cazador esclavo"
-  units = 10
+  units = 20
   min_units = 5
   max_squads = 5
   type = "infantry"
@@ -12416,11 +12423,11 @@ class SlaveHunter(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 350
-  upkeep = 2
+  gold = 450
+  upkeep = 3
   resource_cost = 1
   food = 3
-  pop = 0
+  pop = 2
   terrain_skills = [ForestSurvival, MountainSurvival, Raid]
 
   hp = 10
@@ -12470,10 +12477,10 @@ class SlaveWarrior(Human):
   aligment = neutral_t
   size = 2
   gold = 560
-  upkeep = 2
+  upkeep = 4
   resource_cost = 10
   food = 3
-  pop = 0
+  pop = 1.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -12519,10 +12526,10 @@ class SonOfWind(Human):
   aligment = wild_t
   size = 2
   gold = 50
-  upkeep = 20
+  upkeep = 15
   resource_cost = 16
   food = 3
-  pop = 30
+  pop = 2
   terrain_skills = [Burn, DarkVision, DesertSurvival, Raid, MountainSurvival]
 
   hp = 10
@@ -12561,11 +12568,11 @@ class Troglodyte(Unit):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 540
-  upkeep = 22
+  gold = 100
+  upkeep = 5
   resource_cost = 18
   food = 3
-  pop = 10
+  pop = 1.5
   terrain_skills = [DarkVision, Burn, MountainSurvival, Raid]
 
   hp = 30
@@ -12611,11 +12618,11 @@ class Troll(Unit):
   traits = [troll_t]
   aligment = wild_t
   size = 5
-  gold = 1200
-  upkeep = 60
+  gold = 400
+  upkeep = 40
   resource_cost = 22
   food = 6
-  pop = 10
+  pop = 5
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 30
@@ -12652,7 +12659,7 @@ class Troll(Unit):
 
 class Warg(Unit):
   name = "huargo"
-  units = 20
+  units = 10
   min_units = 5
   ln = 10
   max_squads = 12
@@ -12660,11 +12667,11 @@ class Warg(Unit):
   traits = [wolf_t]
   aligment = malignant_t
   size = 2
-  gold = 240
+  gold = 540
   upkeep = 35
   resource_cost = 18
   food = 6
-  pop = 30
+  pop = 3
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 16
@@ -12714,11 +12721,11 @@ class WargRider(Unit):
   traits = [orc_t]
   aligment = malignant_t
   size = 2
-  gold = 560
+  gold = 760
   upkeep = 60
   resource_cost = 22
   food = 8
-  pop = 25
+  pop = 4
   terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
   hp = 25
@@ -12770,10 +12777,10 @@ class Warrior(Human):
   aligment = neutral_t
   size = 2
   gold = 270
-  upkeep = 7
+  upkeep = 10
   resource_cost = 10
   food = 3
-  pop = 25
+  pop = 1.5
   terrain_skills = [Burn, Raid]
 
   hp = 10
@@ -12817,11 +12824,11 @@ class WetOne(Unit):
   traits = [beast_t]
   aligment = neutral_t
   size = 2
-  gold = 380
-  upkeep = 14
+  gold = 250
+  upkeep = 10
   resource_cost = 14
   food = 1
-  pop = 30
+  pop = 1.5
   terrain_skills = [DarkVision, Burn, SwampSurvival, Raid]
 
   hp = 10
@@ -12868,11 +12875,11 @@ class WoodlandSpirit(Unit):
   traits = [spirit_t]
   aligment = wild_t
   size = 4
-  gold = 860
-  upkeep = 44
+  gold = 80
+  upkeep = 10
   resource_cost = 18
   food = 1
-  pop = 30
+  pop = 3
   terrain_skills = [ForestSurvival, DarkVision]
 
   hp = 40
@@ -12912,11 +12919,11 @@ class Wolf(Unit):
   traits = [wolf_t]
   aligment = nature_t
   size = 2
-  gold = 120
-  upkeep = 10
+  gold = 320
+  upkeep = 15
   resource_cost = 14
   food = 3
-  pop = 30
+  pop = 2
   terrain_skills = [DarkVision, ForestSurvival]
 
   hp = 10
@@ -12955,7 +12962,7 @@ class Wolf(Unit):
 
 class WolfRider(Unit):
   name = "wolf rider"
-  units = 20
+  units = 10
   min_units = 10
   ln = 10
   max_squads = 6
@@ -12964,11 +12971,11 @@ class WolfRider(Unit):
   traits = [goblin_t]
   aligment = malignant_t
   size = 2
-  gold = 340
-  upkeep = 18
+  gold = 400
+  upkeep = 25
   resource_cost = 16
   food = 4
-  pop = 40
+  pop = 2.5
   terrain_skills = [Burn, ForestSurvival, MountainSurvival, Raid]
 
   hp = 12
@@ -12983,7 +12990,7 @@ class WolfRider(Unit):
   arm = 0
   armor = None
 
-  weapon1 = weapons.BronzeSpear
+  weapon1 = weapons.ShortBow
   att1 = 1
   weapon2 = weapons.Bite
   att2 = 1

@@ -19,6 +19,8 @@ class Event:
 
   def __init__(self, itm):
     self.itm = itm
+  def __str__(self):
+    return self.name
 
 
 
@@ -86,12 +88,12 @@ class Reanimation(Event):
       
       msg = f"{raised} raised in {t} {t.cords}."
       logging.info(msg)
-      raised.auto_attack = 1
       raised.pos = t
       raised.pos.units.append(raised)
       t.nation.log[-1].append(msg)
       if t.nation.show_info: sleep(loadsound("raiseundead1") / 2)
-      t.pos.update(t.nation)
+      t.update(t.nation)
+      raised.combat_pre(raised.pos)
 
 
 class Revolt(Event):
