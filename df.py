@@ -4623,7 +4623,7 @@ def train_unit(city, items, msg, sound="in1"):
       sp.speak(f"{item} {in_t} {prod}.", 1)
       sp.speak(f"{cost_t} {item.gold}. {upkeep_t} {item.upkeep*item.units}.")
       sp.speak(f"{resources_t} {item.resource_cost}.")
-      sp.speak(f"{population_t} {item.pop}.")
+      sp.speak(f"{population_t} {item.total_pop}.")
       say = 0
       
     for event in pygame.event.get():

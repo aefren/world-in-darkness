@@ -1063,6 +1063,7 @@ class Nation:
     itm.belongs += [self]
 
   def add_city(self, itm, unit):
+    unit.update()
     itm = itm(unit.nation, unit.pos)
     scenary = unit.pos.scenary
     pop = unit.total_pop
@@ -1575,6 +1576,7 @@ class Unit:
   xp = 0
   unique = 0
   traits = []
+  train_rate = 1
   gold = 0
   hire_rate = 1
   upkeep = 0
@@ -1692,6 +1694,7 @@ class Unit:
     if units: self.units = units
     self.hp_total = self.hp * self.units
     if dead: self.hp_total = 0
+    self.gold = self.upkeep*self.units*self.train_rate
     self.history = Empty()
     self.history.kills_record = 0
     self.history.raids = 0
@@ -2815,7 +2818,7 @@ class Unit:
           f"{size_t} {self.size}.",
           f"{gold_t} {self.gold}, {upkeep_t} {self.upkeep} ({self.upkeep_total}).",
           f"{resources_t} {self.resource_cost}.",
-          f"{population_t} self.pop} ({self.cpop})>",
+          f"{population_t} {self.pop} ({self.total_pop})>",
           f"{food_t} {self.food}, {population_t} {self.pop}.",
           f"effects {effects}.",
           f"terrain skills {terrain_skills}.",
@@ -4663,8 +4666,8 @@ class Druid(Elf):
   traits = [elf_t, ]
   aligment = wild_t
   size = 2
-  gold = 400
-  upkeep = 50
+  train_rate = 3
+  upkeep = 25
   resource_cost = 22
   food = 3
   pop = 20
@@ -4719,8 +4722,8 @@ class KeeperOfTheGrove (Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 600
-  upkeep = 50
+  train_rate = 2
+  upkeep = 25
   resource_cost = 30
   food = 3
   pop = 2
@@ -4761,9 +4764,9 @@ class KeeperOfTheGrove (Elf):
 class PathFinder(Elf):
   name = "Path finder"
   namelist = [elves_name1, elves_name2]
-  units = 1
+  units = 10
   min_units = 1
-  ln = 1
+  ln = 10
   max_squads = 1
   can_hire = 1
   leadership = 50
@@ -4772,8 +4775,8 @@ class PathFinder(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 3
-  gold = 500
-  upkeep = 20
+  train_rate = 2
+  upkeep = 22
   resource_cost = 20
   food = 6
   pop = 20
@@ -4825,8 +4828,8 @@ class PriestessOfTheMoon(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 3
-  gold = 1700
-  upkeep = 500
+  train_rate = 3
+  upkeep = 400
   resource_cost = 35
   food = 6
   pop = 20
@@ -4869,18 +4872,18 @@ class AwakenTree(Elf):
   name = "árbol despertado"
   units = 1
   min_units = 1
-  ln = 1
-  max_squads = 1
+  ln = 3
+  max_squads = 6
   poisonres = 1
   type = "infantry"
   traits = [tree_t]
   aligment = wild_t
-  size = 5
-  gold = 1200
-  upkeep = 140
+  size = 6
+  train_rate = 3
+  upkeep = 30
   resource_cost = 30
   food = 4
-  pop = 0
+  pop = 4
   terrain_skills = [ForestSurvival]
 
   hp = 50
@@ -4926,11 +4929,11 @@ class BladeDancer(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 380
-  upkeep = 25
+  train_rate = 1.5
+  upkeep = 16
   resource_cost = 24
   food = 3
-  pop = 1.4
+  pop = 2
   terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
   hp = 10
@@ -4974,7 +4977,7 @@ class DemonHunter(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 500
+  train_rate = 3
   upkeep = 90
   resource_cost = 25
   food = 3
@@ -5017,11 +5020,11 @@ class Driad(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 580
-  upkeep = 45
+  train_rate = 3
+  upkeep = 25
   resource_cost = 30
   food = 3
-  pop = 2
+  pop = 3
   terrain_skills = [Burn, DarkVision, ForestSurvival]
 
   hp = 40
@@ -5062,8 +5065,8 @@ class EternalGuard(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 850
-  upkeep = 25
+  train_rate = 2
+  upkeep = 35
   resource_cost = 25
   food = 4
   pop = 2
@@ -5109,11 +5112,11 @@ class Falcon(Elf):
   traits = [falcon_t]
   aligment = nature_t
   size = 1
-  gold = 140
-  upkeep = 28
+  train_rate = 3
+  upkeep = 30
   resource_cost = 18
   food = 3
-  pop = 0
+  pop = 3
   terrain_skills = [Fly, ForestSurvival]
 
   hp = 3
@@ -5153,11 +5156,11 @@ class ForestBear(Unit):
   traits = [bear_t]
   aligment = nature_t
   size = 3
-  gold = 300
-  upkeep = 25
+  train_rate = 2
+  upkeep = 20
   resource_cost = 22
   food = 5
-  pop = 0
+  pop = 3
   terrain_skills = [ForestSurvival]
 
   hp = 16
@@ -5200,11 +5203,11 @@ class ForestEagle(Elf):
   traits = [eagle_t]
   aligment = nature_t
   size = 2
-  gold = 600
-  upkeep = 40
+  train_rate = 3
+  upkeep = 30
   resource_cost = 25
   food = 4
-  pop = 0
+  pop = 4
   terrain_skills = [Fly, ForestSurvival]
 
   hp = 7
@@ -5243,11 +5246,11 @@ class GreatEagle(Elf):
   traits = [eagle_t]
   aligment = nature_t
   size = 3
-  gold = 1200
-  upkeep = 200
+  train_rate = 4
+  upkeep = 50
   resource_cost = 35
   food = 6
-  pop = 0
+  pop = 5
   terrain_skills = [Fly, ForestSurvival, MountainSurvival]
 
   hp = 30
@@ -5286,8 +5289,8 @@ class ForestGiant(Unit):
   traits = [beast_t]
   aligment = wild_t
   size = 4
-  gold = 400
-  upkeep = 60
+  train_rate = 2
+  upkeep = 30
   resource_cost = 24
   food = 5
   pop = 5
@@ -5334,11 +5337,11 @@ class ForestGuard(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 180
+  train_rate = 1.5
   upkeep = 8
   resource_cost = 14
   food = 2
-  pop = 1.1
+  pop = 1.3
   terrain_skills = [Burn, ForestSurvival, Raid]
 
   hp = 10
@@ -5380,7 +5383,7 @@ class ForestRider(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 3
-  gold = 750
+  train_rate = 3
   upkeep = 40
   resource_cost = 30
   food = 5
@@ -5429,7 +5432,7 @@ class ElvesSettler(Human):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 1000
+  train_rate = 3
   upkeep = 20
   resource_cost = 40
   food = 20
@@ -5469,11 +5472,11 @@ class Huntress(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 360
+  train_rate = 1.5
   upkeep = 12
   resource_cost = 14
   food = 2
-  pop = 3
+  pop = 2
   terrain_skills = [Burn, ForestSurvival]
 
   hp = 10
@@ -5516,11 +5519,11 @@ class WoodArcher(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 520
-  upkeep = 20
+  train_rate = 2
+  upkeep = 15
   resource_cost = 28
   food = 2
-  pop = 3
+  pop = 2
   terrain_skills = [Burn, DarkVision, ForestSurvival, Raid]
 
   hp = 10
@@ -5563,7 +5566,7 @@ class SisterFromTheDeepth(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 2
-  gold = 350
+  train_rate = 3
   upkeep = 15
   resource_cost = 22
   food = 2
@@ -5612,11 +5615,11 @@ class ElkRider(Elf):
   traits = [elf_t]
   aligment = wild_t
   size = 4
-  gold = 550
-  upkeep = 30
+  train_rate = 3
+  upkeep = 50
   resource_cost = 25
   food = 5
-  pop = 4
+  pop = 4.5
   terrain_skills = [Burn, ForestSurvival, Raid]
 
   hp = 16
@@ -5946,7 +5949,7 @@ class FieldsOfJupiter(TheMarbleTemple, Building):
 class Augur(Unit):
   name = "augur"
   namelist = [praenomen, nomen, cognomen]
-  units = 20
+  units = 10
   min_units = 5
   ln = 10
   max_squads = 1
@@ -5957,7 +5960,7 @@ class Augur(Unit):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 600
+  train_rate = 3
   upkeep = 20
   resource_cost = 30
   food = 3
@@ -5997,7 +6000,7 @@ class Augur(Unit):
 class Aquilifer(Human):
   name = "aquilifer"
   namelist = [praenomen, nomen, cognomen]
-  units = 30
+  units = 20
   ln = 10
   min_units = 10
   max_squads = 1
@@ -6009,8 +6012,8 @@ class Aquilifer(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 1500
-  upkeep = 25
+  train_rate = 3
+  upkeep = 30
   resource_cost = 35
   food = 5
   pop = 4
@@ -6063,8 +6066,8 @@ class Ballistarius(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 500
-  upkeep = 100
+  train_rate = 2
+  upkeep = 25
   resource_cost = 25
   food = 5
   pop = 2.5
@@ -6121,7 +6124,7 @@ class Centurion(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 500
+  train_rate = 2.5
   upkeep = 15
   resource_cost = 25
   food = 5
@@ -6179,7 +6182,7 @@ class Decarion(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 15
   resource_cost = 15
   food = 5
@@ -6237,7 +6240,7 @@ class Decurion(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 500
+  train_rate = 2.5
   upkeep = 20
   resource_cost = 20
   food = 5
@@ -6296,7 +6299,7 @@ class Flamen(Human):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 1300
+  train_rate = 3
   upkeep = 40
   resource_cost = 30
   food = 3
@@ -6344,7 +6347,7 @@ class Legatus(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 1000
+  train_rate = 2.5
   upkeep = 50
   resource_cost = 40
   food = 5
@@ -6391,7 +6394,7 @@ class Legatus(Human):
 class PontifexMaximus(Unit):
   name = "pontifex maximus"
   namelist = [praenomen, nomen, cognomen]
-  units = 10
+  units = 5
   min_units = 5
   ln = 10
   max_squads = 1
@@ -6402,8 +6405,8 @@ class PontifexMaximus(Unit):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 2000
-  upkeep = 55
+  train_rate = 3
+  upkeep = 60
   resource_cost = 30
   food = 5
   pop = 80
@@ -6450,7 +6453,7 @@ class Settler(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 1500
+  train_rate = 4
   upkeep = 10
   resource_cost = 30
   food = 25
@@ -6491,7 +6494,7 @@ class Flagellant(Human):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 140
+  train_rate = 1.5
   upkeep = 6
   resource_cost = 11
   food = 2
@@ -6536,7 +6539,7 @@ class RebornOne(Human):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 180
+  train_rate = 2
   upkeep = 14
   resource_cost = 14
   food = 3
@@ -6580,7 +6583,7 @@ class Velites(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 350
+  train_rate = 1.5
   upkeep = 15
   resource_cost = 12
   food = 3
@@ -6623,7 +6626,7 @@ class ImperialGuard(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 820
+  train_rate = 2
   upkeep = 30
   resource_cost = 18
   food = 4
@@ -6665,7 +6668,7 @@ class Hastati(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 420
+  train_rate = 2
   upkeep = 25
   resource_cost = 15
   food = 3
@@ -6708,7 +6711,7 @@ class Principes(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 600
+  train_rate = 2.5
   upkeep = 40
   resource_cost = 24
   food = 3
@@ -6751,7 +6754,7 @@ class Halberdier(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 550
+  train_rate = 2.5
   upkeep = 40
   resource_cost = 18
   food = 4
@@ -6794,7 +6797,7 @@ class SacredWarrior(Human):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 600
+  train_rate = 2.5
   upkeep = 30
   resource_cost = 16
   food = 3
@@ -6831,15 +6834,15 @@ class SacredWarrior(Human):
 
 class KnightsTemplar (Human):
   name = knights_templar_t
-  units = 10
-  min_units = 10
-  ln = 10
+  units = 5
+  min_units = 5
+  ln = 5
   max_squads = 6
   type = "infantry"
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 1250
+  train_rate = 2
   upkeep = 60
   resource_cost = 22
   food = 4
@@ -6882,7 +6885,7 @@ class Sagittarii(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 450
+  train_rate = 1.5
   upkeep = 14
   resource_cost = 14
   food = 3
@@ -6924,7 +6927,7 @@ class CrossBowMan(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 420
+  train_rate = 2
   upkeep = 20
   resource_cost = 18
   food = 3
@@ -6965,7 +6968,7 @@ class Arquebusier(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 1020
+  train_rate = 2
   upkeep = 40
   resource_cost = 25
   food = 3
@@ -7003,7 +7006,7 @@ class Musket(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 1100
+  train_rate = 2
   upkeep = 50
   resource_cost = 30
   food = 3
@@ -7034,8 +7037,8 @@ class Musket(Human):
 
 class Equite(Human):
   name = equites_t
-  units = 10
-  min_units = 10
+  units = 5
+  min_units = 5
   ln = 7
   max_squads = 6
   type = "cavalry"
@@ -7043,9 +7046,9 @@ class Equite(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 300
+  train_rate = 2
   upkeep = 25
-  resource_cost = 20
+  resource_cost = 14
   food = 5
   pop = 3
   terrain_skills = [Burn, Raid]
@@ -7092,7 +7095,7 @@ class Equites2(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 300
+  train_rate = 2.5
   upkeep = 40
   resource_cost = 22
   food = 6
@@ -7137,8 +7140,8 @@ class Gryphon(Unit):
   traits = [gryphon_t]
   aligment = wild_t
   size = 4
-  gold = 350
-  upkeep = 60
+  train_rate = 2.5
+  upkeep = 50
   resource_cost = 20
   food = 4
   pop = 5
@@ -7182,8 +7185,8 @@ class GryphonRiders(Unit):
   traits = [human_t]
   aligment = sacred_t
   size = 4
-  gold = 300
-  upkeep = 100
+  train_rate = 3
+  upkeep = 80
   resource_cost = 22
   food = 6
   pop = 6
@@ -7571,7 +7574,7 @@ class BoierLord(Unit):
   traits = [human_t]
   aligment = malignant_t
   size = 2
-  gold = 300
+  train_rate = 2
   upkeep = 20
   resource_cost = 15
   food = 4
@@ -7625,7 +7628,7 @@ class Paznic(Unit):
   traits = [human_t]
   aligment = malignant_t
   size = 2
-  gold = 300
+  train_rate = 2
   upkeep = 20
   resource_cost = 15
   food = 4
@@ -7678,8 +7681,8 @@ class Isaac(Unit):
   aligment = malignant_t
   size = 2
   unique = 1
-  gold = 1500
-  upkeep = 43
+  train_rate = 3
+  upkeep = 33
   resource_cost = 25
   food = 4
   pop = 8
@@ -7734,7 +7737,7 @@ class Necromancer(Human):
   traits = [human_t]
   aligment = malignant_t
   size = 2
-  gold = 900
+  train_rate = 2
   upkeep = 25
   resource_cost = 20
   food = 4
@@ -7792,8 +7795,8 @@ class VampireCount(Undead):
   traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
-  gold = 1500
-  upkeep = 500
+  train_rate = 2.5
+  upkeep = 300
   resource_cost = 25
   food = 0
   pop = 50
@@ -7848,8 +7851,8 @@ class VarGhul(Undead):
   traits = [death_t, blood_drinker_t]
   aligment = malignant_t
   size = 3
-  gold = 670
-  upkeep = 15
+  train_rate = 2
+  upkeep = 25
   resource_cost = 20
   food = 5
   pop = 4
@@ -7902,8 +7905,8 @@ class VladDracul(Undead):
   traits = [death_t, blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
-  gold = 3200
-  upkeep = 1666
+  train_rate = 3
+  upkeep = 666
   resource_cost = 50
   food = 0
   pop = 300
@@ -7958,11 +7961,11 @@ class Adjule(Unit):
   traits = [death_t]
   aligment = malignant_t
   size = 2
-  gold = 230
+  train_rate = 2
   upkeep = 13
   resource_cost = 14
   food = 0
-  pop 0
+  pop = 0
   terrain_skills = [DarkVision, DesertSurvival, NightSurvival]
 
   hp = 16
@@ -8005,7 +8008,7 @@ class WailingLady(Undead):
   traits = [death_t]
   aligment = hell_t
   size = 2
-  gold = 666
+  train_rate = 2
   upkeep = 100
   resource_cost = 30
   food = 0
@@ -8050,7 +8053,7 @@ class Bat(Unit):
   traits = [bat_t]
   aligment = nature_t
   size = 1
-  gold = 435
+  train_rate = 1.5
   upkeep = 1
   resource_cost = 15
   food = 2
@@ -8097,7 +8100,7 @@ class BlackKnight(Undead):
   traits = [death_t]
   aligment = malignant_t
   size = 3
-  gold = 1400
+  train_rate = 2
   upkeep = 30
   resource_cost = 18
   food = 0
@@ -8147,7 +8150,7 @@ class BloodKnight(Undead):
   traits = [death_t, blood_drinker_t]
   aligment = malignant_t
   size = 2
-  gold = 1200
+  train_rate = 2.5
   upkeep = 40
   resource_cost = 25
   food = 0
@@ -8193,7 +8196,7 @@ class CryptHorror(Undead):
   traits = [death_t]
   aligment = malignant_t
   size = 4
-  gold = 560
+  train_rate = 3
   upkeep = 20
   resource_cost = 18
   food = 0
@@ -8236,7 +8239,7 @@ class DireWolf(Undead):
   traits = [death_t, wolf_t]
   aligment = malignant_t
   size = 3
-  gold = 850
+  train_rate = 2
   upkeep = 30
   resource_cost = 22
   food = 0
@@ -8282,7 +8285,7 @@ class Draugr(Unit):
   traits = [death_t, blood_drinker_t]
   aligment = malignant_t
   size = 4
-  gold = 520
+  train_rate = 2
   upkeep = 20
   resource_cost = 18
   food = 2
@@ -8326,7 +8329,7 @@ class Draugr(Unit):
 
 class FellBat(Undead):
   name = fell_bat_t
-  units = 10
+  units = 5
   min_units = 5
   ln = 15
   max_squads = 10
@@ -8334,8 +8337,8 @@ class FellBat(Undead):
   traits = [death_t, bat_t, blood_drinker_t]
   aligment = malignant_t
   size = 2
-  gold = 520
-  upkeep = 22
+  train_rate = 2
+  upkeep = 20
   resource_cost = 16
   food = 0
   pop = 4
@@ -8380,7 +8383,7 @@ class Ghoul(Human):
   traits = [human_t, blood_drinker_t]
   aligment = malignant_t
   size = 2
-  gold = 180
+  train_rate = 1.5
   upkeep = 6
   resource_cost = 11
   food = 2
@@ -8430,7 +8433,7 @@ class GraveGuard(Undead):
   traits = [death_t, ]
   aligment = malignant_t 
   size = 2
-  gold = 850
+  train_rate = 2.5
   upkeep = 50
   resource_cost = 18
   food = 0
@@ -8477,7 +8480,7 @@ class Settler2(Human):
   traits = [human_t]
   size = 2
   aligment = neutral_t
-  gold = 1000
+  train_rate = 3.5
   upkeep = 20
   resource_cost = 30
   food = 20
@@ -8519,8 +8522,8 @@ class Skeleton(Undead):
   traits = [death_t, mindless_t]
   aligment = malignant_t
   size = 2
-  gold = 250
-  upkeep = 0
+  train_rate = 1.5
+  upkeep = 1
   resource_cost = 10
   food = 0
   pop = 1.2
@@ -8563,8 +8566,8 @@ class SkeletonWarrior(Undead):
   traits = [death_t, mindless_t]
   aligment = malignant_t
   size = 2
-  gold = 340
-  upkeep = 15
+  train_rate = 2
+  upkeep = 8
   resource_cost = 14
   food = 0
   pop = 2
@@ -8607,8 +8610,8 @@ class SpectralInfantry(Unit):
   traits = [death_t]
   aligment = wild_t
   size = 2
-  gold = 500
-  upkeep = 10
+  train_rate = 2.5
+  upkeep = 15
   resource_cost = 15
   food = 0
   pop = 3.5
@@ -8652,8 +8655,8 @@ class Vampire(Undead):
   traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
-  gold = 700
-  upkeep = 50
+  train_rate = 2
+  upkeep = 30
   resource_cost = 25
   food = 0
   pop = 4
@@ -8701,8 +8704,8 @@ class Vargheist(Undead):
   traits = [blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 3
-  gold = 620
-  upkeep = 40
+  train_rate = 2.5
+  upkeep = 25
   resource_cost = 20
   food = 0
   pop = 15
@@ -8752,8 +8755,8 @@ class Zombie(Undead, Ground):
   traits = [death_t]
   aligment = malignant_t
   size = 2
-  gold = 120
-  upkeep = 0
+  train_rate = 1.5
+  upkeep = 1
   resource_cost = 10
   food = 0
   pop = 1.5
@@ -9808,7 +9811,7 @@ class CannibalWarlord(Human):
   traits = [human_t]
   aligment = hell_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 18
   resource_cost = 15
   food = 5
@@ -9863,7 +9866,7 @@ class GoblinShaman(Human):
   traits = [goblin_t]
   aligment = malignant_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 12
   resource_cost = 18
   food = 4
@@ -9910,7 +9913,7 @@ class Inquisitor(Human):
   traits = [human_t]
   aligment = sacred_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 20
   resource_cost = 22
   food = 4
@@ -9957,7 +9960,7 @@ class OrcCaptain(Human):
   traits = [orc_t]
   aligment = malignant_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 14
   resource_cost = 15
   food = 5
@@ -10011,7 +10014,7 @@ class ShamanOfTheLostTribe(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 700
+  train_rate = 2
   upkeep = 15
   resource_cost = 18
   food = 3
@@ -10066,7 +10069,7 @@ class ShamanOfTheWind(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 700
+  train_rate = 2
   upkeep = 15
   resource_cost = 18
   food = 3
@@ -10123,7 +10126,7 @@ class VampireLord(Undead):
   traits = [death_t, blood_drinker_t, vampire_t]
   aligment = malignant_t
   size = 2
-  gold = 800
+  train_rate = 2
   upkeep = 300
   resource_cost = 20
   food = 0
@@ -10178,7 +10181,7 @@ class WarlockApprentice(Unit):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 670
+  train_rate = 1.5
   upkeep = 20
   resource_cost = 16
   food = 3
@@ -10234,7 +10237,7 @@ class Warlock(Unit):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 700
+  train_rate = 2
   upkeep = 30
   resource_cost = 22
   food = 3
@@ -10289,7 +10292,7 @@ class Warlord(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 480
+  train_rate = 2
   upkeep = 15
   resource_cost = 15
   food = 5
@@ -10345,7 +10348,7 @@ class WarMonger(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 600
+  train_rate = 2.5
   upkeep = 200
   resource_cost = 25
   food = 4
@@ -10387,7 +10390,7 @@ class Witch(Unit):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 666
+  train_rate = 2
   upkeep = 25
   resource_cost = 22
   food = 3
@@ -10441,7 +10444,7 @@ class Archer(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 380
+  train_rate = 1.5
   upkeep = 6
   resource_cost = 11
   food = 3
@@ -10491,7 +10494,7 @@ class Akhlut(Unit):
   traits = [beast_t]
   aligment = wild_t
   size = 3
-  gold = 320
+  train_rate = 2.5
   upkeep = 60
   resource_cost = 28
   food = 12
@@ -10540,7 +10543,7 @@ class BlackOrc(Unit):
   traits = [orc_t]
   aligment = malignant_t
   size = 3
-  gold = 960
+  train_rate = 2.3
   upkeep = 25
   resource_cost = 20
   food = 6
@@ -10590,7 +10593,7 @@ class BlizzardWarrior(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 120
+  train_rate = 1.5
   upkeep = 10
   resource_cost = 11
   food = 3
@@ -10638,7 +10641,7 @@ class CannibalWarrior(Human):
   traits = [human_t]
   aligment = hell_t
   size = 2
-  gold = 320
+  train_rate = 1.5
   upkeep = 5
   resource_cost = 10
   food = 2
@@ -10686,7 +10689,7 @@ class Crocodile(Unit):
   traits = [crocodile_t]
   aligment = nature_t
   size = 2
-  gold = 220
+  train_rate = 2
   upkeep = 15
   resource_cost = 20
   food = 2
@@ -10735,7 +10738,7 @@ class DesertNomad(Human):
   traits = [human_t]
   aligment = wild_t
   size = 3
-  gold = 240
+  train_rate = 1.5
   upkeep = 20
   resource_cost = 18
   food = 4
@@ -10788,7 +10791,7 @@ class DevourerOfDemons(Unit):
   traits = [spirit_t]
   aligment = wild_t
   size = 5
-  gold = 2200
+  train_rate = 2.5
   upkeep = 500
   resource_cost = 50
   food = 0
@@ -10836,7 +10839,7 @@ class DevoutOfChaos(Human):
   traits = [human_t]
   aligment = hell_t
   size = 2
-  gold = 300
+  train_rate = 1.5
   upkeep = 30
   resource_cost = 20
   food = 3
@@ -10925,7 +10928,7 @@ class GiantBear(Unit):
   traits = [bear_t]
   aligment = nature_t
   size = 4
-  gold = 800
+  train_rate = 2.5
   upkeep = 30
   resource_cost = 26
   food = 8
@@ -10973,7 +10976,7 @@ class GiantCrocodile(Unit):
   traits = [crocodile_t]
   aligment = nature_t
   size = 3
-  gold = 420
+  train_rate = 2.5
   upkeep = 25
   resource_cost = 20
   food = 6
@@ -11021,7 +11024,7 @@ class GiantOfTheLostTribe(Unit):
   traits = [beast_t]
   aligment = wild_t
   size = 3
-  gold = 520
+  train_rate = 3
   upkeep = 30
   resource_cost = 24
   food = 6
@@ -11074,8 +11077,8 @@ class GiantWolf(Unit):
   traits = [wolf_t]
   aligment = nature_t
   size = 3
-  gold = 320
-  upkeep = 40
+  train_rate = 2.5
+  upkeep = 30
   resource_cost = 18
   food = 6
   pop = 3
@@ -11128,8 +11131,8 @@ class Ghost(Undead):
   traits = [ghost_t]
   aligment = hell_t
   size = 2
-  gold = 366
-  upkeep = 20
+  train_rate = 3
+  upkeep = 10
   resource_cost = 20
   food = 0
   pop = 3
@@ -11170,7 +11173,7 @@ class Goblin(Unit):
   traits = [goblin_t]
   aligment = malignant_t
   size = 1
-  gold = 230
+  train_rate = 1.5
   upkeep = 4
   resource_cost = 12
   food = 2
@@ -11225,7 +11228,7 @@ class ClayGolem(Unit):
   traits = [golem_t, ]
   aligment = wild_t
   size = 4
-  gold = 1250
+  train_rate = 3
   upkeep = 10
   resource_cost = 30
   food = 0
@@ -11278,8 +11281,8 @@ class Harpy(Unit):
   traits = [beast_t]
   aligment = malignant_t
   size = 2
-  gold = 90
-  upkeep = 10
+  train_rate = 2.5
+  upkeep = 6
   resource_cost = 16
   food = 0
   pop = 2
@@ -11328,8 +11331,8 @@ class HellHound(Undead):
   traits = [death_t]
   aligment = hell_t
   size = 3
-  gold = 160
-  upkeep = 40
+  train_rate = 2.5
+  upkeep = 30
   resource_cost = 30
   food = 0
   pop = 5
@@ -11378,8 +11381,8 @@ class Hyena(Unit):
   traits = [hyena_t]
   aligment = nature_t
   size = 2
-  gold = 210
-  upkeep = 24
+  train_rate = 2
+  upkeep = 25
   resource_cost = 15
   food = 4
   pop = 2
@@ -11428,7 +11431,7 @@ class Hunter(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 90
+  train_rate = 1.5
   upkeep = 6
   resource_cost = 12
   food = 3
@@ -11480,7 +11483,7 @@ class KillerMantis(Human):
   traits = [mantis_t]
   aligment = nature_t
   size = 3
-  gold = 140
+  train_rate = 2
   upkeep = 20
   resource_cost = 15
   food = 5
@@ -11531,7 +11534,7 @@ class NomadsRider(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 240
+  train_rate = 2.5
   upkeep = 25
   resource_cost = 25
   food = 5
@@ -11582,7 +11585,7 @@ class OrcArcher(Unit):
   traits = [orc_t]
   aligment = malignant_t
   size = 2
-  gold = 240
+  train_rate = 1.3
   upkeep = 10
   resource_cost = 12
   food = 3
@@ -11633,7 +11636,7 @@ class OrcWarrior(Unit):
   traits = [orc_t]
   aligment = malignant_t
   size = 2
-  gold = 200
+  train_rate = 1.3
   upkeep = 7
   resource_cost = 10
   food = 3
@@ -11684,7 +11687,7 @@ class Levy(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 120
+  train_rate = 1.3
   upkeep = 4
   resource_cost = 11
   food = 3
@@ -11729,7 +11732,7 @@ class LizardMan(Human):
   traits = [lizard_t]
   aligment = neutral_t
   size = 2
-  gold = 260
+  train_rate = 1.5
   upkeep = 10
   resource_cost = 8
   food = 2
@@ -11781,7 +11784,7 @@ class LizardManInfantry(Human):
   traits = [lizard_t]
   aligment = neutral_t
   size = 2
-  gold = 420
+  train_rate = 2
   upkeep = 16
   resource_cost = 18
   food = 2
@@ -11829,7 +11832,7 @@ class Mandeha(Unit):
   traits = [beast_t]
   aligment = hell_t
   size = 5
-  gold = 3200
+  train_rate = 2
   upkeep = 540
   resource_cost = 40
   food = 7
@@ -11878,7 +11881,7 @@ class Mammot(Unit):
   traits = [mammot_t]
   aligment = nature_t
   size = 4
-  gold = 1260
+  train_rate = 3
   upkeep = 15
   resource_cost = 25
   food = 10
@@ -11979,7 +11982,7 @@ class Ogre(Unit):
   traits = [ogre_t]
   aligment = wild_t
   size = 3
-  gold = 560
+  train_rate = 2.5
   upkeep = 15
   resource_cost = 15
   food = 6
@@ -12029,7 +12032,7 @@ class PaleOne(Unit):
   traits = [beast_t]
   aligment = neutral_t
   size = 2
-  gold = 340
+  train_rate = 2
   upkeep = 15
   resource_cost = 12
   food = 1
@@ -12080,7 +12083,7 @@ class Peasant(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 80
+  train_rate = 1
   upkeep = 1
   resource_cost = 7
   food = 3
@@ -12128,7 +12131,7 @@ class PeasantLevy(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 120
+  train_rate = 1.3
   upkeep = 3
   resource_cost = 9
   food = 3
@@ -12220,7 +12223,7 @@ class Raider(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 150
+  train_rate = 1.5
   upkeep = 10
   resource_cost = 14
   food = 3
@@ -12270,7 +12273,7 @@ class Rider(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 3
-  gold = 320
+  train_rate = 2
   upkeep = 25
   resource_cost = 16
   food = 6
@@ -12322,7 +12325,7 @@ class Satyr(Human):
   traits = [beast_t]
   aligment = wild_t
   size = 2
-  gold = 200
+  train_rate = 1.5
   upkeep = 15
   resource_cost = 12
   food = 2
@@ -12366,7 +12369,7 @@ class Satyr(Human):
 
 class Slave(Human):
   name = "slave"
-  units = 50
+  units = 30
   min_units = 10
   ln = 20
   max_squads = 60
@@ -12375,7 +12378,7 @@ class Slave(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 250
+  train_rate = 4
   upkeep = 1
   resource_cost = 7
   food = 3
@@ -12423,7 +12426,7 @@ class SlaveHunter(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 450
+  train_rate = 5
   upkeep = 3
   resource_cost = 1
   food = 3
@@ -12476,7 +12479,7 @@ class SlaveWarrior(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 560
+  train_rate = 8
   upkeep = 4
   resource_cost = 10
   food = 3
@@ -12525,7 +12528,7 @@ class SonOfWind(Human):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 50
+  train_rate = 1.5
   upkeep = 15
   resource_cost = 16
   food = 3
@@ -12568,7 +12571,7 @@ class Troglodyte(Unit):
   traits = [human_t]
   aligment = wild_t
   size = 2
-  gold = 100
+  train_rate = 2
   upkeep = 5
   resource_cost = 18
   food = 3
@@ -12618,7 +12621,7 @@ class Troll(Unit):
   traits = [troll_t]
   aligment = wild_t
   size = 5
-  gold = 400
+  train_rate = 3
   upkeep = 40
   resource_cost = 22
   food = 6
@@ -12667,7 +12670,7 @@ class Warg(Unit):
   traits = [wolf_t]
   aligment = malignant_t
   size = 2
-  gold = 540
+  train_rate = 3
   upkeep = 35
   resource_cost = 18
   food = 6
@@ -12712,16 +12715,16 @@ class Warg(Unit):
 
 class WargRider(Unit):
   name = "warg rider"
-  units = 10
+  units = 5
   min_units = 5
-  ln = 5
+  ln = 7
   max_squads = 6
   mounted = 1
   type = "beast"
   traits = [orc_t]
   aligment = malignant_t
-  size = 2
-  gold = 760
+  size = 3
+  train_rate = 2.5
   upkeep = 60
   resource_cost = 22
   food = 8
@@ -12776,7 +12779,7 @@ class Warrior(Human):
   traits = [human_t]
   aligment = neutral_t
   size = 2
-  gold = 270
+  train_rate = 1.5
   upkeep = 10
   resource_cost = 10
   food = 3
@@ -12824,7 +12827,7 @@ class WetOne(Unit):
   traits = [beast_t]
   aligment = neutral_t
   size = 2
-  gold = 250
+  train_rate = 1.5
   upkeep = 10
   resource_cost = 14
   food = 1
@@ -12875,7 +12878,7 @@ class WoodlandSpirit(Unit):
   traits = [spirit_t]
   aligment = wild_t
   size = 4
-  gold = 80
+  train_rate = 2
   upkeep = 10
   resource_cost = 18
   food = 1
@@ -12919,7 +12922,7 @@ class Wolf(Unit):
   traits = [wolf_t]
   aligment = nature_t
   size = 2
-  gold = 320
+  train_rate = 2
   upkeep = 15
   resource_cost = 14
   food = 3
@@ -12971,7 +12974,7 @@ class WolfRider(Unit):
   traits = [goblin_t]
   aligment = malignant_t
   size = 2
-  gold = 400
+  train_rate = 2
   upkeep = 25
   resource_cost = 16
   food = 4
