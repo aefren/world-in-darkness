@@ -8,3 +8,5 @@ log/
 *.log
 .settings/org.eclipse.core.resources.prefs
 *.log
+*.log
+*.log

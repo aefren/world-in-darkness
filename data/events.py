@@ -5,11 +5,10 @@ import math
 from data import skills
 from data.lang.es import *
 from log_module import *
-from random import choice, randint, uniform
+from random import choice, randint, shuffle, uniform
 from screen_reader import *
 from sound import *
 from time import *
-
 
 class Event:
   name = ''
@@ -76,8 +75,23 @@ class Reanimation(Event):
     for t in self.itm.tiles:
       if t.corpses == []: continue
       total_hp = randint(30,70)
-      dead = choice(t.corpses)
-      raised = choice(dead.corpses)(t.nation)
+      corpses = []
+      dead = None
+      for it in t.corpses: corpses += [it]
+      for it in corpses: it._go = 1
+      for it in corpses:
+        for cr in it.corpses:
+          if cr.aligment != malignant_t: it._go = 0
+      corpses = [it for it in corpses if it._go]
+      shuffle(corpses)
+      for it in corpses:
+        shuffle(it.corpses)
+        for cr in it.corpses:
+          if cr.aligment == malignant_t: 
+            dead = it
+            raised = cr(t.nation)
+          break
+      if dead == None: break
       if sum(dead.deads)*total_hp >= total_hp: 
         raised.hp_total = total_hp
         dead.deads[0] -= total_hp/5

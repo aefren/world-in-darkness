@@ -848,7 +848,7 @@ class World:
         try:
           uni.update()
         except: Pdb().set_trace
-        if uni.units > 1:
+        if uni.units > 1 and uni.leadership == 0:
           if info: logging.debug(f"randomly set units number")
           uni.hp_total = randint(40, 60) * uni.hp_total / 100
           uni.update()
@@ -2051,6 +2051,7 @@ class Ai:
     
     # ciudades.
     for ct in nation.cities:
+      ct.check_events()
       if ct.pos.world.turn > 1: ct.population_change()
       ct.set_downgrade()
       ct.set_upgrade()

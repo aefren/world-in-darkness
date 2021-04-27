@@ -903,6 +903,8 @@ class Miasma(Skill):
         itm.pos.events += [sk]
         msg = f"miasma in {itm.pos} {itm.pos.cords}."
         if itm.pos.nation: itm.pos.nation.log[-1] += [msg]
+        itm.log[-1] += [msg]
+        itm.pos.world.log[-1] += [msg]
         logging.debug(msg)
         if itm.pos.nation and itm.pos.nation.show_info:
           sleep(loadsound("notify25", channel=ch4) * 0.3)
@@ -911,7 +913,7 @@ class Miasma(Skill):
     self.turns -= 1
     if itm.ambient.sseason == winter_t: self.turns -= 1
     if itm.pop and basics.roll_dice(2) >= 10: 
-      pop_death = randint(10, 30)
+      pop_death = randint(5, 10)
       deads = pop_death * itm.pop // 100
       msg = f"miasma: {deads_t} {deads} in {itm} {itm.cords}."
       if itm.city: msg += f" ({itm.city})"
@@ -935,7 +937,6 @@ class Miasma(Skill):
         roll = basics.roll_dice(1)
         if roll >= 6: turns += 5
         elif roll >= 5: turns += 3
-        else: turns += 1
         sk = Intoxicated(unit)
         sk.turns = turns        
         if Intoxicated.name not in [s.name for s in unit.skills]: 
@@ -1037,6 +1038,66 @@ class Organization(Skill):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
+
+
+class Pestilence(Skill):
+  name = "pestilence"
+  desc = ""
+  effects = "self"
+  ranking = 1
+  type = "start turn"
+  turns = -1
+  tags = ["miasma"]
+
+  def run(self, itm):
+    itm.effects += [self.name]
+    roll = basics.roll_dice(1)
+    if roll >= 3:
+      if self.name not in [ev.name for ev in itm.pos.events]:
+        sk = Miasma(itm.pos)
+        sk.turns = randint(2, 5)
+        itm.pos.events += [sk]
+        msg = f"miasma in {itm.pos} {itm.pos.cords}."
+        if itm.pos.nation: itm.pos.nation.log[-1] += [msg]
+        itm.log[-1] += [msg]
+        itm.pos.world.log[-1] += [msg]
+        logging.debug(msg)
+        if itm.pos.nation and itm.pos.nation.show_info:
+          sleep(loadsound("notify25", channel=ch4) * 0.3)
+
+  def tile_run(self, itm):
+    self.turns -= 1
+    if itm.ambient.sseason == winter_t: self.turns -= 1
+    if itm.pop and basics.roll_dice(2) >= 10: 
+      pop_death = randint(5, 10)
+      deads = pop_death * itm.pop // 100
+      msg = f"miasma: {deads_t} {deads} in {itm} {itm.cords}."
+      if itm.city: msg += f" ({itm.city})"
+      logging.debug(msg)
+      itm.nation.log[-1] += [msg]
+      corpse = choice([cr for cr in itm.nation.population_type if cr.poisonres == 0])
+      itm.add_corpses(corpse, deads)
+      # corpse.deads = [pop_death * itm.pop // 100]
+      # corpse.units=0
+      # corpse.hp_total = 0
+      # itm.units += [corpse]
+      itm.pop -= deads
+      if itm.nation.show_info: sleep(loadsound("notify23", channel=ch4) // 1.5)
+    units = [u for u in itm.units if u.poisonres == 0
+               and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
+    roll = basics.roll_dice(1)
+    if roll >= 6 and units:
+      if units:
+        unit = choice(units)
+        turns = randint(1, 3)
+        roll = basics.roll_dice(1)
+        if roll >= 6: turns += 5
+        elif roll >= 5: turns += 3
+        sk = Intoxicated(unit)
+        sk.turns = turns        
+        if Intoxicated.name not in [s.name for s in unit.skills]: 
+          unit.other_skills += [sk]
+          if unit.nation.show_info: sleep(loadsound("notify28"))
 
 
 
