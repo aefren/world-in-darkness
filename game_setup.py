@@ -21,5 +21,5 @@ TRANS.ai = 1
 NATIONS = [HOLY, ELF, TRANS]
 
 #Random factions.
-RANDOM_FACTIONS = [Death(), Hell(), Nature(), Neutral(), Orcs(), Wild()]
+RANDOM_FACTIONS = [Malignant(), Hell(), Nature(), Order(), Orcs(), Wild()]
 

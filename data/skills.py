@@ -1635,7 +1635,7 @@ class Withdrawall(Skill):
       if itm.target.ranking < self.ranking * 1.5: return
       if itm.dist > itm.target.range[1]: return
       base = itm.moves - itm.moves_mod
-      base -= self.target.moves+self.target.moves_mod
+      base -= itm.target.moves+itm.target.moves_mod
       if basics.roll_dice(2) + base >= 9:
         itm.retreats = 1
         itm.mp[0] -= 1

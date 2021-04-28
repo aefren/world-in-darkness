@@ -833,6 +833,8 @@ class World:
       self.buildings.sort(key=lambda x: len(x.units))
       building = self.buildings[0]
       shuffle(building.av_units)
+      if basics.roll_dice(1) >= 5: 
+        building.av_units.sort(key=lambda x: x.leadership > 1, reverse=True)
       #building.av_units.sort(key=lambda x: x.leadership > 1, reverse=True)
       if info: logging.debug(f"adding unit from {building}.")
       for uni in building.av_units:
@@ -3867,13 +3869,13 @@ class Game:
     if event.type == pygame.KEYDOWN:
       if ctrl:
         if event.key == pygame.K_7:
-          pos.add_unit(ForestGuard, wood_elves_t, 1)
-        if event.key == pygame.K_8:
           pos.add_unit(OrcWarrior, orcs_t, 1)
+        if event.key == pygame.K_8:
+          pos.add_unit(Velites, holy_empire_t, 1)
         if event.key == pygame.K_9:
-          pos.add_unit(Warrior, holy_empire_t, 1)
+          pos.add_unit(OrcCaptain, orcs_t, 1)
         if event.key == pygame.K_0:
-          pos.add_unit(PathFinder, wood_elves_t, 1)
+          pos.add_unit(Decarion, holy_empire_t, 1)
         if event.key == pygame.K_b:
             pos.buildings += [BrigandLair(Wild, pos)]
         if event.key == pygame.K_F1:

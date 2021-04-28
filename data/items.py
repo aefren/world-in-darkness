@@ -2028,6 +2028,21 @@ class Unit:
     if self.charges: damage = self.combat_charge(damage, info=0) 
     self.combat_damage(damage, target, info=0)
 
+  def combat_gold(self):
+    value = self.upkeep * self.units
+    value += sum(it.upkeep*it.units for it in self.leads)
+    raids = self.history.raids
+    raids += sum(it.history.raids for it in self.leads)
+    kills_record = self.history.kills_record
+    kills_record += sum(it.history.kills_record for it in self.leads)
+    value += raids
+    if kills_record: value += kills_record * 2
+    value = ceil(value/2)
+    value *= 1 + self.history.turns / 4
+    if self.mounted: value *= 3
+    value = round(value * uniform(0.8, 1.2))
+    return value
+
   def combat_hits(self, off, info=0):
     if info:logging.info(f"hits.")
     target = self.target
@@ -2062,7 +2077,7 @@ class Unit:
       res = target.hres + target.hres_mod
     return hit_to, res
 
-  def combat_menu(self, target=None, info=0):
+  def combat_menu(self, target=None, attacker_log=[], defender_log=[], info=0):
     logging.info(f"combat_menu for {self}.")
     self.update()
     if self not in  self.pos.units:
@@ -2086,13 +2101,15 @@ class Unit:
     start_ranking1 = self.ranking
     start_ranking2 = target.ranking
     msg1 = f"{self} ({self.nation}) ataca a {target} ({target.nation})."
+    defender_log
+    for it in [attacker_log, defender_log]:
+      it[1][0] += [[msg1]]
     if info:logging.info(msg1)
     if info:logging.info(f"hp {self} {self.hp_total}, target {target} {target.hp_total}.")
     if info:logging.info(f"ranking {self.ranking} VS {target.ranking}.")
     info = 1 if any(i.show_info == 1 for i in units) else 0
     if info: sleep(loadsound("warn4") / 2)
     for i in units:
-      i.combat_log[1][0] += [[msg1]]
       i.dist = dist
       if i.can_charge: i.charges = 1
       i.pre_melee = i.javelins 
@@ -2115,8 +2132,6 @@ class Unit:
       i.temp_log = None
       i.wounds = []
       i.retreats = 0
-    gold_self = self.set_value()
-    gold_target = target.set_value()
     _round = 1
     while self.hp_total > 0 or target.hp_total > 0:
       if go:
@@ -2234,58 +2249,38 @@ class Unit:
           {kills_t} {sum(target.kills)}, {deads_t} {sum(target.deads)}, 
           {fled_t} {sum(target.fled)}.
           """
+          for it in [attacker_log, defender_log]:
+            it[1][0][-1] += [self.battle_log]
+            it[1][0] += [msg2]
           for i in units:
-            i.combat_log[1][0][-1] += [i.battle_log]
-            i.combat_log[1][0] += [msg2]
-            #if i.leader == None: i.nation.log[-1] += [i.combat_log]
-            #else: i.leader.combat_log[1][0] += [i.combat_log]
+            # #i.combat_log[1][0] += [msg2]
+            # if i.leader == None: i.nation.log[-1] += [i.combat_log]
+            # else: i.leader.combat_log[1][0] += [i.combat_log]
             i.add_corpses(target.pos)
             if self.pos != target.pos and self in self.pos.units: self.pos.units.remove(self)
           if self.hp_total < 1 or self.retreats:
             msg = f"{target} ({target.nation}) a vencido."
             if target.show_info: sp.speak(msg)
             logging.info(msg)
-            target.combat_log[1][0] += [msg]
-            self.combat_log[-1][0] += [msg]
-            target.pos.world.log[-1][-1] += target.combat_log
-            if gold_self:
-              msg1 = f"gana {gold_self} {gold_t}."
-              target.nation.gold += gold_self
-              target.combat_log[1][0] += [msg1]
-              logging.debug(msg1)
+            attacker_log[1][0] += [msg]
+            defender_log[1][0] += [msg]
+            # self.combat_log[-1][0] += [msg]
+            # target.pos.world.log[-1][-1] += target.combat_log
             if info:
               sp.speak(msg)
               sleep(loadsound("notify18") * 0.5)
-            xp = randint(2, 5)
-            if start_ranking2 * 100 / start_ranking1 < 50: xp += 15 
-            elif start_ranking2 * 100 / start_ranking1 < 60: xp += 10
-            elif start_ranking2 * 100 / start_ranking1 < 70: xp += 6
-            elif start_ranking2 * 100 / start_ranking1 < 90: xp += 4
-            target.xp += xp
-            if info: logging.debug(f"{target} gets {xp=: }.")
-            logging.info(msg)
+            logging.debug(msg)
             # check_position(target)
             return 0
           elif target.hp_total < 1 or target.retreats:
             msg = f"{self} ({self.nation}) ha vencido."
-            self.combat_log[1][0] += [msg]
-            target.combat_log[-1][0] += [msg]
+            attacker_log[1][0] += [msg]
+            defender_log[1][0] += [msg]
+            # target.combat_log[-1][0] += [msg]
             # target.pos.world.log[-1][-1] += target.combat_log
-            if gold_target:
-              msg1 = f"gana {gold_target} {gold_t}."
-              self.nation.gold += gold_target
-              self.combat_log[1][0] += [msg1]
-              logging.debug(msg1)
             if info:
               sp.speak(msg)
               sleep(loadsound("win1") * 0.5)
-            xp = randint(2, 5)
-            if start_ranking1 * 100 / start_ranking2 < 50: xp += 15 
-            elif start_ranking2 * 100 / start_ranking1 < 60: xp += 10
-            elif start_ranking2 * 100 / start_ranking1 < 70: xp += 6
-            elif start_ranking2 * 100 / start_ranking1 < 90: xp += 4
-            target.xp += xp
-            if info: logging.debug(f"{target} gets {xp=: }.")
             logging.info(msg)
             # check_position(self)
             return 1
@@ -2506,42 +2501,57 @@ class Unit:
     attackers = self.squads_position
     defenders = target.squads_position
     if target.pos.city: 
-      msg1 = f"""{combat_t} {in_t} {pos.city}, {pos}, {pos.cords}  
+      combat_location = f"""{combat_t} {in_t} {pos.city}, {pos}, {pos.cords}  
       {from_t} {self.pos}, {self.pos.cords}."""
     else: 
-      msg1 = f"""{combat_t} {in_t} {pos}, {pos.cords} "  
+      combat_location = f"""{combat_t} {in_t} {pos}, {pos.cords} "  
       {from_t} {self.pos}, {self.pos.cords}."""    
     
     leader1 = attackers[0]
     if attackers[0].leader: leader1 = attackers[0].leader
+    attacker_gold = leader1.combat_gold()
     squads1 = [str(i) for i in leader1.squads_position]
     leader2 = defenders[0]
     if defenders[0].leader: leader2 = defenders[0].leader
+    defender_gold = leader2.combat_gold()
     squads2 = [str(i) for i in leader2.squads_position]
-    msg2 = [f"{attacking_t} {leader1}, {ranking_t} {leader1.ranking}.",
+    combat_desc = [f"{attacking_t} {leader1}, {ranking_t} {leader1.ranking}.",
             f"{squads1}.",
             f"{defending_t} {leader2}, {ranking_t} {leader2.ranking}.",
             f"{squads2}.",
             ] 
-    msg = [msg1, [msg2]]
+    attacker_log = copy.deepcopy([combat_location, [combat_desc]])
+    defender_log = copy.deepcopy([combat_location, [combat_desc]])
+    self.nation.log[-1] += [attacker_log]
+    target.nation.log[-1] += [defender_log]
+    self.pos.world.log[-1] += [attacker_log]
     for i in attackers + defenders:
-      i.combat_log = copy.deepcopy(msg)
-      i.log[-1] += [i.combat_log]
-      if i.combat_log not in i.nation.log[-1]:
-        i.nation.log[-1] += [i.combat_log]
-    self.pos.world.log[-1] += [self.combat_log]
-    #self.nation.log[-1] += [self.combat_log]
-    #target.nation.log[-1] += [target.combat_log]
+      i.combat_log = []
+      if i in attackers: i.log[-1] += [attacker_log]
+      if i in defenders: i.combat_log += [defender_log]
     
     # Start of combat
     while attackers and defenders:
-      attackers[0].combat_menu(defenders[0])
+      attackers[0].combat_menu(defenders[0],
+                               attacker_log=attacker_log, defender_log=defender_log)
       attackers = [it for it in attackers if it. hp_total >= 1]
       defenders = [it for it in defenders if it. hp_total >= 1]
     
     # End of combat
-    if attackers:return 1
-    elif defenders: return 0
+    if attackers:
+      msg = f"{leader1.nation} {gets_t} {defender_gold} {gold_t}"
+      self.nation.gold += defender_gold
+      attacker_log[1][0] += [msg]
+      #XP.
+      for i in attackers: i.xp += ceil(defender_gold*0.01) 
+      return 1
+    elif defenders:
+      msg = f"{leader2.nation} {gets_t} {defender_gold} {gold_t}"
+      self.nation.gold += attacker_gold
+      defender_log[1][0] += [msg]
+      #xXP.
+      for i in defenders: i.xp += attacker_gold*0.1 
+      return 0
   
   def combat_retreat(self, info=0):
     if info: logging.debug(f" combat retreat.")
@@ -3981,17 +3991,7 @@ class Unit:
       if unrest < 0: unrest = 0
       t.unrest += unrest
 
-  def set_value(self):
-    value = self.upkeep * self.units
-    value += randint(2, 10)
-    if self.history.raids:
-      value += self.history.raids
-    if self.history.kills_record: 
-      value += self.history.kills_record * 2
-    value *= ceil(self.history.turns / 3)
-    if self.mounted: value *= 1.5
-    return value
-
+  
   def split(self, times=1):
     if self.squads <= 1 or self.goto: return self
     logging.info(f"divide {self}.")
@@ -4702,7 +4702,7 @@ class Druid(Elf):
   common = 4
 
   lead_traits = [elf_t, human_t, bear_t]
-  lead_aligments = [nature_t, neutral_t, wild_t]
+  lead_aligments = [nature_t, order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4753,7 +4753,7 @@ class KeeperOfTheGrove (Elf):
   strn = 14
 
   lead_traits = [elf_t, human_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4805,7 +4805,7 @@ class PathFinder(Elf):
   strn = 9
 
   lead_traits = [elf_t, human_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -4859,7 +4859,7 @@ class PriestessOfTheMoon(Elf):
   strn = 18
 
   lead_traits = [elf_t, human_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5968,7 +5968,7 @@ class Augur(Unit):
   strn = 5
 
   lead_traits = [human_t, sacred_t]
-  lead_aligments = [neutral_t, sacred_t]
+  lead_aligments = [order_t, sacred_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -5989,7 +5989,7 @@ class Aquilifer(Human):
   unique = 1
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 3
   upkeep = 30
@@ -6023,7 +6023,7 @@ class Aquilifer(Human):
   strn = 12
 
   lead_traits = [human_t]
-  lead_aligments = [neutral_t, sacred_t]
+  lead_aligments = [order_t, sacred_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6042,7 +6042,7 @@ class Ballistarius(Human):
   leadership = 40
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 25
@@ -6079,7 +6079,7 @@ class Ballistarius(Human):
 
   can_hire = 1
   lead_traits = [human_t]
-  lead_alignment = [neutral_t]
+  lead_alignment = [order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6099,7 +6099,7 @@ class Centurion(Human):
   leadership = 80
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 15
@@ -6136,7 +6136,7 @@ class Centurion(Human):
 
   can_hire = 1
   lead_traits = [human_t]
-  lead_alignment = [neutral_t]
+  lead_alignment = [order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6156,7 +6156,7 @@ class Decarion(Human):
   leadership = 50
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 15
@@ -6193,7 +6193,7 @@ class Decarion(Human):
 
   can_hire = 1
   lead_traits = [human_t]
-  lead_aligments = [neutral_t]
+  lead_aligments = [order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6213,7 +6213,7 @@ class Decurion(Human):
   type = "infantry"
   mounted = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 20
@@ -6250,7 +6250,7 @@ class Decurion(Human):
 
   can_hire = 1
   lead_traits = [human_t]
-  lead_alignment = [neutral_t]
+  lead_alignment = [order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6299,7 +6299,7 @@ class Flamen(Human):
   strn = 5
 
   lead_traits = [human_t]
-  lead_aligments = [neutral_t, sacred_t]
+  lead_aligments = [order_t, sacred_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6318,7 +6318,7 @@ class Legatus(Human):
   leadership = 140
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 50
@@ -6354,7 +6354,7 @@ class Legatus(Human):
   offensive_skills = []
 
   lead_traits = [human_t]
-  lead_aligments = [neutral_t]
+  lead_aligments = [order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -6422,7 +6422,7 @@ class Settler(Human):
   settler = 1
   type = "civil"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 4
   upkeep = 10
@@ -6551,7 +6551,7 @@ class Velites(Human):
   max_squads = 6
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 15
@@ -6594,7 +6594,7 @@ class ImperialGuard(Human):
   max_squads = 3
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 30
@@ -6636,7 +6636,7 @@ class Hastati(Human):
   max_squads = 3
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 25
@@ -6679,7 +6679,7 @@ class Principes(Human):
   max_squads = 6
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 40
@@ -6722,7 +6722,7 @@ class Halberdier(Human):
   max_squads = 6
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 40
@@ -6851,7 +6851,7 @@ class Sagittarii(Human):
   max_squads = 4
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 14
@@ -6893,7 +6893,7 @@ class CrossBowMan(Human):
   max_squads = 3
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 20
@@ -6934,7 +6934,7 @@ class Arquebusier(Human):
   max_squads = 5
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 40
@@ -6972,7 +6972,7 @@ class Musket(Human):
   max_squads = 5
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 50
@@ -7012,7 +7012,7 @@ class Equite(Human):
   type = "cavalry"
   mounted = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 3
   train_rate = 2
   upkeep = 25
@@ -7060,7 +7060,7 @@ class Equites2(Human):
   type = "cavalry"
   mounted = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 3
   train_rate = 2.5
   upkeep = 40
@@ -7570,7 +7570,7 @@ class BoierLord(Unit):
   
   fear = 6
   lead_traits = [human_t, blood_drinker_t, vampire_t, ]
-  lead_aligments = [malignant_t, wild_t, neutral_t]
+  lead_aligments = [malignant_t, wild_t, order_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -7897,7 +7897,7 @@ class VladDracul(Undead):
   strn = 16
 
   lead_traits = [bat_t, blood_drinker_t, death_t, human_t, vampire_t, wolf_t]
-  lead_aligments = [malignant_t, nature_t, neutral_t, wild_t]
+  lead_aligments = [malignant_t, nature_t, order_t, wild_t]
   pref_corpses = 1
 
   def __init__(self, nation):
@@ -8435,7 +8435,7 @@ class Settler2(Human):
   type = "civil"
   traits = [human_t]
   size = 2
-  aligment = neutral_t
+  aligment = order_t
   train_rate = 3.5
   upkeep = 20
   resource_cost = 30
@@ -9249,7 +9249,7 @@ class BrigandLair(Building):
 
 class Campment(Building):
   name = "campment"
-  nation = neutral_t
+  nation = order_t
   level = 1
   city_unique = 1
   size = 4
@@ -9297,7 +9297,7 @@ class CaveOfDarkRites(Building):
 
 class CaveOfGhouls(Building):
   name = "cave of ghouls"
-  nation = death_t
+  nation = malignant_t
   level = 1
   city_unique = 1
   size = 4
@@ -9321,7 +9321,7 @@ class CaveOfGhouls(Building):
 
 class DececratedCemetery(Building):
   name = "dececrated cemetery"
-  nation = death_t
+  nation = malignant_t
   level = 1
   city_unique = 1
   size = 6
@@ -9417,7 +9417,7 @@ class HiddenForest(Building):
 
 class HiddenTemple(Building):
   name = "hidden temple"
-  nation = neutral_t
+  nation = order_t
   level = 1
   city_unique = 1
   size = 5
@@ -9513,7 +9513,7 @@ class MammotsCave(Building):
 
 class NecromancersLair(Building):
   name = "Necromancers Lair"
-  nation = death_t
+  nation = malignant_t
   level = 1
   city_unique = 1
   size = 4
@@ -9526,7 +9526,7 @@ class NecromancersLair(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Necromancer, Skeleton]
+    self.av_units = [Abomination, Necromancer, Skeleton, SkeletonWarrior]
     self.resource_cost = [0, 40]
     self.soil = [plains_t, tundra_t, waste_t, ]
     self.surf = [forest_t, swamp_t]
@@ -9550,7 +9550,7 @@ class OathStone(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Troglodyte, Satyr]
+    self.av_units = [CannibalWarlord, Ogre, Troglodyte]
     self.resource_cost = [0, 35]
     self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
     self.surf = [none_t]
@@ -9561,7 +9561,7 @@ class OathStone(Building):
 
 class OpulentCrypt(Building):
   name = "opulent crypt"
-  nation = death_t
+  nation = malignant_t
   level = 1
   city_unique = 1
   size = 4
@@ -9585,7 +9585,7 @@ class OpulentCrypt(Building):
 
 class StalagmiteCavern(Building):
   name = "Stalagmite Cavern"
-  nation = neutral_t
+  nation = order_t
   level = 1
   city_unique = 1
   size = 4
@@ -9622,7 +9622,7 @@ class TroglodyteCave(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Troglodyte, Witch]
+    self.av_units = [Satyr, Witch]
     self.resource_cost = [0, 50]
     self.soil = [grassland_t, plains_t, tundra_t, waste_t]
     self.surf = [forest_t , none_t]
@@ -9670,7 +9670,7 @@ class UnderworldEntrance(Building):
 
   def __init__(self, nation, pos):
     super().__init__(nation, pos)
-    self.av_units = [Ghost, HellHound, DevoutOfChaos, WailingLady, Witch]
+    self.av_units = [Ghost, HellHound, DevoutOfChaos, AncientWitch]
     self.resource_cost = [0, 80]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, swamp_t, none_t]
@@ -9853,7 +9853,7 @@ class CannibalWarlord(Human):
   can_hire = 1
   common = 8
   lead_traits = [human_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -9872,7 +9872,7 @@ class GoblinShaman(Human):
   leadership = 40
   type = "infantry"
   traits = [goblin_t]
-  aligment = malignant_t
+  aligment = orcs_t
   size = 2
   train_rate = 2
   upkeep = 12
@@ -9948,7 +9948,7 @@ class Inquisitor(Human):
 
   common = 8
   lead_traits = [human_t]
-  lead_aligments = [neutral_t, sacred_t]
+  lead_aligments = [order_t, sacred_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -10054,7 +10054,7 @@ class ShamanOfTheLostTribe(Human):
 
   common = 7
   lead_traits = [bear_t, falcon_t, human_t, lizard_t, wolf_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -10109,7 +10109,7 @@ class ShamanOfTheWind(Human):
 
   common = 7
   lead_traits = [bear_t, human_t, mammot_t, wolf_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -10337,7 +10337,7 @@ class Warlord(Human):
   can_hire = 1
   common = 8
   lead_traits = [human_t]
-  lead_aligments = [neutral_t, wild_t]
+  lead_aligments = [order_t, wild_t]
 
   def __init__(self, nation):
     super().__init__(nation)
@@ -10356,7 +10356,7 @@ class WarMonger(Human):
   leadership = 120
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2.5
   upkeep = 200
@@ -10498,7 +10498,7 @@ class Archer(Human):
   max_squads = 5
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 6
@@ -10774,6 +10774,7 @@ class Crocodile(Unit):
     self.favhill = [0]
     self.favsoil = [grassland_t, plains_t, tundra_t]
     self.favsurf = [swamp_t]
+
 
 
 class DeadBear(Unit):
@@ -11057,6 +11058,7 @@ class GiantBear(Unit):
     self.favsurf = [forest_t, none_t]
 
 
+
 class GiantDeadBear(Unit):
   name = "giant dead bear"
   units = 1
@@ -11308,7 +11310,7 @@ class Goblin(Unit):
   max_squads = 10
   type = "infantry"
   traits = [goblin_t]
-  aligment = malignant_t
+  aligment = orcs_t
   size = 1
   train_rate = 1.5
   upkeep = 4
@@ -11662,7 +11664,7 @@ class NomadsRider(Human):
   mounted = 1
   type = "cavalry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 3
   train_rate = 2.5
   upkeep = 25
@@ -11812,7 +11814,7 @@ class Levy(Human):
   levy = 1
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.3
   upkeep = 4
@@ -11857,7 +11859,7 @@ class LizardMan(Human):
   poisonres = 1
   type = "infantry"
   traits = [lizard_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 10
@@ -11909,7 +11911,7 @@ class LizardManInfantry(Human):
   poisonres = 1
   type = "infantry"
   traits = [lizard_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 16
@@ -12043,6 +12045,7 @@ class Mammot(Unit):
     self.favhill = [0]
     self.favsoil = [tundra_t]
     self.favsurf = [none_t]
+
 
 
 class DeadMammot(Unit):
@@ -12202,7 +12205,7 @@ class PaleOne(Unit):
   max_squads = 6
   type = "beast"
   traits = [beast_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 2
   upkeep = 15
@@ -12252,7 +12255,7 @@ class Peasant(Human):
   type = "civil"
   will_less = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1
   upkeep = 1
@@ -12299,7 +12302,7 @@ class PeasantLevy(Human):
   type = "infantry"
   will_less = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.3
   upkeep = 3
@@ -12439,7 +12442,7 @@ class Rider(Human):
   type = "cavalry"
   mounted = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 3
   train_rate = 2
   upkeep = 25
@@ -12540,7 +12543,7 @@ class Slave(Human):
   type = "civil"
   will_less = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 4
   upkeep = 1
@@ -12587,7 +12590,7 @@ class SlaveHunter(Human):
   type = "infantry"
   will_less = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 5
   upkeep = 3
@@ -12639,7 +12642,7 @@ class SlaveWarrior(Human):
   type = "infantry"
   will_less = 1
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 8
   upkeep = 4
@@ -12932,7 +12935,7 @@ class Warrior(Human):
   max_squads = 10
   type = "infantry"
   traits = [human_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 10
@@ -12979,7 +12982,7 @@ class WetOne(Unit):
   max_squads = 6
   type = "beast"
   traits = [beast_t]
-  aligment = neutral_t
+  aligment = order_t
   size = 2
   train_rate = 1.5
   upkeep = 10
@@ -13124,7 +13127,7 @@ class WolfRider(Unit):
   mounted = 1
   type = "infantry"
   traits = [goblin_t]
-  aligment = malignant_t
+  aligment = orcs_t
   size = 2
   train_rate = 2
   upkeep = 25
@@ -13169,6 +13172,7 @@ class WolfRider(Unit):
 
 
 
+# Random nations.
 class Hell(Nation):
   name = hell_t
   info = 0
@@ -13176,19 +13180,18 @@ class Hell(Nation):
   def __init__(self):
     super().__init__()
     self.log = [[hell_t]]
-    self.av_units = [Ghoul, Harpy, HellHound, Necromancer, Ogre,
-                     Skeleton, Troglodyte, Vargheist, VarGhul, Zombie]
-                     
+    self.av_units = []
 
 
-class Death(Nation):
-  name = death_t
+
+class Malignant(Nation):
+  name = malignant_t
   info = 0
 
   def __init__(self):
     super().__init__()
-    self.log = [[death_t]]
-    self.av_units = [Ghoul, Necromancer, Skeleton, Vargheist, VarGhul, Zombie]
+    self.log = [[malignant_t]]
+    self.av_units = []
 
 
 
@@ -13199,18 +13202,18 @@ class Nature(Nation):
   def __init__(self):
     super().__init__()
     self.log = [[nature_t]]
-    self.av_units = [Akhlut, Crocodile, Hyena, GiantBear, GiantWolf, Mammot, Wolf]
+    self.av_units = []
 
 
 
-class Neutral(Nation):
-  name = "neutral"
+class Order(Nation):
+  name = order_t
   info = 0
   gold = 3000
 
   def __init__(self):
     super().__init__()
-    self.log = [["neutral"]]
+    self.log = [[order_t]]
     self.av_units = []
 
 
@@ -13221,11 +13224,20 @@ class Orcs(Nation):
 
   def __init__(self):
     super().__init__()
-    # City names.
-    self.leadernames1 = orc_name1
-    self.leadernames2 = orc_name2
     self.log = [[orcs_t]]
-    self.av_units = [OrcArcher, OrcWarrior, Goblin, Ogre, Troll, Troglodyte, Warg]
+    self.av_units = []
+
+
+
+class Sacred(Nation):
+  name = sacred_t
+  info = 0
+  gold = 3000
+
+  def __init__(self):
+    super().__init__()
+    self.log = [[sacred_t]]
+    self.av_units = []
 
 
 
@@ -13237,12 +13249,7 @@ class Wild(Nation):
   def __init__(self):
     super().__init__()
     self.log = [[wild_t]]
-    self.av_units = [DesertNomad, Hunter, Mammot, NomadsRider, LizardMan,
-                     Raider, Troglodyte,
-                       
-                     Warrior, Wolf]
-
-# Spells.
+    self.av_units = []
 
 
 
