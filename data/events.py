@@ -92,15 +92,15 @@ class Reanimation(Event):
             raised = cr(t.nation)
           break
       if dead == None: break
-      if sum(dead.deads)*total_hp >= total_hp: 
+      if sum(dead.deads)*dead.hp >= total_hp: 
         raised.hp_total = total_hp
-        dead.deads[0] -= total_hp/5
+        dead.deads[0] -= total_hp / dead.hp
       else: 
-        raised.hp_total = sum(raised.deads) * raised.hp
-        t.remove(raised)
+        raised.hp_total = sum(dead.deads) *dead.hp
+        t.corpses.remove(dead)
       raised.update()
       
-      msg = f"{raised} raised in {t} {t.cords}."
+      msg = f"{raised} raised from {dead} in {t} {t.cords}."
       logging.info(msg)
       raised.pos = t
       raised.pos.units.append(raised)
@@ -111,7 +111,7 @@ class Reanimation(Event):
 
 
 class Revolt(Event):
-  name = 'revolet'
+  name = 'revolt'
   turns = 0
   type = 0
 
@@ -139,17 +139,15 @@ class Revolt(Event):
         for r in range(rebelions):
           unit = choice(units)
           percent = randint(20, 50)
-          unit.pop = percent*unit.pop/100
           if t.pop >= unit.pop:
             unit = t.add_unit(unit, self.itm.nation.name)
             unit.hp_total = percent*unit.hp_total/100
             unit.update()
             #for nt in t.world.random_nations:
-              #if nt.name == unit.align.name: unit.nation = nt
+              #if nt.name == unit.aligment: unit.nation = nt
             t.world.units += [unit]
             rebels += [unit]
-            t.pop -= unit.pop
-            unit.update() 
+            t.pop -= unit.total_pop
             unit.set_default_align()
 
         if rebels:

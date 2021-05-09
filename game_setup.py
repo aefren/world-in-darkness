@@ -1,4 +1,4 @@
-#exec("from data.items import HolyEmpire, valahia, WoodElves, Hell, Nature, Orcs, Wild")
+#exec("from data.items import HolyEmpire, Valahia, WoodElves, Hell, Nature, Orcs, Wild")
 exec("from data.items import *")
 exec("import data.items")
 
@@ -15,7 +15,7 @@ ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
 HOLY.ai = 1
-TRANS = valahia()
+TRANS = Valahia()
 TRANS.ai = 1
 
 NATIONS = [HOLY, ELF, TRANS]

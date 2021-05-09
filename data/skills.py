@@ -292,7 +292,6 @@ class DeepestDarkness(Skill):
   type = "generic"
 
   def run(self, itm):
-    print(f"{itm} {itm.pos.day_night}")
     if itm.pos and itm.pos.day_night: 
       itm.effects.append(self.name)
       itm.stealth_mod += 2
@@ -722,13 +721,15 @@ class Intoxicated(Skill):
     sk.turns = self.turns
     if sk.name not in [s.name for s in itm.global_skills]:
       itm.global_skills += [sk]
-    damage = randint(5, 25)
-    if damage and itm.hp_total > 0:
-      if damage > itm.hp_total: damage = itm.hp_total
-      msg = f"{itm} loses {damage//itm.hp} by {self.name} in {itm.pos}. ({itm.pos.cords})"
+    deads = randint(5, 25)
+    if basics.roll_dice(1) >= 6: deads *= 2
+    deads = floor(deads/itm.hp)
+    if deads and itm.hp_total > 0:
+      if deads > itm.units: deads = itm.units
+      msg = f"{itm} loses {deads} by {self.name} in {itm.pos}. ({itm.pos.cords})"
       itm.log[-1] += [msg]
       itm.nation.log[-1] += [msg]
-      itm.hp_total -= damage
+      itm.units -= deads
       if itm.info: sleep(loadsound("spell34", channel=ch5) / 2)
 
 
@@ -1053,7 +1054,7 @@ class Pestilence(Skill):
     itm.effects += [self.name]
     roll = basics.roll_dice(1)
     if roll >= 3:
-      if self.name not in [ev.name for ev in itm.pos.events]:
+      if Miasma.name not in [ev.name for ev in itm.pos.events]:
         sk = Miasma(itm.pos)
         sk.turns = randint(2, 5)
         itm.pos.events += [sk]
@@ -1207,14 +1208,14 @@ class ReadyAndWaiting(Skill):
 
 class Refit(Skill):
   name = "refuerzos"
-  desc = "+2 sts if at friendly position and units less than maximum units."
+  desc = "+4 sts if at friendly position and units less than maximum units."
   effect = "self"
   type = "generic"
 
   def run(self, itm):
     if itm.pos and itm.pos.nation == itm.nation:
       itm.effects.append(self.name)
-      itm.sts_mod += 2
+      itm.sts_mod += 4
 
 
 

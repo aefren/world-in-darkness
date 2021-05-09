@@ -192,9 +192,11 @@ class Terrain:
     return unit
 
   def get_comm_units(self, nation):
-    units = [i for i in self.units
-             if i.hidden == 0 or nation in i.belongs]
-    units = [i for i in units if i.leadership]
+    units = []
+    for i in self.units:
+      if i.leadership == 0: continue
+      if i.hidden and nation not in i.belongs: continue
+      units += [i]
     return units
 
   def get_distance(self, pos, trg):
@@ -238,15 +240,23 @@ class Terrain:
         self.mean = mean([self.food_value, self.res_value])
   
   def get_free_squads(self, nation):
-    units = [i for i in self.units
-             if i.hidden == 0 or nation in i.belongs]
-    units = [i for i in units if i.leader == None and i.leadership == 0]
+    units = []
+    for i in self.units:
+      if i.leadership: continue
+      if i.leader and nation in i.belongs: continue 
+      if i.leader and i.hidden: continue
+      if i.hidden: continue
+      if i.leader and i.leader.revealed: continue
+      units += [i]
     return units
   
   def get_squads(self, nation):
-    units = [i for i in self.units
-             if i.hidden == 0 or nation in i.belongs]
-    units = [i for i in units if i.leadership == 0]
+    units = []
+    for i in self.units:
+      if i.leadership: continue
+      if i.hidden and nation not in i.belongs: continue
+      units += [i]
+      
     return units
 
   
@@ -258,14 +268,7 @@ class Terrain:
       for it in scenary: it.sight = 1
       pos.update(nation)
 
-  def is_blocked(self):
-    self.blocked = 0
-    for uni in self.units:
-      if (uni.hidden == 0 and self.nation not in uni.belongs  
-          and self.is_city == 0):
-        self.blocked = 1
-        break
-
+  
   def play_ambient(self):
     if self.hill: loadsound("terra_hill5", vol=(0.5, 0.5))
     if self.surf.name == forest_t: loadsound("terra_forest1", channel=ch1)
@@ -317,22 +320,22 @@ class Terrain:
     self.around_coast = 0
     self.around_corpses = 0
     self.around_defense = 0
-    self.around_desert = 0
     self.around_forest = 0
-    self.around_glacier = 0
     self.around_grassland = 0
+    self.around_glacier = 0
     self.around_hill = 0
     self.around_mountain = 0
     self.around_nations = []
     self.around_snations = []
     self.around_plains = 0
     self.around_swamp = 0
+    self.coast = 0
     self.around_threat = 0
     self.around_tundra = 0
     self.around_volcano = 0
+    self.around_waste = 0
     self.buildings_tags = []
     self.buildings_nation = []
-    self.coast = 0
     self.units_aligment = []
     self.units_effects = []
     self.units_traits = []
@@ -341,7 +344,7 @@ class Terrain:
     for tl in sq:
       if tl != self:
         if tl.hill: self.around_hill += 1
-        if tl.surf.name != none_t:
+        elif tl.surf.name != none_t:
           if tl.surf.name == swamp_t: self.around_swamp += 1
           if tl.surf.name == forest_t: self.around_forest += 1
           if tl.surf.name == mountain_t: self.around_mountain += 1
@@ -350,7 +353,7 @@ class Terrain:
           if tl.soil.name == coast_t: self.around_coast += 1
           if tl.soil.name == plains_t: self.around_plains += 1
           if tl.soil.name == grassland_t: self.around_grassland += 1
-          if tl.soil.name == waste_t: self.around_desert += 1
+          if tl.soil.name == waste_t: self.around_waste += 1
           if tl.soil.name == tundra_t: self.around_tundra += 1
           if tl.soil.name == glacier_t: self.around_glacier += 1
 
@@ -359,14 +362,16 @@ class Terrain:
         if nation:
           if tl.nation != nation and tl.nation != None: self.around_nations += [tl.nation]
           if tl.nation == nation: self.around_snations += [tl.nation]
-          for uni in tl.units:
+          units = tl.get_free_squads(nation) + tl.get_comm_units(nation)
+          for uni in units:
             uni.update()
-            if nation not in uni.belongs and uni.hidden == 0:
+            if nation not in uni.belongs:
               self.around_threat += uni.ranking
             if uni.nation == nation:
               self.around_defense += uni.ranking
 
     # datos finales.
+    units = self.get_free_squads(nation) + self.get_squads(nation)
     for uni in self.units:
       self.units_aligment += [uni.aligment]
       self.units_effects += uni.effects
@@ -376,11 +381,19 @@ class Terrain:
       self.buildings_tags += bu.tags
       self.buildings_nation += [bu.nation]
     if self.soil.name == ocean_t and any(i for i in [self.around_plains,
-                                                     self.around_grassland, self.around_desert, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
+                                                     self.around_grassland, self.around_waste, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
       self.coast = 1
       self.soil.name = coast_t
     elif self.soil.name != ocean_t and self.around_coast:
       self.coast = 1
+
+  def set_blocked(self):
+    self.blocked = 0
+    for uni in self.units:
+      if (uni.hidden == 0 and self.nation not in uni.belongs  
+          and self.is_city == 0):
+        self.blocked = 1
+        break
 
   def set_defense(self, nation, info=0):
     if info: logging.info(f"set_defense for {self}.")
@@ -397,12 +410,14 @@ class Terrain:
     self.grouth_food = (self.food - self.pop) / self.city.grouth_factor
     for bu in self.buildings:
       if self.city.nation != bu.nation: continue
-      if bu.is_complete == 0: continue
-      self.grouth_base += bu.grouth * self.grouth_base / 100
+      if bu.type == city_t: continue 
+      self.grouth_food += bu.grouth_pre * self.grouth_food/ 100
+      if bu.is_complete: self.grouth_food += bu.grouth * self.grouth_food/ 100
+    
     self.grouth = self.grouth_base + self.grouth_food
     if self.hill not in self.nation.pop_pref_hill: self.grouth *= 0.6
-    if self.soil.name not in self.nation.pop_pref_soil: self.grouth *= 0.8
-    if self.surf.name not in self.nation.pop_pref_surf: self.grouth *= 0.2
+    if self.soil.name not in self.nation.pop_pref_soil: self.grouth *= 0.6
+    if self.surf.name not in self.nation.pop_pref_surf: self.grouth *= 0.6
 
   def set_income(self):
     if self.nation == None or self.pop == 0: return
@@ -524,10 +539,10 @@ class Terrain:
   def set_threat(self, nation):
     self.threat = 0
     if self.sight:
-      for uni in self.units:
-        if uni.hp_total < 1 or uni.leader: continue
-        if nation not in uni.belongs and uni.hidden == 0:
+      units = self.get_free_squads(nation) + self.get_comm_units(nation)
+      for uni in units:
           uni.update()
+          if nation in uni.belongs: continue
           self.threat += uni.ranking
 
   def start_turn(self):
@@ -609,7 +624,7 @@ class Terrain:
     except: Pdb().set_trace()
     self.units = [it for it in self.units 
                   if it.hp_total >= 1]
-    self.is_blocked()
+    self.set_blocked()
     
     # calculando defensa.
     self.set_defense(nation)
@@ -648,7 +663,7 @@ class Terrain:
     self.food_available = round(self.food_available)
     self.food = round(self.food)
     self.income = round(self.income)
-    self.pop = round(self.pop)
+    self.pop = round(self.pop,1)
     self.public_order = round(self.public_order)
     self.resource = round(self.resource)
     self.threat = round(self.threat)
@@ -665,7 +680,7 @@ class Terrain:
 class Desert(Terrain):
   cost = 2
   cost_fly = 2
-  food = 150
+  food = 100
   name = waste_t
   resource = 1
 
@@ -675,7 +690,6 @@ class EmptySurf(Terrain):
 
   def __init__(self):
     self.name = none_t
-    self.test = 10
 
 
 
@@ -691,7 +705,7 @@ class Glacier(Terrain):
 class Grassland(Terrain):
   cost = 2
   cost_fly = 2
-  food = 400
+  food = 300
   name = grassland_t
   resource = 1
 
@@ -733,7 +747,7 @@ class Swamp(Terrain):
 class Ocean(Terrain):
   cost = 1
   cost_fly = 2
-  food = 100
+  food = 150
   name = ocean_t
   resource = 0
 
@@ -742,7 +756,7 @@ class Ocean(Terrain):
 class Plains(Terrain):
   cost = 2
   cost_fly = 2
-  food = 300
+  food = 200
   name = plains_t
   resource = 1
 
@@ -750,7 +764,7 @@ class Plains(Terrain):
 
 class River(Terrain):
   cost = 1
-  food = 100
+  food = 150
   name = river_t
   resource = 0
 
@@ -1479,7 +1493,7 @@ class Ai:
   def ai_free_units(self, nation, info=1):
     logging.info(f"unidades libres.")
     for uni in nation.units_free:
-      if uni.squads > 4 and uni.pos.around_threat + uni.pos.threat < uni.ranking * 0.3: 
+      if uni.squads >= 3 and uni.pos.around_threat + uni.pos.threat < uni.ranking * 0.4: 
         uni.split(1)
         logging.debug(f"splits.")
     nation.get_free_squads()
@@ -1596,36 +1610,38 @@ class Ai:
             num -= 1
             banned_tiles += [s]
             break
-
   def ai_garrison(self, nation, info=0):
-    logging.info(f"acciones de unidades en guarnición.")
+    logging.info(f"ai_garrison.")
     nation.devlog[-1] += [f"acciones de unidades en guarnición."]
     nation.update(nation.map)
     banned = []
-    # unidades ranged.
     if info: logging.debug(f"unidades iniciales {len([i for i in nation.units if i.garrison])}.")
     nation.devlog[-1] += [f"unidades iniciales {len([i for i in nation.units if i.garrison and i.pos.around_threat+i.pos.threat])}."]
-    # joining forces.
+    # joining forcetl.
     for uni in [i for i in nation.units if i.garrison and i.pos.around_threat + i.pos.threat]:
       if uni.hp_total < 1 or uni.will_less: continue
       nation.devlog[-1] += [f"{uni} in {uni.pos} {uni.pos.cords}."]
       sq = uni.pos.get_near_tiles(1)
-      [s.update(uni.nation) for s in sq]
-      sq = [s for s in sq if s.threat]
-      for s in sq:
+      [i.update(nation) for i in sq]
+      sq = [i for i in sq if i.threat]
+      for tl in sq:
+        units = tl.get_free_squads(nation) + tl.get_comm_units(nation) 
         rnd = uni.ranking
         msg = f"ranking {rnd}."
         nation.devlog[-1] += [msg]
         if info: logging.debug(msg)
-        moves = max(i.moves + i.moves_mod for i in s.units if i.hidden == 0 and i.nation not in uni.belongs)
-        rng = max(i.range[1] for i in s.units if i.hidden == 0 and i.nation not in uni.belongs)
+        try:
+          moves = max(it.moves + it.moves_mod for it in units 
+                      if nation not in it.belongs)
+        except: Pdb().set_trace()
+        rng = max(it.range[1] for it in units  if nation not in it.belongs)
         if info: logging.debug(f"rnd inicial {rnd}.")
-        if s.around_threat: 
+        if tl.around_threat: 
           rnd *= 0.8
           msg = f"reduced by around_threat to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.leadership: 
+        if uni.leadership and uni.leads == []: 
           rnd *= 0.6
           msg = f"reduced by comm to {rnd}."
           nation.devlog[-1] += {msg} 
@@ -1635,37 +1651,37 @@ class Ai:
           msg = f"reduced by dark vision."
           nation.devlog[-1] += {msg} 
           if info: logging.debug(msg)
-        if uni.forest_survival and s.surf.name != forest_t: 
+        if uni.forest_survival and tl.surf.name != forest_t: 
           rnd *= 0.8 
           msg = f"reduced by not forest tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival and s.surf.name != swamp_t: 
+        if uni.swamp_survival and tl.surf.name != swamp_t: 
           rnd *= 0.8
           msg = f"reduced by not swamp tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival and s.hill == 0: 
+        if uni.mountain_survival and tl.hill == 0: 
           rnd *= 0.8
           msg = f"reduced by not mountaint tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mounted and s.surf.name in [forest_t, swamp_t] or s.hill: 
+        if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill: 
           rnd *= 0.5
           msg = f"reduced by forest or hill or swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.forest_survival == 0 and s.surf.name in [forest_t]:
+        if uni.forest_survival == 0 and tl.surf.name in [forest_t]:
           rnd *= 0.5
           msg = f"reduced by forest to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival == 0 and s.surf.name in [swamp_t]:
+        if uni.swamp_survival == 0 and tl.surf.name in [swamp_t]:
           rnd *= 0.5
           msg = f"reduced by swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival == 0 and s.hill:
+        if uni.mountain_survival == 0 and tl.hill:
           rnd *= 0.5
           msg = f"reduced by hill to {rnd}."
           nation.devlog[-1] += {msg}
@@ -1681,17 +1697,18 @@ class Ai:
           msg = f"reduced by rng{rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation: 
+        if tl.nation != nation: 
           rnd *= 0.8
           msg = f"reduced by not nation tile."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation and s.nation:
+        if tl.nation != nation and tl.nation:
           rnd *= 0.8
           msg = f"reduced by other nation tile to {rnd} and nation."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        max_ranking = max(i.ranking for i in s.units if i.revealed)
+        max_ranking = max(it.ranking for it in units if 
+                          nation not in it.belongs)
         nation.devlog[-1] += [f"rnd {rnd} max_ranking {max_ranking}."]
         if rnd * 0.8 < max_ranking: 
           msg = f"joining forces."
@@ -1702,6 +1719,7 @@ class Ai:
           elif max_ranking > rnd * 2: basics.ai_join_units(uni, count=4)
           elif max_ranking > rnd * 3: basics.ai_join_units(uni, count=20)
     
+    # Ranged garrison.
     units = [it for it in nation.units if it.garrison and it.range[1] >= 6
              and it.leadership == 0 and it.pos.around_threat + it.pos.threat 
              and it.mp[0] >= 2 and it.will_less == 0]
@@ -1710,18 +1728,19 @@ class Ai:
     units.sort(key=lambda x: x.ranking)
     units.sort(key=lambda x: x.mp[0], reverse=True)
     units.sort(key=lambda x: x.ranged, reverse=True)
-    
     for uni in units:
       rnd = uni.ranking * uniform(1.3, 0.7)
-      if rnd >= uni.pos.threat: uni.auto_attack()
+      if uni.pos.threat and rnd >= uni.pos.threat: uni.auto_attack()
       if uni.hp_total < 1: continue
       sq = uni.pos.get_near_tiles(1)
-      sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
-              and s != uni.pos and s.threat > 0]
+      sq = [it for it in sq if uni.can_pass(it)
+              and it != uni.pos and it.threat > 0]
       sq.sort(key=lambda x: x.threat)
-      for s in sq:
-        s.update(uni.nation)
-        if s.threat < 1 or s in banned: continue
+      for tl in sq:
+        tl.update(uni.nation)
+        if tl.threat < 1 or tl in banned: continue
+        units = tl.get_free_squads(nation) + tl.get_comm_units(nation)
+        [it.update(it) for it in units]
         if uni.pos.is_city:
           uni.pos.city.set_defense()
           if uni.pos.defense < uni.pos.around_threat * 2:
@@ -1731,17 +1750,17 @@ class Ai:
         msg = f"initial rnd {rnd}."
         nation.devlog[-1] += [msg]
         if info: logging.debug(msg)
-        local_defense = sum(i.ranking for i in uni.pos.units if uni.garrison)
-        if s.nation == uni.nation: local_defense *= 0.5
-        moves = max([i.moves + i.moves_mod for i in s.units if i.hidden == 0])
-        rng = max(i.range[1] for i in s.units if i.hidden == 0 and i.nation not in uni.belongs)
+        if tl.nation == uni.nation: local_defense *= 0.5
+        moves = max(it.moves + it.moves_mod for i in units 
+                    if nation not in it.belongs)
+        rng = max(it.range[1] for it in units if nation not in it.belongs)
         if info: logging.debug(f"rnd inicial {rnd}.")
-        if s.around_threat: 
+        if tl.around_threat: 
           rnd *= 0.8
           msg = f"reduced by around_threat to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.leadership: 
+        if uni.leadership and uni.leads == []: 
           rnd *= 0.6
           msg = f"reduced by comm to {rnd}."
           nation.devlog[-1] += {msg} 
@@ -1751,37 +1770,37 @@ class Ai:
           msg = f"reduced by dark vision."
           nation.devlog[-1] += {msg} 
           if info: logging.debug(msg)
-        if uni.forest_survival and s.surf.name != forest_t: 
+        if uni.forest_survival and tl.surf.name != forest_t: 
           rnd *= 0.8 
           msg = f"reduced by not forest tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival and s.surf.name != swamp_t: 
+        if uni.swamp_survival and tl.surf.name != swamp_t: 
           rnd *= 0.8
           msg = f"reduced by not swamp tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival and s.hill == 0: 
+        if uni.mountain_survival and tl.hill == 0: 
           rnd *= 0.8
           msg = f"reduced by not mountaint tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mounted and s.surf.name in [forest_t, swamp_t] or s.hill: 
+        if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill: 
           rnd *= 0.5
           msg = f"reduced by forest or hill or swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.forest_survival == 0 and s.surf.name in [forest_t]:
+        if uni.forest_survival == 0 and tl.surf.name in [forest_t]:
           rnd *= 0.5
           msg = f"reduced by forest to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival == 0 and s.surf.name in [swamp_t]:
+        if uni.swamp_survival == 0 and tl.surf.name in [swamp_t]:
           rnd *= 0.5
           msg = f"reduced by swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival == 0 and s.hill:
+        if uni.mountain_survival == 0 and tl.hill:
           rnd *= 0.5
           msg = f"reduced by hill to {rnd}."
           nation.devlog[-1] += {msg}
@@ -1791,74 +1810,74 @@ class Ai:
           msg = f"reduced by hight moves to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation: 
+        if tl.nation != nation: 
           rnd *= 0.8
           msg = f"reduced by not nation tile."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation and s.nation:
+        if tl.nation != nation and tl.nation:
           rnd *= 0.8
           msg = f"reduced by other nation tile to {rnd} and nation."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        max_ranking = max(i.ranking for i in s.units if i.revealed)
-        if info: logging.debug(f"{uni} rnd {round(rnd)}, trheat {s.threat}.")
+        max_ranking = max(it.ranking for it in units if nation not in it.belongs)
+        if info: logging.debug(f"{uni} rnd {round(rnd)}, trheat {tl.threat}.")
         if info: logging.debug(f"max ranking {max_ranking}.")
         nation.devlog[-1] += [f"{uni} rnd {round(rnd)} max ranking {round(max_ranking)}."]
-        nation.devlog[-1] += [f"local_defense{local_defense} a threat {s.around_threat}."]
-        if (rnd > max_ranking and local_defense > s.around_threat):
-          msg = f"garrison attack to {s} {s.cords}. "
-          msg += f"rnd {rnd}, threat {s.threat}, around threat {s.around_threat}."
+        nation.devlog[-1] += [f"local_defense{local_defense} a threat {tl.around_threat}."]
+        if (rnd > max_ranking and tl.defense > tl.around_threat):
+          msg = f"garrison attack to {s} {tl.cords}. "
+          msg += f"rnd {rnd}, threat {tl.threat}, around threat {tl.around_threat}."
           nation.devlog[-1] += [msg]
-          uni.move_set(s)
+          uni.move_set(tl)
           uni.move_set("attack")
-          if uni.ranking > (s.threat + s.around_threat) * 3: banned += [s]
+          if uni.ranking > (tl.threat + tl.around_threat) * 3: banned += [tl]
           break
     
+    # Melee garrison.
     units = [it for it in nation.units if it.garrison == 1
              and it.scout == 0 and it.settler == 0 and it.leadership == 0
              and it.ranged == 0 and it.mp[0] >= 2
              and it.pos.around_threat + it.pos.threat and it.will_less == 0]
     if info: logging.debug(f"unidades melee. {len(units)}.")
     nation.devlog[-1] += [f"unidades melee. {len(units)}."]
-    # unidades mele.
     shuffle(units)
     units.sort(key=lambda x: x.ranking, reverse=True)
     if basics.roll_dice(1) >= 4: units.sort(key=lambda x: x.pos.is_city)
     for uni in units:
       rnd = uni.ranking * uniform(1.3, 0.7)
+      uni.pos.update(nation)
       if rnd >= uni.pos.threat: uni.auto_attack()
       if uni.hp_total < 1: continue
       sq = uni.pos.get_near_tiles(1)
-      sq = [s for s in sq if s.soil.name in uni.soil and s.surf.name in uni.surf
-              and s != uni.pos and s.threat > 0]
+      sq = [it for it in sq if uni.can_pass(it)
+              and it != uni.pos and it.threat > 0]
       sq.sort(key=lambda x: x.threat)
       for s in sq:
-        s.update(nation)
-        [i.update() for i in s.units]
-        if s.threat < 1 or s in banned: continue
+        tl.update(nation)
+        units = tl.get_free_squads(nation) + tl.get_comm_units(nation)
+        [i.update() for i in units]
+        if tl.threat < 1 or s in banned: continue
         if uni.pos.is_city:
           uni.pos.city.set_defense()
           if uni.pos.defense < uni.pos.around_threat * 1.5:
-            if info: logging.debug(f"pocas unidades..")
+            if info: logging.debug(f"pocas unidade..")
             continue
         nation.devlog[-1] += [f"{uni} in {uni.pos} {uni.pos.cords}."]
-        defense = uni.ranking
         rnd = uni.ranking * uniform(1.1, 0.9)
         msg = f"initial rnd {rnd}."
         nation.devlog[-1] += [msg]
         if info: logging.debug(msg)
-        local_defense = sum(i.ranking for i in uni.pos.units if uni.garrison)
-        if s.nation == uni.nation: local_defense *= 0.5
-        moves = max(i.moves + i.moves_mod for i in s.units if i.hidden == 0 and i.nation not in uni.belongs)
-        rng = max(i.ranged for i in s.units if i.hidden == 0 and i.nation not in uni.belongs)
+        moves = max(it.moves + it.moves_mod for it in units
+                    if nation not in it.belongs)
+        rng = max(it.ranged for it in units if nation not in it.belongs)
         if info: logging.debug(f"rnd inicial {rnd}.")
-        if s.around_threat: 
+        if tl.around_threat: 
           rnd *= 0.8
           msg = f"reduced by around_threat to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.leadership: 
+        if uni.leadership and uni.leads == []: 
           rnd *= 0.6
           msg = f"reduced by comm to {rnd}."
           nation.devlog[-1] += {msg} 
@@ -1868,37 +1887,37 @@ class Ai:
           msg = f"reduced by dark vision."
           nation.devlog[-1] += {msg} 
           if info: logging.debug(msg)
-        if uni.forest_survival and s.surf.name != forest_t: 
+        if uni.forest_survival and tl.surf.name != forest_t: 
           rnd *= 0.8 
           msg = f"reduced by not forest tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival and s.surf.name != swamp_t: 
+        if uni.swamp_survival and tl.surf.name != swamp_t: 
           rnd *= 0.8
           msg = f"reduced by not swamp tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival and s.hill == 0: 
+        if uni.mountain_survival and tl.hill == 0: 
           rnd *= 0.8
           msg = f"reduced by not mountaint tile to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mounted and s.surf.name in [forest_t, swamp_t] or s.hill: 
+        if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill: 
           rnd *= 0.5
           msg = f"reduced by forest or hill or swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.forest_survival == 0 and s.surf.name in [forest_t]:
+        if uni.forest_survival == 0 and tl.surf.name in [forest_t]:
           rnd *= 0.5
           msg = f"reduced by forest to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.swamp_survival == 0 and s.surf.name in [swamp_t]:
+        if uni.swamp_survival == 0 and tl.surf.name in [swamp_t]:
           rnd *= 0.5
           msg = f"reduced by swamp to {rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if uni.mountain_survival == 0 and s.hill:
+        if uni.mountain_survival == 0 and tl.hill:
           rnd *= 0.5
           msg = f"reduced by hill to {rnd}."
           nation.devlog[-1] += {msg}
@@ -1914,30 +1933,29 @@ class Ai:
           msg = f"reduced by rng{rnd}."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation: 
+        if tl.nation != nation: 
           rnd *= 0.8
           msg = f"reduced by not nation tile."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        if s.nation != nation and s.nation:
+        if tl.nation != nation and tl.nation:
           rnd *= 0.8
           msg = f"reduced by other nation tile to {rnd} and nation."
           nation.devlog[-1] += {msg}
           if info: logging.debug(msg)
-        max_ranking = max(i.ranking for i in s.units if i.hidden == 0)
-        if info: logging.debug(f"{uni} rnd {round(rnd)}, trheat {s.threat}.")
+        max_ranking = max(it.ranking for it in units if nation not in it.belongs)
+        if info: logging.debug(f"{uni} rnd {round(rnd)}, trheat {tl.threat}.")
         if info: logging.debug(f"max ranking {max_ranking}.")
         nation.devlog[-1] += [f"{uni} rnd {round(rnd)} max ranking {round(max_ranking)}."]
-        if (rnd > max_ranking and local_defense > s.around_threat 
-            and uni.mp[0] >= 2):
-          if uni.ranking > (max_ranking + s.around_threat) * 2.5: uni.split(1)
-          elif uni.ranking > (max_ranking + s.around_threat) * 4: uni.split(1)
-          msg = f"garrison attack to {s} {s.cords}. "
-          msg += f"rnd {rnd}, threat {s.threat}, around threat {s.around_threat}."
+        if (rnd > max_ranking and uni.mp[0] >= 2):
+          if uni.ranking > (max_ranking + tl.around_threat) * 2.5: uni.split(1)
+          elif uni.ranking > (max_ranking + tl.around_threat) * 4: uni.split(1)
+          msg = f"garrison attack to {s} {tl.cords}. "
+          msg += f"rnd {rnd}, threat {tl.threat}, around threat {tl.around_threat}."
           nation.devlog[-1] += [msg]
-          uni.move_set(s)
+          uni.move_set(tl)
           uni.move_set("attack")
-          if uni.ranking > (s.threat + s.around_threat) * 3: banned += [s]
+          if uni.ranking > (tl.threat + tl.around_threat) * 3: banned += [s]
           break
 
   def ai_get_extra_units(self, defense_req, nation):
@@ -1956,6 +1974,7 @@ class Ai:
     units = [i for i in nation.units_comm 
              if i.leadership and i.mp[0] > 0 and i.hp_total >= 1 
              and i.goto == []]
+    # checking position threat.
     for uni in units:
       goto = None
       if uni.goto:
@@ -1980,7 +1999,7 @@ class Ai:
         oportunist_attack = uni.oportunist_attack()
         if any(v < 1 for v in [uni.mp[0], uni.hp_total]): continue
         if oportunist_attack:
-          uni.pos.update(uni.nation.tiles)
+          uni.pos.update(uni.nation)
           if uni.pos.around_threat > uni.ranking: 
             uni.create_group(uni.leadership - uni.leading) 
         
@@ -1996,7 +2015,7 @@ class Ai:
         buildings = [bu for bu in uni.pos.buildings 
                      if bu.nation in uni.pos.world.random_nations]
         if buildings:
-          uni.get_hire_units(auto=1)
+          #uni.get_hire_units(auto=1)
           msg = f"will stay until destroy buildings."
           uni.log[-1] += [msg]
           logging.debug(msg)
@@ -2041,6 +2060,12 @@ class Ai:
             if uni.ranking + t.defense > t.around_threat + t.threat and t.nation == uni.nation:
               uni.move_set(t)
               return
+      
+    for it in nation.units_comm:
+      if it.mp[0] <= 1 and it.goto == []:
+        logging.debug(f"emergency group creation: {it.pos.around_threat+it.pos.threat}.")
+        if it.pos.around_threat + it.pos.threat > it.ranking *0.7:
+          it.create_group(it.leadership - it.leading)
   
   def nation_play(self, nation, info=0):
     logging.info(f"{turn_t} {of_t} {nation}. ai = {nation.ai}, info = {nation.show_info}.")
@@ -2104,7 +2129,7 @@ class Ai:
     # edificios.
     [nation.improve_military(ct) for ct in nation.cities]
     if info: logging.debug(f"improve_military {time()-init}.")
-    [nation.build(ct) for ct in nation.cities]
+    [nation.set_new_buildings(ct) for ct in nation.cities]
     if info: logging.debug(f"nation.build {time()-init}.")
     [nation.improve_misc(ct) for ct in nation.cities]
     if info: logging.debug(f"nation.improve_misc {time()-init}.")
@@ -2152,7 +2177,7 @@ class Ai:
     if info: logging.debug(f"ai_disband {time()-init}.")
 
 
-  def ai_protect_tiles(self, nation, info=0):
+  def ai_protect_tiles(self, nation, info=1):
     logging.info(f"proteger casillas {nation} turno {world.turn}..")
     nation.devlog[-1] += [f"protect tiles."]
     init = time()
@@ -2166,27 +2191,26 @@ class Ai:
     nation.tiles.sort(key=lambda x: x.around_threat + x.threat, reverse=True)
     nation.tiles.sort(key=lambda x: x.is_city and x.around_threat + x.threat, reverse=True)
     nation.tiles.sort(key=lambda x: x.city.capital and x.is_city and x.around_threat + x.threat, reverse=True)
-    for t in nation.tiles:
-      if t.blocked: continue
-      defense_needs = t.around_threat * 1.3
-      if t.defense_req > defense_needs: defense_needs = t.defense_req
-        
-      defense = sum(u.ranking for u in t.units
-                      if u.garrison == 1 and nation in u.belongs
-                      and u.leader == None)
+    for tl in nation.tiles:
+      if tl.blocked: continue
+      defense_needs = tl.around_threat * 1.3
+      if tl.defense_req > defense_needs: defense_needs = tl.defense_req
+      defense = sum(uni.ranking for uni in tl.units
+                      if uni.garrison == 1 and nation in uni.belongs
+                      and uni.leader == None)
       if defense < 80 * defense_needs / 100:
-        msg = f"{t}. {t.cords} needs {defense_needs-defense} defense."
+        msg = f"{tl}. {tl.cords} needs {defense_needs-defense} defense."
         if info: logging.debug(msg)
         nation.devlog[-1] += [msg]
-        if info: logging.debug(f"defensa {defense}, amenaza {t.around_threat}.")
+        if info: logging.debug(f"defensa {defense}, amenaza {tl.around_threat}.")
         units = []
         ranking = 0
-        if t.is_city == 0:sq = t.get_near_tiles(1)
-        elif t.is_city == 0 and t.capital:sq = t.get_near_tiles(2)
-        elif t.is_city: sq = t.get_near_tiles(3)
-        sq = [s for s in sq if s != t and s.units]
+        if tl.is_city == 0:sq = tl.get_near_tiles(1)
+        elif tl.is_city == 0 and tl.capital:sq = tl.get_near_tiles(2)
+        elif tl.is_city: sq = tl.get_near_tiles(3)
+        sq = [s for s in sq if s != tl and s.units]
         [i.set_around(nation) for i in sq]
-        sq.sort(key=lambda x: x.get_distance(x, t))
+        sq.sort(key=lambda x: x.get_distance(x, tl))
         sq.sort(key=lambda x: x.hill)
         sq.sort(key=lambda x: x.around_threat + x.threat)
         for s in sq:
@@ -2194,108 +2218,107 @@ class Ai:
             nation.devlog[-1] += [f"breaks tile checking by 80% defense."] 
             break
           if s.units:nation.devlog[-1] += [f"check unit in {s.cords} a threat {s.around_threat}, threat {s.threat}"]
-          for u in s.units:
-            if nation not in u.belongs or u.settler: continue
-            if u.will_less: continue
+          for uni in s.units:
+            if nation not in uni.belongs or uni.settler: continue
+            if uni.will_less: continue
             if ranking >= 80 * defense_needs / 100:
               msg = f"breaks unit checking by 80% defense."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info:logging.debug(msg) 
               break
-            msg = f"{u}, garrison {u.garrison}, mp {u.mp}."
+            msg = f"{uni}, garrison {uni.garrison}, mp {uni.mp}."
             nation.devlog[-1] += [msg]
-            logging.debug(msg)
-            if u.goal:
+            if info: logging.debug(msg)
+            if uni.goal:
               msg = f"continues by unit has goal."
               nation.devlog[-1] += [msg]
-              logging.debug(msg)
+              if info: logging.debug(msg)
               continue
-            if u.leadership and t.is_city and t.around_threat + t.threat < 1:
+            if uni.leadership and tl.is_city and tl.around_threat + tl.threat < 1:
               msg = f"continues by unit is comm and tile is city but no threats."
               nation.devlog[-1] += [msg]
-              logging.debug(msg)
+              if info: logging.debug(msg)
               continue
             if s.is_city and s.city.capital and s.around_threat + s.threat:
               msg = f"breaks by threat in capital."
               nation.devlog[-1] += [msg]
-              logging.debug(msg)
+              if info: logging.debug(msg)
               continue
-            if (t.is_city and t.around_threat + t.threat == 0 
-                and s.around_threat + s.threat and u.garrison):
-              msg = f"breaks by threat." 
+            if (tl.is_city and tl.around_threat + tl.threat == 0 
+                and s.around_threat + s.threat and uni.garrison):
+              msg = f"breaks by threatl." 
               nation.devlog[-1] += [msg]
-              logging.debug(msg)
+              if info: logging.debug(msg)
               continue
-            if s.is_city and u.garrison and len(u.pos.units) < 3:
+            if s.is_city and uni.garrison and len(uni.pos.units) < 3:
               msg = f"breaks by city less than 3 garrison.."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
-            if t.is_city == 0 and s.around_threat + s.threat and u.garrison:
+            if tl.is_city == 0 and s.around_threat + s.threat and uni.garrison:
               msg = f"breakcs by unit defending."
               nation.devlog[-1] += [msg]
-              logging.debug(msg)
+              if info: logging.debug(msg)
               continue
-            if t.is_city == 0 and t.around_threat + t.threat == 0 and u.garrison:
+            if tl.is_city == 0 and tl.around_threat + tl.threat == 0 and uni.garrison:
               msg = f"breakcs by not need defense"
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
-            if t.is_city == 0 and u.pos.city != t.city and u.garrison:
+            if tl.is_city == 0 and uni.pos.city != tl.city and uni.garrison:
               msg = f"breakcs by unit not same city."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
             buildings = [bu for bu in s.buildings 
                      if bu.nation in s.world.random_nations]
-            if t.around_threat + t.threat < 1 and buildings:
+            if tl.around_threat + tl.threat < 1 and buildings:
               msg = f"destroying enemy building."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
-            if t.around_threat + t.threat < 1 and s.unrest >= 15:
-              msg = f"unit is reducing unrest."
+            if tl.around_threat + tl.threat < 1 and s.unrest >= 15:
+              msg = f"unit is reducing unrestl."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
-            if t.around_threat + t.threat < 1 and s.public_order < 50:
+            if tl.around_threat + tl.threat < 1 and s.public_order < 50:
               msg = f"unit is reducing public order."
               nation.devlog[-1] += [msg]
-              logging.debug(msg) 
+              if info: logging.debug(msg) 
               continue
-            if (u.mp[0] >= 2 and  u.leader == None and u.scout == 0 
-                and u.settler == 0 and u.goto == []): 
-              units += {u}
-              ranking += u.ranking
+            if (uni.mp[0] >= 2 and  uni.leader == None and uni.scout == 0 
+                and uni.settler == 0 and uni.goto == []): 
+              units += {uni}
+              ranking += uni.ranking
               nation.devlog[-1] += [f"added."]
         if info: logging.debug(f"{len(units)} unidades disponibles iniciales.")
         if info: logging.debug(f"ranking total {ranking}")
-        units.sort(key=lambda x: t.food_need+x.food_total<= t.food,reverse=True)
-        if t.surf.name == forest_t:
+        units.sort(key=lambda x: tl.food_need+x.food_total<= tl.food,reverse=True)
+        if tl.surf.name == forest_t:
           units.sort(key=lambda x: x.forest_survival or x.ranged, reverse=True)
-          if info: logging.debug(f"sort to forest.")
-        if t.surf.name == swamp_t:
+          if info: logging.debug(f"sort to forestl.")
+        if tl.surf.name == swamp_t:
           units.sort(key=lambda x: x.swamp_survival or x.ranged, reverse=True)
           if info: logging.debug(f"sort to swamp.")
-        if t.hill:
+        if tl.hill:
           units.sort(key=lambda x: x.mountain_survival or x.ranged, reverse=True)
           if info: logging.debug(f"sort to swamp.")
-        if t.surf.name in [forest_t, swamp_t] or t.hill: 
+        if tl.surf.name in [forest_t, swamp_t] or tl.hill: 
           units.sort(key=lambda x: x.mounted)
           units.sort(key=lambda x: x.can_fly, reverse=True)
           if info: logging.debug(f"sort by not mounted.")
-        units.sort(key=lambda x: x.pos.get_distance(x.pos, t))
-        units = [i for i in units if i.type != "civil"]
+        units.sort(key=lambda x: x.pos.get_distance(x.pos, tl))
         nation.devlog[-1] += [f"defense {defense} needs {defense_needs}, ranking {ranking}."]
         for uni in units:
-          if  uni.pos == t and uni.garrison or uni.type == "civil": continue
-          if (uni.food_total > t.food 
-              and t.around_threat + t.threat <= t.defense):
+          if  uni.pos == tl and uni.garrison: continue
+          if (uni.food_total > tl.food 
+              and tl.around_threat + tl.threat <= tl.defense):
             continue
           if defense > defense_needs: 
             nation.devlog[-1] += [f"defense > defense_need."]
             break
-          if defense + uni.ranking > defense_needs * 1.2 and t.around_threat + t.threat == 0:
+          if defense + uni.ranking > defense_needs * 1.2 and tl.around_threat + tl.threat == 0:
             uni.split((1))
             msg = f"splited."
             if info: logging.debug(msg)
@@ -2308,7 +2331,7 @@ class Ai:
             uni.log[-1] += [msg]
             nation.devlog[-1] += [msg]
             if info: logging.debug(msg)
-          msg = f"{uni} de {uni.pos.cords} defenderá {t} {t.cords}."
+          msg = f"{uni} de {uni.pos.cords} defenderá {tl} {tl.cords}."
           if info: logging.debug(msg)
           nation.devlog[-1] += [msg]
           uni.log[-1] += [msg]
@@ -2316,10 +2339,10 @@ class Ai:
           if info: logging.debug(msg)
           nation.devlog[-1] += [msg]
           uni.log[-1] += [msg]
-          if uni.pos != t:
-            uni.move_set(t)
+          if uni.pos != tl:
+            uni.move_set(tl)
             uni.move_set("gar")
-          elif uni.pos == t: 
+          elif uni.pos == tl:
             uni.move_set("gar")
     
     if info: logging.debug(f"time elapses. {time()-init}.")
@@ -2395,9 +2418,9 @@ class Ai:
   def ai_train_comm(self, nation, info=1):
     logging.info(f"ai_train_comm {nation} turn {world.turn}.")
     nation.update(nation.map)
-    nation.commander_request = 0
     units = sum([i.units for i in nation.units
-                 if i.leader == None and i.leadership == 0])
+                 if i.leader == None and i.leadership == 0
+                 and i.settler == 0])
     comms = sum(com.leadership - com.leading for com in nation.units_comm)
     if info: logging.debug(f"{units=:}, {comms=:}.")
     if units - comms > 40:
@@ -2413,7 +2436,7 @@ class Ai:
         for uni in units:
           if nation.upkeep + uni.upkeep > nation.upkeep_limit:
             logging.debug(f"exceds the upkeep limit {nation.upkeep_limit}.")
-            continue 
+            break 
           if req_unit(uni, nation, ct):
             logging.debug(f"{uni} suma upkeep {nation.upkeep+uni.upkeep }.")
             ct.train(uni)
@@ -2671,7 +2694,7 @@ def info_tile(pos, nation, sound="in1"):
       if pos.corpses == []: corpses = ["no."]
       else: corpses = []
       for i in pos.corpses:
-        corpses += [f"{i}: {sum(i.deads)}"]
+        corpses += [f"{i}: {round(sum(i.deads))}"]
       items = [
         f"{corpses_t} {[str(it) for it in corpses]}",
         f"{pos}",
@@ -2946,8 +2969,8 @@ def menu_building(pos, nation, sound="in1"):
 def menu_city(itm, sound="in1"):
   global city, filter_expand
   loadsound(sound)
-  itm.nation.update(nation.map)
   itm.update()
+  itm.nation.update(nation.map)
   say = 1
   x = 0
   while True:
@@ -3227,49 +3250,49 @@ def naming(sound="back3"):
 def nation_init():
   while True:
       done = 1
+      shuffle(world.nations)
       for nat in world.nations: 
         if nat.ai == 0: nat.info = 1
         nation_start_position(nat, world.map)
-      for n in world.nations:
-        if n.pos == None: done = 0
+      for nat in world.nations:
+        if nat.pos == None: done = 0
       if done:
-        for n in world.nations: nation_set_start_position(n) 
+        for nat in world.nations: nation_set_start_position(nat) 
         break
 
 
 
-def nation_start_position(itm, tiles):
+def nation_start_position(itm, tiles, info=0):
   global players, pos
   logging.info(f"inicio de posición de {itm}.")
   itm.pos = None
   unallowed_tiles = [n.pos for n in world.nations if n.pos]
-  tls = [t for t in tiles
-         if t.soil.name in itm.soil and t.surf.name in itm.surf
-         and t.hill in itm.hill]
-  logging.debug(f"casillas totales {len(tls)}.")
+  tls = [it for it in tiles
+         if it.soil.name in itm.soil and it.surf.name in itm.surf
+         and it.hill in itm.hill]
+  if info: logging.debug(f"casillas totales {len(tls)}.")
   shuffle(tls)
   [t.update() for t in tls]
   for tl in tls:
     tl.set_around(itm)
-    # logging.debug(f"checking {tl} {tl.cords}. around ocean {tl.around_coast}.")
-    if itm.is_allowed_tiles(tl) == 0: 
-      # logging.debug(f"fallo allowed {tl.cords}.")
+    if info: logging.debug(f"checking {tl} {tl.cords}. around ocean {tl.around_coast}.")
+    if itm.check_min_tiles(tl) == 0: 
+      if info: logging.debug(f"min request failed..")
       continue
-    if itm.is_unallowed_tiles(tl): 
-      # logging.debug(f"fallo unallowed {tl.cords}.")
+    if itm.check_max_tiles(tl): 
+      if info: logging.debug(f"max request failed..")
       continue
     done = 1
-    # logging.debug(f"done.")
     sq = tl.get_near_tiles(6)
-    for t in unallowed_tiles:
-        if t in sq: 
+    for it in unallowed_tiles:
+        if it in sq: 
           done = 0
-          logging.debug(f"unallowed tiles.")
+          if info: logging.debug(f"in sq.")
     
     # si listo.
     if done:
       itm.pos = tl
-      logging.info(f"{itm} inicia en {tl} {tl.cords}.")
+      if info: logging.debug(f"{itm} starts in {tl} {tl.cords}.")
     
     if done == 1: break
 
@@ -3869,7 +3892,7 @@ class Game:
     if event.type == pygame.KEYDOWN:
       if ctrl:
         if event.key == pygame.K_7:
-          pos.add_unit(OrcWarrior, orcs_t, 1)
+          pos.add_unit(Abomination, valahia_t, 1)
         if event.key == pygame.K_8:
           pos.add_unit(Velites, holy_empire_t, 1)
         if event.key == pygame.K_9:
@@ -3931,7 +3954,8 @@ class Game:
           # Hire.
           if pos.buildings == []: return
           if nation in local_units[x].belongs and local_units[x].can_hire:
-            local_units[x].get_hire_units()
+            #local_units[x].get_hire_units()
+            pass
     
         if event.key == pygame.K_i:
           if x > -1: local_units[x].info(nation)
@@ -4071,22 +4095,17 @@ class Game:
           units = []
           for ti in nation.map:
             if ti.sight:
-              for uni in ti.units:
-                if uni.leader: continue
-                sq = uni.pos.get_near_tiles(1)
-                go = 0
-                for s in sq:
-                  if s.nation == nation: go = 1
-                if nation not in uni.belongs and uni.hidden == 0 and go: units.append(uni)
+              units += ti.get_free_squads(nation) + ti.get_comm_units(nation)
+          units = [i for i in units if len(i.pos.around_snations)
+                   and nation not in i.belongs]
           menu_unit(units)
         if event.key == pygame.K_F7:
           sayland = 1
           units = []
           for ti in nation.map:
             if ti.sight:
-              for uni in ti.units:
-                if uni.leader: continue
-                if nation not in uni.belongs and uni.hidden == 0: units.append(uni)
+              units += ti.get_free_squads(nation) + ti.get_comm_units(nation)
+          units = [i for i in units if nation not in i.belongs]
           units.sort(key=lambda x: x.pos.get_distance(x.pos, nation.cities[0].pos))
           menu_unit(units)
         if event.key == pygame.K_F8:
@@ -4148,7 +4167,7 @@ class Game:
             {plains_t} {pos.around_plains},
             {swamp_t} {pos.around_swamp},
             {grassland_t} {pos.around_grassland},
-            {waste_t} {pos.around_desert},
+            {waste_t} {pos.around_waste},
             {tundra_t} {pos.around_tundra},
             {glacier_t} {pos.around_glacier}.
             """
@@ -4401,8 +4420,9 @@ class Game:
             if squad_units: sp.speak(f"{squads_t} {len(local_units)}.")
             if len(total_squads)+len(comm_units):
               sp.speak(f"({len(comm_units)+len(total_squads)}).")
-            if pos.corpses and pos.sight: 
-              sp.speak(f"{corpses_t} {sum(sum(i.deads) for i in pos.corpses)}.")
+            if pos.corpses and pos.sight:
+              corpses = round(sum(sum(i.deads) for i in pos.corpses)) 
+              sp.speak(f"{corpses_t} {corpses}.")
           sp.speak(f"{pos}")
           if pos.is_city and (pos.sight or pos in nation.nations_tiles):
             sp.speak(f"{pos.city}")
@@ -4581,33 +4601,6 @@ def speak(msg, slp=0, num=0, sound=None):
   sp.speak(msg, num)
   if slp: sleep(slp)
 
-
-
-def take_city(itm):
-  logging.debug(f"{itm} takes city {itm.pos}.")
-  msg = f"{itm} {itm.nation} toma ciudad de {itm.pos.city}."
-  itm.nation.log[-1].append(msg)
-  itm.pos.nation.log[-1].append(msg)
-  logging.info(msg)
-  city = itm.nation.av_cities[0](itm.nation, itm.pos)
-  # city.set_name()
-  city.name = itm.pos.city.name
-  city.tiles = itm.pos.city.tiles
-  itm.pos.city.nation.cities.remove(itm.pos.city)
-  itm.pos.buildings.remove(itm.pos.city)
-  for t in itm.pos.city.tiles:
-    t.nation = itm.nation
-    t.city = city
-    t.pop -= randint(20, 40) * t.pop // 100
-    t.unrest += randint(40, 80)
-    for b in t.buildings:
-      if b.name in [bu.name for bu in itm.nation.av_cities]: 
-        b.nation = itm.nation
-  itm.pos.city = city
-  itm.pos.buildings += [city]
-  city.update()
-  itm.nation.cities.append(itm.pos.city)
-  itm.nation.update(scenary)
 
 
 
