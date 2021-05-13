@@ -139,16 +139,11 @@ class Revolt(Event):
         for r in range(rebelions):
           unit = choice(units)
           percent = randint(20, 50)
-          if t.pop >= unit.pop:
-            unit = t.add_unit(unit, self.itm.nation.name)
-            unit.hp_total = percent*unit.hp_total/100
-            unit.update()
-            #for nt in t.world.random_nations:
-              #if nt.name == unit.aligment: unit.nation = nt
-            t.world.units += [unit]
-            rebels += [unit]
-            t.pop -= unit.total_pop
-            unit.set_default_align()
+          unit = t.add_unit(unit, unit.aligment)
+          unit.hp_total = percent*unit.hp_total/100
+          unit.update()
+          rebels += [unit]
+          t.pop -= unit.total_pop
 
         if rebels:
           logging.debug(f'evento {self.name} (order) en {t} {t.cords}.')

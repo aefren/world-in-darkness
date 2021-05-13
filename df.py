@@ -245,7 +245,7 @@ class Terrain:
       if i.leadership: continue
       if i.leader and nation in i.belongs: continue 
       if i.leader and i.hidden: continue
-      if i.hidden: continue
+      if i.hidden and nation not in i.belongs: continue
       if i.leader and i.leader.revealed: continue
       units += [i]
     return units
@@ -410,8 +410,10 @@ class Terrain:
     self.grouth_food = (self.food - self.pop) / self.city.grouth_factor
     for bu in self.buildings:
       if self.city.nation != bu.nation: continue
-      if bu.type == city_t: continue 
-      self.grouth_food += bu.grouth_pre * self.grouth_food/ 100
+      if bu.type == city_t:
+        self.grouth_food += bu.grouth * self.grouth_food/ 100
+        continue
+      self.grouth_food += bu.grouth_pre * self.grouth_food/ 100  
       if bu.is_complete: self.grouth_food += bu.grouth * self.grouth_food/ 100
     
     self.grouth = self.grouth_base + self.grouth_food
@@ -1996,6 +1998,7 @@ class Ai:
       
       # moves.
       if uni.pos.nation == uni.nation:
+        if info: logging.debug(f"same nation..")
         oportunist_attack = uni.oportunist_attack()
         if any(v < 1 for v in [uni.mp[0], uni.hp_total]): continue
         if oportunist_attack:
@@ -2006,10 +2009,12 @@ class Ai:
         threat = (uni.pos.around_threat + uni.pos.threat)*0.75
         if threat and threat < uni.ranking: 
           msg = f"{uni} will defend. { threat=:} in { uni.pos} {uni.pos.cords}."
+          logging.debug(msg)
           uni.log[-1] += [msg] 
           continue
         if threat < uni.ranking and uni.pos.public_order <= 70 or uni.pos.unrest >= 15:
           msg = f"will reduce the unrest or public_order."
+          logging.debug(msg)
           uni.log[-1] += [msg]
           continue
         buildings = [bu for bu in uni.pos.buildings 
@@ -2017,10 +2022,12 @@ class Ai:
         if buildings:
           #uni.get_hire_units(auto=1)
           msg = f"will stay until destroy buildings."
+          if info: logging.debug(msg)
           uni.log[-1] += [msg]
-          logging.debug(msg)
           continue
         sq = uni.pos.city.tiles
+        sq = [it for it in sq 
+              if it.get_distance(uni.pos, it) <= ceil(uni.mp[1]/2)]
         sq = [s for s in sq if uni.can_pass(s) and s.nation == uni.nation
               and s.get_distance(uni.pos, s) <= 1]
         sq.sort(key=lambda x: len(x.buildings), reverse=True)
@@ -2031,41 +2038,56 @@ class Ai:
         if info: 
           logging.debug(f"casillas {len(sq)}.")
           logging.debug(f"{uni_food=:}.")
-        for t in sq:
-          if info: 
-            logging.debug(f"""{t.food_need=:}, {t.food=:}, {t.defense=:}, 
-            {t.around_threat+t.threat=:}.""")
-          if t.food < t.food_need+uni_food and (t.defense > t.around_threat + t.threat
-                                       or t.around_threat + t.threat == 0): 
-            continue
-          if uni.ranking + t.defense > t.around_threat:
-            if uni.pos != t:
-              msg = f"heading to {t} {t.cords}. defense {t.defense}, around threat {t.around_threat}."
+        for it in sq:
+          if info:
+            msg = f"""{it.food_need=:}, {it.food=:}, {it.defense=:}, 
+            {it.around_threat+it.threat=:}."""
+            uni.log[-1] += [msg]
+            logging.debug(msg)
+            if (uni.food_total + it.food_need > it.food
+                and it.defense+1 > it.around_threat + it.threat):
+              if info:
+                msg = f"not enoug food."
+                uni.log[-1] += [msg]
+                logging.debug(msg)
+              continue
+          if it.is_city and it.around_threat + it.threat < 1:
+            if info:
+              msg = f"city {it.pos.city} but there is not threat."
+              uni.log[1] += [msg]
               logging.debug(msg)
+            continue
+          if uni.ranking + it.defense > it.around_threat:
+            if uni.pos != it:
+              msg = f"""free move to {it} {it.cords}. 
+              defense {it.defense}, around threat {it.around_threat}."""
+              if info: logging.debug(msg)
               uni.log[-1] += [msg]
-            uni.move_set(t)
+            uni.move_set(it)
             uni.move_set("attack")
             break
-        
+      
       # return to home.
       elif uni.pos.nation != uni.nation and uni.goal == None:
+        if info: logging.debug(f"out of nation.")
         num = 1
+        tries = 6
+        num += 1
         while True:
           sq = uni.pos.get_near_tiles(num)
           uni.set_favland(sq)
-          logging.debug(f"tiles {len(sq)} num {num}.")
-          num += 1
-          for t in sq:
-            logging.debug(f"{uni} ranking {uni.ranking}, threat {t.around_threat+t.threat}.")
-            if uni.ranking + t.defense > t.around_threat + t.threat and t.nation == uni.nation:
-              uni.move_set(t)
+          if info: logging.debug(f"tiles {len(sq)} num {num}.")
+          tries -= 1
+          if tries < 1: Pdb().set_trace()
+          for it in sq:
+            threat = it.around_threat + it.threat
+            if info:
+              msg = f"""{uni} ranking {uni.ranking}. threat {threat}.
+              {tries=:}.""" 
+              logging.debug(msg)
+            if uni.ranking + it.defense > threat and it.nation in uni.belongs:
+              uni.move_set(it)
               return
-      
-    for it in nation.units_comm:
-      if it.mp[0] <= 1 and it.goto == []:
-        logging.debug(f"emergency group creation: {it.pos.around_threat+it.pos.threat}.")
-        if it.pos.around_threat + it.pos.threat > it.ranking *0.7:
-          it.create_group(it.leadership - it.leading)
   
   def nation_play(self, nation, info=0):
     logging.info(f"{turn_t} {of_t} {nation}. ai = {nation.ai}, info = {nation.show_info}.")
@@ -2172,6 +2194,8 @@ class Ai:
     if info: logging.debug(f"ai_hero_moves {time()-init}.")
     self.ai_unit_cast(nation)
     if info: logging.debug(f"ai_unit_cast {time()-init}.")
+    #setup commander again.
+    nation.setup_commanders()
     # desbandando unidades.
     self.ai_unit_disband(nation)
     if info: logging.debug(f"ai_disband {time()-init}.")
@@ -2186,23 +2210,23 @@ class Ai:
     nation.tiles.sort(key=lambda x: x.hill, reverse=True)
     nation.tiles.sort(key=lambda x: len(x.around_nations) > 0, reverse=True)
     nation.tiles.sort(key=lambda x: x.defense_req, reverse=True)
-    nation.tiles.sort(key=lambda x: x.income, reverse=True)
-    nation.tiles.sort(key=lambda x: x.pop, reverse=True)
+    nation.tiles.sort(key=lambda x: military_t in x.buildings_tags,reverse=True)
     nation.tiles.sort(key=lambda x: x.around_threat + x.threat, reverse=True)
     nation.tiles.sort(key=lambda x: x.is_city and x.around_threat + x.threat, reverse=True)
     nation.tiles.sort(key=lambda x: x.city.capital and x.is_city and x.around_threat + x.threat, reverse=True)
     for tl in nation.tiles:
       if tl.blocked: continue
-      defense_needs = tl.around_threat * 1.3
+      defense_needs = tl.around_threat
+      if tl.is_city: defense_needs *= 1.5 
       if tl.defense_req > defense_needs: defense_needs = tl.defense_req
       defense = sum(uni.ranking for uni in tl.units
-                      if uni.garrison == 1 and nation in uni.belongs
+                      if nation in uni.belongs and uni.goto == []
                       and uni.leader == None)
       if defense < 80 * defense_needs / 100:
-        msg = f"{tl}. {tl.cords} needs {defense_needs-defense} defense."
-        if info: logging.debug(msg)
-        nation.devlog[-1] += [msg]
-        if info: logging.debug(f"defensa {defense}, amenaza {tl.around_threat}.")
+        if info:
+          msg1 = f"{tl}. {tl.cords} needs {defense_needs-defense} defense."
+          logging.debug(msg1)
+          nation.devlog[-1] += [msg1]
         units = []
         ranking = 0
         if tl.is_city == 0:sq = tl.get_near_tiles(1)
@@ -2217,93 +2241,141 @@ class Ai:
           if ranking >= 80 * defense_needs / 100:
             nation.devlog[-1] += [f"breaks tile checking by 80% defense."] 
             break
-          if s.units:nation.devlog[-1] += [f"check unit in {s.cords} a threat {s.around_threat}, threat {s.threat}"]
+          if s.units and info:
+            msg2 = f"""checking units in {s} {s.cords} 
+            {s.around_threat=:}, {s.threat=:}."""
+            nation.devlog[-1] += [msg2]
           for uni in s.units:
             if nation not in uni.belongs or uni.settler: continue
-            if uni.will_less: continue
+            if uni.will_less and s != tl: continue
+            if uni. leader or uni.scout or uni.goto: continue
+            if uni.check_ready() == 0 or uni.mp[0] < 2: continue
             if ranking >= 80 * defense_needs / 100:
-              msg = f"breaks unit checking by 80% defense."
-              nation.devlog[-1] += [msg]
-              if info:logging.debug(msg) 
+              if info:
+                msg = f"breaks unit checking by 80% defense."
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               break
-            msg = f"{uni}, garrison {uni.garrison}, mp {uni.mp}."
-            nation.devlog[-1] += [msg]
-            if info: logging.debug(msg)
-            if uni.goal:
-              msg = f"continues by unit has goal."
+            if info:
+              msg = f"""{uni}, garrison {uni.garrison}, mp {uni.mp}."""
               nation.devlog[-1] += [msg]
-              if info: logging.debug(msg)
+              logging.debug(msg)
+              uni.log[-1] += [f"{msg1} {msg2} {msg}"]
+            if uni.goal:
+              if info:
+                msg = f"continues by unit has goal."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
               continue
             if uni.leadership and tl.is_city and tl.around_threat + tl.threat < 1:
-              msg = f"continues by unit is comm and tile is city but no threats."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg)
+              if info:
+                msg = f"continues by unit is comm and tile is city but no threats."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
               continue
             if s.is_city and s.city.capital and s.around_threat + s.threat:
-              msg = f"breaks by threat in capital."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg)
+              if info:
+                msg = f"breaks by threat in capital."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
               continue
             if (tl.is_city and tl.around_threat + tl.threat == 0 
                 and s.around_threat + s.threat and uni.garrison):
-              msg = f"breaks by threatl." 
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg)
+              if info:
+                msg = f"breaks by threat."
+                uni.log[-1] += [msg] 
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
               continue
-            if s.is_city and uni.garrison and len(uni.pos.units) < 3:
-              msg = f"breaks by city less than 3 garrison.."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+            if s.is_city and uni.garrison and len(uni.pos.units) < 2:
+              if info:
+                msg = f"breaks by city less than 3 garrison.."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               continue
             if tl.is_city == 0 and s.around_threat + s.threat and uni.garrison:
-              msg = f"breakcs by unit defending."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg)
+              if info:
+                msg = f"breakcs by unit defending."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
               continue
             if tl.is_city == 0 and tl.around_threat + tl.threat == 0 and uni.garrison:
-              msg = f"breakcs by not need defense"
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+              if info:
+                msg = f"breakcs by not need defense"
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                if info: logging.debug(msg) 
               continue
             if tl.is_city == 0 and uni.pos.city != tl.city and uni.garrison:
-              msg = f"breakcs by unit not same city."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+              if info:
+                msg = f"breakcs by unit not same city."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               continue
             buildings = [bu for bu in s.buildings 
                      if bu.nation in s.world.random_nations]
             if tl.around_threat + tl.threat < 1 and buildings:
-              msg = f"destroying enemy building."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+              if info:
+                msg = f"destroying enemy building."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               continue
             if tl.around_threat + tl.threat < 1 and s.unrest >= 15:
-              msg = f"unit is reducing unrestl."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+              if info:
+                msg = f"unit is reducing unrest."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               continue
             if tl.around_threat + tl.threat < 1 and s.public_order < 50:
-              msg = f"unit is reducing public order."
-              nation.devlog[-1] += [msg]
-              if info: logging.debug(msg) 
+              if info:
+                msg = f"unit is reducing public order."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg) 
               continue
-            if (uni.mp[0] >= 2 and  uni.leader == None and uni.scout == 0 
-                and uni.settler == 0 and uni.goto == []): 
-              units += {uni}
-              ranking += uni.ranking
-              nation.devlog[-1] += [f"added."]
-        if info: logging.debug(f"{len(units)} unidades disponibles iniciales.")
-        if info: logging.debug(f"ranking total {ranking}")
+            if (uni.food_total + tl.food_need > tl.food
+                and tl.around_threat + tl.threat < tl.defense):
+              if info:
+                msg = f"not enough food."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
+                Pdb().set_trace()
+              continue
+            buildings = [bu for bu in s.buildings 
+                         if bu.nation == nation and military_t in bu.tags]
+            if buildings and tl.around_threat + tl.threat < tl.defense:
+              if info:
+                msg = f"defending military buildings."
+                uni.log[-1] += [msg]
+                nation.devlog[-1] += [msg]
+                logging.debug(msg)
+              continue
+            units += {uni}
+            ranking += uni.ranking
+            nation.devlog[-1] += [f"added."]
+        if info:
+          msg = f"""{len(units)} unidades disponibles iniciales. 
+          ranking total {ranking}.""" 
+          logging.debug(msg)
         units.sort(key=lambda x: tl.food_need+x.food_total<= tl.food,reverse=True)
         if tl.surf.name == forest_t:
           units.sort(key=lambda x: x.forest_survival or x.ranged, reverse=True)
-          if info: logging.debug(f"sort to forestl.")
+          if info: logging.debug(f"sort to forest.")
         if tl.surf.name == swamp_t:
           units.sort(key=lambda x: x.swamp_survival or x.ranged, reverse=True)
           if info: logging.debug(f"sort to swamp.")
         if tl.hill:
           units.sort(key=lambda x: x.mountain_survival or x.ranged, reverse=True)
-          if info: logging.debug(f"sort to swamp.")
+          if info: logging.debug(f"sort to hill.")
         if tl.surf.name in [forest_t, swamp_t] or tl.hill: 
           units.sort(key=lambda x: x.mounted)
           units.sort(key=lambda x: x.can_fly, reverse=True)
@@ -2336,14 +2408,19 @@ class Ai:
           nation.devlog[-1] += [msg]
           uni.log[-1] += [msg]
           msg = f"defensa {defense} needs {defense_needs}."
-          if info: logging.debug(msg)
+          logging.debug(msg)
           nation.devlog[-1] += [msg]
           uni.log[-1] += [msg]
           if uni.pos != tl:
             uni.move_set(tl)
             uni.move_set("gar")
           elif uni.pos == tl:
-            uni.move_set("gar")
+            uni.gar = 1
+            if info:
+              msg = f"set to garrison"
+              uni.log[-1] += [msg]
+              nation.devlog[-1] += [msg]
+              logging.debug(msg)
     
     if info: logging.debug(f"time elapses. {time()-init}.")
 
@@ -4146,6 +4223,7 @@ class Game:
           sp.speak(f"cost {pos.cost}.")
           sp.speak(f"{size_t} {pos.size}.")
         if event.key == pygame.K_6:
+          nation.setup_commanders()
           sp.speak(f"{pos.food_rate=:}.", 1)
           sp.speak(f"{pos.flood= }.")
           sp.speak(f"{len(nation.units_comm)=:}.")

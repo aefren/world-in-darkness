@@ -447,7 +447,7 @@ class CastRainOfToads(Spell):
     if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 1
-    roll = basic.roll_dice(1)
+    roll = basics.roll_dice(1)
     if roll >= 5: dist += 1
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
@@ -679,6 +679,7 @@ class RaiseDead(Spell):
     total_hp = randint(30,90)
     dead = choice(tile.corpses)
     raised = choice(dead.corpses)(itm.nation)
+    raised.pos = itm.pos
     if sum(dead.deads)*total_hp >= total_hp: 
       raised.hp_total = total_hp
       dead.deads[0] -= total_hp/5
