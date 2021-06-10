@@ -58,7 +58,7 @@ class Spell:
       msg = f"{self} {failed_t}."
       if itm.show_info: 
         sp.speak(msg, 1)
-        sleep(loadsound("spell11", channel=ch5) // 2)
+        sleep(loadsound("spell11", channel=CHTE3) // 2)
       return msg
 
   def check_conditions(self, itm, target):
@@ -108,7 +108,7 @@ class Spell:
     if check != 1: return check
     cast = self.check_cast(itm)
     if cast != 1: return cast
-    if itm.show_info: sleep(loadsound("self.sound")/2)
+    if itm.show_info: sleep(loadsound(self.sound)/2)
     if target:self.run(itm, target)
     else: 
       if self.type == "recruit": self.recruit(itm)
@@ -246,7 +246,7 @@ class BloodHeal(Spell):
     if itm.hp_total < itm.hp * itm.units: self.init(itm)
     
   def run(self, itm):
-    if itm.nation.show_info: sleep(loadsound("spell42", channel=ch3))
+    if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
     itm.pos.pop -= 20
     itm.hp_total += 5
     itm.update()
@@ -278,7 +278,7 @@ class CastBloodRain(Spell):
                           or itm.pos.city and itm.pos.city.seen_threat > itm.pos.city.defense)): self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 2
     roll = basics.roll_dice(1)
@@ -356,7 +356,7 @@ class CastLocustSwarm(Spell):
     self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     pos = itm.pos
     casting = LocustSwarm
@@ -375,7 +375,7 @@ class CastMist(Spell):
     self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     pos = itm.pos
     casting = Rain
@@ -401,7 +401,7 @@ class CastRain(Spell):
     if raining: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 3
     roll = basics.roll_dice(1)
@@ -444,7 +444,7 @@ class CastRainOfToads(Spell):
       self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 1
     roll = basics.roll_dice(1)
@@ -477,7 +477,7 @@ class CastStorm(Spell):
     if raining == 0: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 1
     roll = basics.roll_dice(1)
@@ -515,7 +515,7 @@ class CastWailingWinds(Spell):
     if wailing == 0: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell38", channel=ch5, vol=0.7))
+    if itm.show_info: sleep(loadsound("spell38", channel=CHTE3, vol=0.7))
     self.set_msg0(itm)
     dist = 1
     roll = basics.roll_dice(1)
@@ -553,7 +553,7 @@ class Curse(Spell):
       self.init(itm, units[0])
 
   def run(self, itm, target):
-    if itm.nation.show_info: sleep(loadsound("spell42", channel=ch3))
+    if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
     sk = Diseased(itm)
     sk.turns = randint(1, 4)
     if sk.name not in [s.name for s in target.global_skills]:
@@ -591,7 +591,7 @@ class HealingRoots(Spell):
     if units: self.init(itm, units[0])
 
   def run(self, itm, target):
-    if itm.nation.show_info: sleep(loadsound("spell42", channel=ch3))
+    if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
     target.other_skills = [sk for sk in target.other_skills if sk.name != intoxicated_t]
     msg = f"{itm} has removed {intoxicated_t} {from_t} {target}."
     logging.debug(msg)
@@ -658,13 +658,13 @@ class PoisonCloud(Spell):
 
 
 
-class RaiseDead(Spell):
-  name = raise_dead_t
+class RaiseBloodSkeleton(Spell):
+  name = "raise blood skeleton"
   cast = 6
   cost = 5
   ranking = 10
-  type = "spell34"
-  tags = ["reanimating"]
+  type = "spell"
+  tags = ["reanimation"]
 
   corpses = 1
   ranking = 1.2
@@ -677,8 +677,66 @@ class RaiseDead(Spell):
     tile = itm.pos
     
     total_hp = randint(30,90)
-    dead = choice(tile.corpses)
-    raised = choice(dead.corpses)(itm.nation)
+    dead = None
+    for cr in tile.corpses:
+      cr.sort(key=lambda x: sum(x.deads),reverse=True)
+    for cr in tile.corpses:
+      if death_t not in cr.traits:
+        dead = cr
+        break
+    raised = BloodSkeleton(itm.nation)
+    raised.pos = itm.pos
+    if sum(dead.deads)*total_hp >= total_hp: 
+      raised.hp_total = total_hp
+      dead.deads[0] -= total_hp/5
+    else: 
+      raised.hp_total = sum(dead.deads) * raised.hp
+      tile.corpses.remove(dead)
+    raised.update()
+    logging.debug(f"unidades totales de {dead} {sum(dead.deads)}.")
+    logging.debug(f"{raised} unidades {raised.units}. hp {raised.hp}.")
+    
+    msg = f"{itm} cast {self.name}."
+    logging.info(msg)
+    raised.auto_attack()
+    raised.pos = tile
+    raised.pos.units.append(raised)
+    msg = f"reanimados {raised}."
+    itm.log[-1].append(msg)
+    if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+    itm.pos.update(itm.nation)
+
+
+
+class RaiseDead(Spell):
+  name = raise_dead_t
+  cast = 6
+  cost = 5
+  ranking = 10
+  type = "spell"
+  tags = ["reanimation"]
+
+  corpses = 1
+  ranking = 1.2
+
+  def ai_run(self, itm):
+    if itm.pos.corpses: self.run(itm)
+
+  def run(self, itm):
+    logging.info(f"{self.name}. ({itm}).")
+    tile = itm.pos
+    
+    total_hp = randint(30,90)
+    raised = None
+    shuffle(tile.corpses)
+    for cr in tile.corpses:
+      shuffle(cr.corpses)
+      for de in cr.corpses:
+        if death_t in de.traits: 
+          raised = de(itm.nation)
+          dead = cr
+          break
+    if raised == None: return
     raised.pos = itm.pos
     if sum(dead.deads)*total_hp >= total_hp: 
       raised.hp_total = total_hp
@@ -691,6 +749,56 @@ class RaiseDead(Spell):
     logging.debug(f"{raised} unidades {raised.units}. hp {raised.hp}.")
     
     msg = f"{itm} lanza {self.name}."
+    logging.info(msg)
+    raised.auto_attack()
+    raised.pos = tile
+    raised.pos.units.append(raised)
+    msg = f"reanimados {raised}."
+    itm.log[-1].append(msg)
+    if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+    itm.pos.update(itm.nation)
+
+
+
+class RaiseFellBat(Spell):
+  name = "raise fell bat"
+  cast = 4
+  cost = 5
+  ranking = 10
+  type = "spell"
+  tags = ["reanimation"]
+
+  corpses = 1
+  ranking = 1.2
+
+  def ai_run(self, itm):
+    if itm.pos.corpses: self.run(itm)
+
+  def run(self, itm):
+    logging.info(f"{self.name}. ({itm}).")
+    tile = itm.pos
+    
+    total_hp = randint(30,90)
+    dead = None
+    for cr in tile.corpses:
+      cr.sort(key=lambda x: sum(x.deads),reverse=True)
+    for cr in tile.corpses:
+      if death_t not in cr.traits:
+        dead = cr
+        break
+    raised = FellBat(itm.nation)
+    raised.pos = itm.pos
+    if sum(dead.deads)*total_hp >= total_hp: 
+      raised.hp_total = total_hp
+      dead.deads[0] -= total_hp/5
+    else: 
+      raised.hp_total = sum(dead.deads) * raised.hp
+      tile.corpses.remove(dead)
+    raised.update()
+    logging.debug(f"unidades totales de {dead} {sum(dead.deads)}.")
+    logging.debug(f"{raised} unidades {raised.units}. hp {raised.hp}.")
+    
+    msg = f"{itm} cast {self.name}."
     logging.info(msg)
     raised.auto_attack()
     raised.pos = tile
@@ -826,7 +934,7 @@ class Returning(Spell):
     msg = f"spell {self.name}"
     itm.log[-1] += [msg]
     logging.debug(msg)
-    if itm.nation.show_info: sleep(loadsound("spell41", channel=ch5) * 0.5)
+    if itm.nation.show_info: sleep(loadsound("spell41", channel=CHTE3) * 0.5)
     itm.mp[0] = 0
     pos = itm.pos
     itm.nation.cities[0].pos.units += [itm]
@@ -864,7 +972,7 @@ class SightFromFuture(Spell):
   def run(self, itm):
     self.set_msg0(itm)
     logging.debug(msg)
-    if itm.nation.show_info: sleep(loadsound("spell41", channel=ch5) * 0.5)
+    if itm.nation.show_info: sleep(loadsound("spell41", channel=CHTE3) * 0.5)
     tiles = itm.pos.get_near_tiles(1)
     for t in tiles:
       for uni in t.units:
@@ -926,7 +1034,7 @@ class SummonSecondSun(Spell):
     if go: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 5
     pos = itm.pos
@@ -1038,7 +1146,7 @@ class SummonEclipse(Spell):
     if go: self.init(itm)
 
   def run(self, itm):
-    if itm.show_info: sleep(loadsound("spell27", channel=ch5, vol=0.7) / 2)
+    if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 8
     pos = itm.pos
@@ -1134,7 +1242,7 @@ class SummonSkeletonWarriors(Spell):
   type = summoning_t
   cast = 6
   cost = 20
-  unit = SkeletonWarrior
+  unit = BloodSkeleton
   tags = ["summon"]
 
   def ai_run(self, itm):

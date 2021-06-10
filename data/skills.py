@@ -17,6 +17,8 @@ class Skill:
   name = "skill"
   desc = str()
   effect = "self"  # all, friend, enemy, self.
+  sound = None
+  vol = 0.5
   cast = 6
   cost = 1
   food = 1
@@ -28,7 +30,6 @@ class Skill:
   passive_ranking = 1
   ranking = 1
   show = 1
-  sound = None
   tags = []
   # types: "generic", "before combat", "after combat", "before attack", "after attack", "start turn".
   type = 0 
@@ -420,16 +421,16 @@ class FearAura(Skill):
 
 class FeedingFrenzy(Skill):
   name = "feeding frenzy"
-  desc = "+2 damage, +1 moves +2 str.."
+  desc = "+1 moves, +1 resolve, +1 res, +2 strn."
   effect = "self"
   ranking = 1.1
   type = "generic"
 
   def run(self, itm):
-    itm.moves_mod += 2
-    itm.res_mod += 3
-    itm.hres_mod += 3
-    itm.strn_mod += 3 
+    itm.moves_mod += 1
+    itm.res_mod += 1
+    itm.resolve_mod += 1
+    itm.strn_mod += 2 
 
 
 
@@ -553,6 +554,8 @@ class Storm(Skill):
   name = "storm"
   desc = "if unit is ranged -4 rng, -1 off."
   effects = "self"
+  sound = ["storm1", "storm2"]
+  vol = 0.05
   ranking = 1
   type = "generic"
 
@@ -713,6 +716,7 @@ class Intoxicated(Skill):
   name = intoxicated_t
   desc = "Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos."
   effect = "self"
+  sound = ["diseased1"]
   turns = randint(5, 10)
   type = "start turn"
 
@@ -730,7 +734,7 @@ class Intoxicated(Skill):
       itm.log[-1] += [msg]
       itm.nation.log[-1] += [msg]
       itm.units -= deads
-      if itm.info: sleep(loadsound("spell34", channel=ch5) / 2)
+      if itm.info: sleep(loadsound("spell34", channel=CHTE3) / 2)
 
 
 class Inspiration(Skill):
@@ -822,12 +826,14 @@ class LordOfBones(Skill):
       itm.att1_mod += 1
       itm.dfs_mod += 1
       itm.off_mod += 1
+      itm.res_mod += 2
+      itm.strn_mod += 1
 
 
 
 class BloodLord(Skill):
   name = "señor de sangre"
-  desc = "+2 strn, +1 moves, +1 resolve if unit is blood drinker."
+  desc = "+1 dfs, +1 off, +1 moves, +1 resolve if unit is blood drinker."
   effect = "leading"
   ranking = 1.2
   type = "generic"
@@ -839,7 +845,8 @@ class BloodLord(Skill):
       itm.effects.append(self.name)
       itm.moves_mod += 1
       itm.resolve_mod += 1
-      itm.strn_mod += 2
+      itm.dfs_mod += 1
+      itm.off_mod += 1
 
 
 
@@ -889,6 +896,7 @@ class Miasma(Skill):
   name = "miasma"
   desc = ""
   effects = "self"
+  sound = ["miasma1"]
   ranking = 1
   type = "start turn"
   turns = -1
@@ -908,7 +916,7 @@ class Miasma(Skill):
         itm.pos.world.log[-1] += [msg]
         logging.debug(msg)
         if itm.pos.nation and itm.pos.nation.show_info:
-          sleep(loadsound("notify25", channel=ch4) * 0.3)
+          sleep(loadsound("notify25", channel=CHTE2) * 0.3)
 
   def tile_run(self, itm):
     self.turns -= 1
@@ -927,22 +935,28 @@ class Miasma(Skill):
       # corpse.hp_total = 0
       # itm.units += [corpse]
       itm.pop -= deads
-      if itm.nation.show_info: sleep(loadsound("notify23", channel=ch4) // 1.5)
-    units = [u for u in itm.units if u.poisonres == 0
-               and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
+      if itm.nation.show_info: sleep(loadsound("notify23", channel=CHTE2) // 1.5)
+               
+    units = [it for it in itm.units if it.poisonres == 0
+             and death_t not in it.traits and Intoxicated.name not in [s.name for s in it.skills] and it.hp_total >= 1]
     roll = basics.roll_dice(1)
     if roll >= 6 and units:
-      if units:
-        unit = choice(units)
-        turns = randint(1, 3)
-        roll = basics.roll_dice(1)
-        if roll >= 6: turns += 5
-        elif roll >= 5: turns += 3
-        sk = Intoxicated(unit)
-        sk.turns = turns        
-        if Intoxicated.name not in [s.name for s in unit.skills]: 
-          unit.other_skills += [sk]
-          if unit.nation.show_info: sleep(loadsound("notify28"))
+      unit = choice(units)
+      turns = randint(1, 3)
+      roll = basics.roll_dice(1)
+      if roll >= 6: turns += 5
+      elif roll >= 5: turns += 3
+      sk = Intoxicated(unit)
+      sk.turns = turns        
+      if Intoxicated.name not in [s.name for s in unit.skills]: 
+        unit.other_skills += [sk]
+        if unit.nation.show_info: sleep(loadsound("notify28"))
+        try:
+          msg = f"{unit} at {unit.pos} {unit.pos.cords} has been intoxicated."
+        except: Pdb().set_trace()
+        unit.log[-1] += [msg]
+        unit.nation.log[-1] += [msg]
+        unit.pos.world.log[-1] += [msg]
 
 
 
@@ -975,13 +989,13 @@ class Night(Skill):
         itm.off_mod -= 1
         itm.resolve_mod -= 1
         if itm.range[1] > 5: 
-          itm.off_mod -= 1
+          itm.off_mod -= 2
 
 
 
 class NightFerocity(Skill):
   name = "ferocidad nocturna"
-  desc = "if night: +1 att1, +2 damage, +1 moves."
+  desc = "if night: +1 att1, +2 strn, +1 moves."
   effect = "self"
   type = "generic"
 
@@ -1039,12 +1053,14 @@ class Organization(Skill):
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
+      itm.resolve_mod += 1
 
 
 class Pestilence(Skill):
   name = "pestilence"
   desc = ""
   effects = "self"
+  sound = ["miasma1"]
   ranking = 1
   type = "start turn"
   turns = -1
@@ -1064,7 +1080,7 @@ class Pestilence(Skill):
         itm.pos.world.log[-1] += [msg]
         logging.debug(msg)
         if itm.pos.nation and itm.pos.nation.show_info:
-          sleep(loadsound("notify25", channel=ch4) * 0.3)
+          sleep(loadsound("notify25", channel=CHTE2) * 0.1)
 
   def tile_run(self, itm):
     self.turns -= 1
@@ -1083,22 +1099,25 @@ class Pestilence(Skill):
       # corpse.hp_total = 0
       # itm.units += [corpse]
       itm.pop -= deads
-      if itm.nation.show_info: sleep(loadsound("notify23", channel=ch4) // 1.5)
+      if itm.nation.show_info: sleep(loadsound("notify23", channel=CHTE2) // 1.5)
     units = [u for u in itm.units if u.poisonres == 0
                and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
     roll = basics.roll_dice(1)
     if roll >= 6 and units:
-      if units:
-        unit = choice(units)
-        turns = randint(1, 3)
-        roll = basics.roll_dice(1)
-        if roll >= 6: turns += 5
-        elif roll >= 5: turns += 3
-        sk = Intoxicated(unit)
-        sk.turns = turns        
-        if Intoxicated.name not in [s.name for s in unit.skills]: 
-          unit.other_skills += [sk]
-          if unit.nation.show_info: sleep(loadsound("notify28"))
+      unit = choice(units)
+      turns = randint(1, 3)
+      roll = basics.roll_dice(1)
+      if roll >= 6: turns += 5
+      elif roll >= 5: turns += 3
+      sk = Intoxicated(unit)
+      sk.turns = turns        
+      if Intoxicated.name not in [s.name for s in unit.skills]: 
+        unit.other_skills += [sk]
+        if unit.nation.show_info: sleep(loadsound("notify28"))
+        msg = f"{unit} at {unit.pos} {unit.pos.cords} has been intoxicated."
+        unit.log[-1] += [msg]
+        unit.nation.log[-1] += [msg]
+        unit.pos.world.log[-1] += [msg]
 
 
 
@@ -1153,6 +1172,7 @@ class Rain(Skill):
   name = "raining"
   desc = ""
   effects = "self"
+  sound = ["rain1"]
   type = "generic"
 
   def run(self, itm):
@@ -1274,8 +1294,11 @@ class Skirmisher(Skill):
   def run(self, itm):
     if itm.target and itm.dist < itm.range[1]: 
       if itm.target.hp_total < 1: return
-      if basics.roll_dice(1) >= 4: 
-        dist = randint(1, itm.moves + itm.moves_mod)
+      if itm.moves+itm.moves_mod < 1: return
+      if basics.roll_dice(1) >= 4:
+        moves = itm.moves+itm.moves_mod
+        moves = ceil(moves/2) 
+        dist = randint(1, moves)
         itm.dist += dist
         itm.target.dist += dist
         msg = f"{self}: {itm} go back {dist}."
@@ -1402,7 +1425,7 @@ class SecondSun(Skill):
           msg = f"{self.name} {kills_t} {roll//uni.hp}."
           uni.log[-1] += [msg]
           if uni.nation:
-              sleep(loadsound("notify25", channel=ch4) * 0.5)
+              sleep(loadsound("notify25", channel=CHTE2) * 0.5)
 
 
 
@@ -1600,6 +1623,8 @@ class WailingWinds(Skill):
   name = "wailing winds"
   desc = "-1 resolve for all units. ignores (death, malignant."
   effects = "all"
+  sound = ["wailing winds1", "wailing winds2"]
+  vol = 0.1
   ranking = 1
   type = "generic"
 

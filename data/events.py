@@ -43,11 +43,11 @@ class Looting(Event):
         kills *= 2 
         t.raided = raided
         t.pop -= kills
-        msg = f"{raiders_t} {raids_t} {raided} {in_t} {t} {t.cords}."
+        msg = f"pillage {in_t} {t} {t.cords}. loss {raided} {gold_t}."
         self.itm.nation.log[-1] += [msg]
         if kills >= 1:
           t.add_corpses(choice(t.nation.population_type), kills) 
-          msg = f'{raiders_t} {kill_t} {kills}.'
+          msg = f'loss {kills} population.'
           self.itm.nation.log[-1] += [msg]
         if t.is_city and t.city.capital and t.city.nation.gold >= 500:
           try:
@@ -74,7 +74,7 @@ class Reanimation(Event):
     if self.itm.pos.world.turn < 2: return
     for t in self.itm.tiles:
       if t.corpses == []: continue
-      total_hp = randint(30,70)
+      total_hp = randint(40,80)
       corpses = []
       dead = None
       for it in t.corpses: corpses += [it]
@@ -171,7 +171,7 @@ class Starving(Event):
         t.add_corpses(choice(t.nation.population_type), deads)
         msg = f'starving in {t} {t.cords} deads {deads}.'
         self.itm.nation.log[-1] += [msg]
-        if self.itm.nation.show_info: sleep(loadsound('spell36', channel=ch5) // 1.3)
+        if self.itm.nation.show_info: sleep(loadsound('spell36', channel=CHTE3) // 1.3)
 
 
 class Unrest(Event):

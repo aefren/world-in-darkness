@@ -25,12 +25,13 @@ cognomen = ["Aculeo", "Vatia ", "Aquila", "Agricola", "Catulus", "Celerus",
             "Scaurus", "Sempronianus", "Silanus", "Magnus", "Maluginensis", 
             "Marius"]
 
-death_citynames = ['Illarnek', 'Nekhnu', 'Gar Medux', 'Khatatennu', 'Athdar',
-                   'Eridu', 'Tell Brak',]
+death_citynames = ["Wallachia", "Illarnek", "Nekhnu", "Gar Medux",  
+                   "Tell Brak", "Wigol", "Braila", "Gresit", "Lupu", "", 
+                   "Eridu", "Murdenu", "Targoviste", "Khatatennu", ]
 
-elven_citynames = ['Eyma Esari', 'me Ennore', 'Ilsatalos', 'hahil', 'Alanbel', 
-                   'Neaenarius', 'Wailin', 'Nargothrond', 'enaes', 'Iyhthyr', 
-                   'Forlond', 'Harlond', 'Tavrobel', 'Vinyamar',]
+elven_citynames = ["Eyma Esari", "me Ennore", "Ilsatalos", "hahil", "Alanbel", 
+                   "Neaenarius", "Wailin", "Nargothrond", "enaes", "Iyhthyr", 
+                   "Forlond", "Harlond", "Tavrobel", "Vinyamar",]
 
 elves_name1 = ["Arwen", "Aredhel", "Aerin", "Aubree", "Alvaerelle", 
                      "Maylin", "Aelynn", 
@@ -55,10 +56,10 @@ ghoul_name1 = ["Gontruz", "Oqrok", "Raottot", "Okdig", "Roxoq", "Khilgot",
                "iraokdid", "Skullgrowl", "Isvergug", "Valguac", "Korvogdan", 
                "Veridgaz", "jotjosger", "Nielzijse", "Dacmelea"]
 
-holy_empire_citynames = ['Asturica', 'Nidum', 'Ammaia', 'Aesica', 'Ostia Aterni', 
-                   'Caeciliana', 'Venetiae', 'Asturica Augusta', 'Consentia', 
-                   'Tauromenium', 'Tyrnalene', 'Vicertu', 'Nielpolis', 'Ziville',
-                   'Barcino', 'Aeminium',]
+holy_empire_citynames = ["Asturica", "Nidum", "Ammaia", "Aesica", "Ostia Aterni", 
+                   "Caeciliana", "Venetiae", "Asturica Augusta", "Consentia", 
+                   "Tauromenium", "Tyrnalene", "Vicertu", "Nielpolis", "Ziville",
+                   "Barcino", "Aeminium",]
 
 necromancer_name1 = ["Buzad", "Bokhar", "Urodum", "Tethik", "Waqir", "Cradum", 
                      "Rorius", "Cradhur", "Neimien", "Ezrezhar", "Eprelekai", 
@@ -90,9 +91,9 @@ male_name1 = ["Lazar", "Alaric", "Ballard", "Troy", "Gunnar", "Lucius",
               "Jenkin", "Stenka", "Arthurius", "Malachi", "Valentine", "Ivan", 
               "Jhon", "Aliester", "Barnabas", "Santiago", "Edmund", "Jacob"]
 
-orc_citynames = ['Raz Vradrogh', 'Nigrad', 'Dhozdul Brukh', 'Sakdjuruna', 
-                'Gadgrammogh', 'Dhadh Urur', 'Nigzard', 
-                'Nor Qughi', 'Ednen', 'Ain el Jedifouk',]
+orc_citynames = ["Raz Vradrogh", "Nigrad", "Dhozdul Brukh", "Sakdjuruna", 
+                "Gadgrammogh", "Dhadh Urur", "Nigzard", 
+                "Nor Qughi", "Ednen", "Ain el Jedifouk",]
 
 orc_name1 = ["Krouthu", "Yukgnath", "Surbag", "Kertug", "Naghat", "Holkurg", 
              "Zugbu", "Nildud", "Rogan", "Farod", "Urag", "Slapdud", "Zargulg"]
@@ -121,18 +122,18 @@ surfname1 = ["Shade", "Vossen", "Kobe", "Drach", "Brevil", "Strain",
 
 
 #other.
-viking_citynames = ['Faxaoss', 'Bjarnarnes', 'Skrioudalr', 'Grisartunga', 
-                    'Andakilsa', 'Sigluvik', 'Lioandisnes', 'Sandfell', 'Bitra', 'Hoskuldsar', 'Pettlandsfjoror', 'Einarsfjoror']
+viking_citynames = ["Faxaoss", "Bjarnarnes", "Skrioudalr", "Grisartunga", 
+                    "Andakilsa", "Sigluvik", "Lioandisnes", "Sandfell", "Bitra", "Hoskuldsar", "Pettlandsfjoror", "Einarsfjoror"]
 
-mountain_names = ['Aglon', 'Amon Anwar', 'Andram', 'Calacirya', 'Caradhras',
-                  'Celebdil', 'Cirith Gorgor', 'Crissaegrim', 'Echoriath',
-                  'Nimba', 'Drakensberg', 'Tibesti', 'Kilimanjaro', 'Karakoram',
-                  'Everest', 'Kangchenjunga', 'Lhotse', 'Makalu', 'Dhaulagiri',
-                  'Annapurna', 'Nuptse', 'Pumori', 'Ama Dablam', 'Puncak Jaya',
-                  'Erebus', 'Fuji', 'Etna', 'Tambora', 'Fogo', 'Aventinus', 
-                  'Calius', 'Esquilinus', 'Herminius', 'Lunae', 
+mountain_names = ["Aglon", "Amon Anwar", "Andram", "Calacirya", "Caradhras",
+                  "Celebdil", "Cirith Gorgor", "Crissaegrim", "Echoriath",
+                  "Nimba", "Drakensberg", "Tibesti", "Kilimanjaro", "Karakoram",
+                  "Everest", "Kangchenjunga", "Lhotse", "Makalu", "Dhaulagiri",
+                  "Annapurna", "Nuptse", "Pumori", "Ama Dablam", "Puncak Jaya",
+                  "Erebus", "Fuji", "Etna", "Tambora", "Fogo", "Aventinus", 
+                  "Calius", "Esquilinus", "Herminius", "Lunae", 
                   ]
 
-japan_namEs = ['Haruki', 'Hayato', 'Haruto', 'Hideaki', 'Hideyoshi', 'Hikaru', 'Hiraku', 'Hiroshi', 'Hotaka', 'Ichiro', 'Isamu', 'Katashi', 'Katsuo', 'ken', 'kazushi']
+japan_namEs = ["Haruki", "Hayato", "Haruto", "Hideaki", "Hideyoshi", "Hikaru", "Hiraku", "Hiroshi", "Hotaka", "Ichiro", "Isamu", "Katashi", "Katsuo", "ken", "kazushi"]
 
-japan_surfnames = ['Ryuunosuke', 'saburou', 'shin', 'shinobu', 'hiro', 'sora', 'taiki', 'Takahiro', 'Takashi', 'takeshi', 'ssubasa'] 
+japan_surfnames = ["Ryuunosuke", "saburou", "shin", "shinobu", "hiro", "sora", "taiki", "Takahiro", "Takashi", "takeshi", "ssubasa"] 

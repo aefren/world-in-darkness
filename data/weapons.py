@@ -282,7 +282,7 @@ class CrossBow(Weapon):
     if self.itm.dist <= 10: 
       self.damage += 1
       self.critical += 2
-      self.modifier += [f"{damage_t} + 1, {self.critical_t} + 2"]
+      self.modifier += [f"{damage_t} + 1, {self.critical} + 2"]
 
 
 
