@@ -1,6 +1,6 @@
-dev = 1
+dev = 0
 # available languages: en, es.
-lang = "en" 
+lang = "es" 
 if dev == 0:
   if lang == "es": exec("from data.lang.es import *") 
   elif lang == "en": exec(" from data.lang.en import *")

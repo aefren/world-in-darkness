@@ -4511,7 +4511,7 @@ class Undead(Unit):
 # Elfos.
 # edificios.
 class Hall(City):
-  name = "salón"
+  name = hall_t
   traits = [elf_t]
   events = [Starving, Unrest, Looting, Revolt]
   food = 50
@@ -4618,7 +4618,7 @@ class Hall(City):
 
 
 class GlisteningPastures(Building):
-  name = "Pasturas radiantes"
+  name = Glistening_Pastures_t
   level = 1
   city_unique = 1
   size = 6
@@ -4642,7 +4642,7 @@ class GlisteningPastures(Building):
 
 
 class WhisperingWoods(GlisteningPastures, Building):
-  name = "Establos del viento"
+  name = Whispering_Woods_t
   level = 2
   base = GlisteningPastures
   gold = 14000
@@ -4659,7 +4659,7 @@ class WhisperingWoods(GlisteningPastures, Building):
 
 
 class FalconRefuge(Building):
-  name = "refugio del alcón"
+  name = falcon_refuge_t
   level = 1
   city_unique = 1
   size = 4
@@ -4679,7 +4679,7 @@ class FalconRefuge(Building):
 
 
 class ForestLookout(FalconRefuge, Building):
-  name = "Observatorio forestal"
+  name = forest_lookout_t
   level = 2
   base = FalconRefuge
   gold = 10000
@@ -4700,7 +4700,7 @@ class ForestLookout(FalconRefuge, Building):
 
 
 class Sanctuary(Building):
-  name = "santuario"
+  name = sanctuary_t
   level = 1
   city_unique = 1
   size = 6
@@ -4723,7 +4723,7 @@ class Sanctuary(Building):
 
 
 class HauntedForest(Sanctuary, Building):
-  name = "Bosque embrujado"
+  name = haunted_forest_t
   level = 2
   base = Sanctuary
   gold = 10000
@@ -4758,7 +4758,7 @@ class WailingWoods(HauntedForest, Building):
 
 
 class MoonsFountain(WailingWoods, Building):
-  name = "Fuentes de la luna"
+  name = "moons fountains"
   level = 4
   base = Sanctuary
   gold = 20000
@@ -4774,7 +4774,7 @@ class MoonsFountain(WailingWoods, Building):
 
 
 class Grove(Building):
-  name = "Huerto"
+  name = grove_t
   level = 1
   size = 6
   gold = 1000
@@ -4795,7 +4795,7 @@ class Grove(Building):
 
 
 class GrapeVines(Grove, Building):
-  name = "racimos de uva"
+  name = "grape vines"
   level = 2
   base = Grove
   gold = 2500
@@ -4816,7 +4816,7 @@ class GrapeVines(Grove, Building):
 
 
 class Vineyard(GrapeVines, Building):
-  name = "Viñedo"
+  name = "vineyard"
   level = 3
   base = GrapeVines
   gold = 8000
@@ -4932,7 +4932,7 @@ class StoneCarvers2(StoneCarvers, Building):
 
 # Commanders.
 class Druid(Elf):
-  name = "druida"
+  name = "druid"
   namelist = [elves_name1, elves_name2]
   units = 5
   ln = 5
@@ -5167,7 +5167,7 @@ class PriestessOfTheMoon(Elf):
 
 
 class AwakenTree(Elf):
-  name = "árbol despertado"
+  name = "awaken tree"
   units = 1
   min_units = 1
   ln = 3
@@ -5217,7 +5217,7 @@ class AwakenTree(Elf):
 
 
 class BladeDancer(Elf):
-  name = "danzante de la espada"
+  name = "blade dancer"
   units = 10
   min_units = 10
   ln = 10
@@ -5351,7 +5351,7 @@ class Driad(Elf):
 
 
 class EternalGuard(Elf):
-  name = "guardia eterna"
+  name = "eternal guard"
   units = 20
   sts = 4
   min_units = 20
@@ -5398,7 +5398,7 @@ class EternalGuard(Elf):
 
 
 class Falcon(Elf):
-  name = "Alcón"
+  name = falcon_t
   units = 2
   min_units = 2
   ln = 20
@@ -5441,7 +5441,7 @@ class Falcon(Elf):
 
 
 class ForestBear(Unit):
-  name = "Oso del bosque"
+  name = "forest bear"
   units = 4
   min_units = 4
   ln = 7
@@ -5486,7 +5486,7 @@ class ForestBear(Unit):
 
 
 class ForestEagle(Elf):
-  name = "águila del bosque"
+  name = "forest eagle"
   units = 2
   min_units = 2
   ln = 20
@@ -5617,7 +5617,7 @@ class ForestGiant(Unit):
 
 
 class ForestGuard(Elf):
-  name = "guardia forestal"
+  name = forest_guard_t
   units = 20
   min_units = 10
   ln = 10
@@ -5751,7 +5751,7 @@ class ElvesSettler(Human):
 
 
 class Huntress(Elf):
-  name = huntresse_t
+  name = huntress_t
   units = 5
   min_units = 5
   max_squads = 5
@@ -5797,7 +5797,7 @@ class Huntress(Elf):
 
 
 class WoodArcher(Elf):
-  name = "alto arquero silvano"
+  name = "wood archer"
   units = 10
   sts = 2
   min_units = 10
@@ -5890,7 +5890,7 @@ class SisterFromTheDeepth(Elf):
 
 
 class ElkRider(Elf):
-  name = "wild huntsman"
+  name = "elk rider"
   units = 5
   min_units = 5
   ln = 5
@@ -6045,7 +6045,7 @@ class Hamlet(City):
 
 # edificios.
 class TrainingCamp(Building):
-  name = "campo de entrenamiento"
+  name = training_camp_t
   level = 1
   city_unique = 1
   size = 4
@@ -6065,7 +6065,7 @@ class TrainingCamp(Building):
 
 
 class ImprovedTrainingCamp(TrainingCamp, Building):
-  name = "campo de entrenamiento mejorado"
+  name = improved_training_camp_t
   level = 2
   base = TrainingCamp
   gold = 8000
@@ -6082,7 +6082,7 @@ class ImprovedTrainingCamp(TrainingCamp, Building):
 
 
 class Barracks(ImprovedTrainingCamp, Building):
-  name = "cuartel"
+  name = barracks_t
   level = 3
   base = TrainingCamp
   gold = 12000
@@ -6100,7 +6100,7 @@ class Barracks(ImprovedTrainingCamp, Building):
 
 
 class ImprovedBarracks(Barracks, Building):
-  name = "cuartel mejorado"
+  name = improved_barracks_t
   level = 4
   base = TrainingCamp
   gold = 16000
@@ -6117,7 +6117,7 @@ class ImprovedBarracks(Barracks, Building):
 
 
 class Pastures(Building):
-  name = "pasturas"
+  name = pastures_t
   level = 1
   city_unique = 1
   size = 6
@@ -6140,7 +6140,7 @@ class Pastures(Building):
 
 
 class Stables(Pastures, Building):
-  name = "establos"
+  name = stables_t
   level = 2
   base = Pastures
   gold = 12000
@@ -6158,7 +6158,7 @@ class Stables(Pastures, Building):
 
 
 class PlaceOfProphecy(Building):
-  name = "place of prophecy"
+  name = place_of_prophecy_t
   level = 1
   city_unique = 1
   size = 4
@@ -6179,7 +6179,7 @@ class PlaceOfProphecy(Building):
 
 
 class HolyFountains(PlaceOfProphecy, Building):
-  name = "holy fountains"
+  name = holy_fountains_t
   level = 2
   base = PlaceOfProphecy
   gold = 8000
@@ -6195,7 +6195,7 @@ class HolyFountains(PlaceOfProphecy, Building):
 
 
 class TheMarbleTemple(PlaceOfProphecy, Building):
-  name = "the marble temple"
+  name = the_marble_temple_t
   level = 3
   base = PlaceOfProphecy
   gold = 13500
@@ -6211,7 +6211,7 @@ class TheMarbleTemple(PlaceOfProphecy, Building):
 
 
 class FieldsOfJupiter(TheMarbleTemple, Building):
-  name = "templo de la luz"
+  name = fields_of_jupiter_t
   level = 4
   base = PlaceOfProphecy
   gold = 18000
@@ -6844,7 +6844,7 @@ class Flagellant(Human):
 
 
 class RebornOne(Human):
-  name = "renacido"
+  name = reborn_one_t
   units = 20
   min_units = 10
   ln = 10
@@ -6931,7 +6931,7 @@ class Velites(Human):
 
 
 class ImperialGuard(Human):
-  name = "guardia imperial"
+  name = imperial_guard_t
   units = 10
   sts = 4
   min_units = 10
@@ -7710,8 +7710,8 @@ class CourtOfBlood(Mausoleum, Building):
 
 
 
-class HallsOfTheDead (Building):
-  name = "sala de los muertos"
+class HallsOfTheDeads (Building):
+  name = halls_of_the_deads_t
   level = 1
   city_unique = 1
   size = 4
@@ -7726,14 +7726,14 @@ class HallsOfTheDead (Building):
     self.hill = [0, 1]
     self.soil = [waste_t, grassland_t, plains_t, tundra_t]
     self.surf = [forest_t, none_t]
-    self.upgrade = [SummoningCircle]
+    self.upgrade = [SummoningField]
 
 
 
-class SummoningCircle(HallsOfTheDead, Building):
+class SummoningField(HallsOfTheDeads, Building):
   name = summoning_field_t
   level = 2
-  base = HallsOfTheDead
+  base = HallsOfTheDeads
   gold = 12000
 
   def __init__(self, nation, pos):
@@ -7745,10 +7745,10 @@ class SummoningCircle(HallsOfTheDead, Building):
 
 
 
-class DarkMonolit(SummoningCircle, Building):
-  name = "monolito oscuro"
+class DarkMonolit(SummoningField, Building):
+  name = dark_monolit_t
   level = 3
-  base = HallsOfTheDead
+  base = HallsOfTheDeads
   gold = 20000
   own_terrain = 1
   public_order = 50
@@ -7784,7 +7784,7 @@ class HuntingGround(Building):
 
 
 class SinisterForest(HuntingGround, Building):
-  name = "bosque abyssal"
+  name = sinister_forest_t
   level = 1
   base = HuntingGround
   gold = 14000
@@ -7800,7 +7800,7 @@ class SinisterForest(HuntingGround, Building):
 
 
 class Gallows(Building):
-  name = "Gallows"
+  name = gallows_t
   level = 1
   local_unique = 1
   size = 2
@@ -7820,7 +7820,7 @@ class Gallows(Building):
 
 
 class ImpaledField(Gallows, Building):
-  name = "campo de empalados"
+  name = impaled_fields_t
   level = 2
   base = Gallows
   gold = 5500
@@ -7836,7 +7836,7 @@ class ImpaledField(Gallows, Building):
 
 
 class Pit(Building):
-  name = "fosa"
+  name = pit_t
   level = 1
   local_unique = 1
   size = 5
@@ -7858,7 +7858,7 @@ class Pit(Building):
 
 
 class FuneraryDungeon(Pit, Building):
-  name = "mazmorra funeraria"
+  name = funerary_dungeon_t
   level = 2
   base = Pit
   gold = 3000
@@ -7879,7 +7879,7 @@ class FuneraryDungeon(Pit, Building):
 
 # Commanders.
 class BoierLord(Unit):
-  name = "boier lord"
+  name = boyar_lord_t
   namelist = [romanian_name1, romanian_name2]
   units = 10
   sts = 2
@@ -9249,7 +9249,7 @@ class Market(Building):
 
 
 class Quarry(Building):
-  name = "quarry 1"
+  name = quarry_t
   level = 1
   local_unique = 1
   size = 6
@@ -9272,7 +9272,7 @@ class Quarry(Building):
 
 
 class Quarry2(Quarry, Building):
-  name = "quarry 2"
+  name = improved_quarry_t
   base = Quarry
   level = 2
   local_unique = 1
@@ -9296,7 +9296,7 @@ class Quarry2(Quarry, Building):
 
 
 class SawMill(Building):
-  name = "sawmill 1"
+  name = sawmill_t
   level = 1
   local_unique = 1
   size = 4
@@ -9319,7 +9319,7 @@ class SawMill(Building):
 
 
 class SawMill2(SawMill, Building):
-  name = "sawmill 2"
+  name = improved_sawmill_t
   base = SawMill
   level = 1
   local_unique = 1
@@ -9599,7 +9599,7 @@ class Valahia(Nation):
     self.generic_hill = [0, 1]
 
     # edificios iniciales disponibles.
-    self.av_buildings = [Necropolis, Fields, HallsOfTheDead, HuntingGround, Gallows, Pit, Quarry, SawMill]
+    self.av_buildings = [Necropolis, Fields, HallsOfTheDeads, HuntingGround, Gallows, Pit, Quarry, SawMill]
     # Cities.
     self.av_cities = [CursedHamlet]
     # City names.
@@ -11058,7 +11058,7 @@ class Akhlut(Unit):
 
 
 class BlackOrc(Unit):
-  name = "orco negro"
+  name = "black orc"
   units = 10
   min_units = 10
   ln = 7
@@ -11247,7 +11247,7 @@ class Crocodile(Unit):
 
 
 class DeadBear(Unit):
-  name = "dead bear"
+  name = dead_bear_t
   units = 4
   min_units = 4
   ln = 7
@@ -11291,8 +11291,8 @@ class DeadBear(Unit):
 
 
 
-class DesertNomad(Human):
-  name = "ginete a camello"
+class CamelRider(Human):
+  name = camel_rider_t
   units = 20
   sts = 2
   min_units = 10
@@ -11393,7 +11393,7 @@ class DevourerOfDemons(Unit):
 
 
 class DevoutOfChaos(Human):
-  name = "devout of chaos"
+  name = devout_of_chaos_t
   units = 10
   sts = 2
   min_units = 10
@@ -11483,7 +11483,7 @@ class Galley(Ship):
 
 
 class GiantBear(Unit):
-  name = "oso gigante"
+  name = giant_bear_t
   units = 1
   min_units = 1
   ln = 5
@@ -11531,7 +11531,7 @@ class GiantBear(Unit):
 
 
 class GiantDeadBear(Unit):
-  name = "giant dead bear"
+  name = giant_dead_bear_t
   units = 1
   min_units = 1
   ln = 5
@@ -11579,7 +11579,7 @@ class GiantDeadBear(Unit):
 
 
 class GiantCrocodile(Unit):
-  name = "giant crocodile"
+  name = giant_crocodrile_t
   units = 1
   min_units = 1
   ln = 7
@@ -11626,7 +11626,7 @@ class GiantCrocodile(Unit):
 
 
 class GiantOfTheLostTribe(Unit):
-  name = "giant of the lost tribe"
+  name = giant_of_the_lost_tribe_t
   units = 4
   min_units = 4
   ln = 7
@@ -11730,7 +11730,7 @@ class GiantWolf(Unit):
 
 
 class Ghost(Undead):
-  name = "ghost"
+  name = ghost_t
   units = 5
   min_units = 5
   ln = 20
@@ -11828,7 +11828,7 @@ class Goblin(Unit):
 
 
 class ClayGolem(Unit):
-  name = "clay golem"
+  name = clay_golem_t
   units = 5
   min_units = 1
   ln = 5
@@ -11981,7 +11981,7 @@ class HellHound(Undead):
 
 
 class Hyena(Unit):
-  name = "hyena"
+  name = hyena_t
   units = 20
   sts = 4
   ln = 15
@@ -13749,7 +13749,7 @@ random_buildings = [
 
 
 nations = [HolyEmpire, Valahia, WoodElves]
-
+RANDOM_FACTIONS = [Malignant(), Hell(), Nature(), Order(), Orcs(), Wild()] 
 nations_buildings = []
 for it in nations: nations_buildings += it().av_buildings
 

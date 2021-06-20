@@ -22,7 +22,7 @@ if dev_mode == 0:
   exec("import basics")
   exec("import log_module")
   exec("from data.skills import *")
-  exec("import screen_reader")
+  from screen_reader import *
   exec("from sound import *")
 if dev_mode:
   import basics
@@ -3347,8 +3347,7 @@ def movepos(value):
   play_stop()
   # if unit == []:
     # loadsound("mov6")
-  if rng: loadsound("in1")
-  elif unit:
+  if unit:
     sp.speak(f"move", 1)
   if filter_expand == 1:
     new_pos = scenary[scenary.index(pos) + value]
@@ -3790,6 +3789,7 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
+        play_stop()
       # Plain.
       if event.key == pygame.K_2:
         for i in [pos] + Group:
@@ -3797,6 +3797,7 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
+        play_stop()
       # Grass.
       if event.key == pygame.K_3:
         for i in [pos] + Group:
@@ -3804,6 +3805,7 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
+        play_stop()
       # Desert.
       if event.key == pygame.K_4:
         for i in [pos] + Group:
@@ -3811,6 +3813,7 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
+        play_stop()
       # Tundra.
       if event.key == pygame.K_5:
         for i in [pos] + Group:
@@ -3818,6 +3821,7 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
+        play_stop()
       # Glassier.
       if event.key == pygame.K_6:
         for i in [pos] + Group:
@@ -3825,24 +3829,27 @@ class Game:
           i.surf = EmptySurf()
           i.hill = 0
         sayland = 1
-  
+        play_stop()
       if event.key == pygame.K_q:
         # river
         for i in [pos] + Group:
           i.surf = River()
           i.hill = 0
         sayland = 1
+        play_stop()
       if event.key == pygame.K_w:
         # swamp.
         for i in [pos] + Group:
           i.surf = Swamp()
           i.hill = 0
         sayland = 1
+        play_stop()
       if event.key == pygame.K_e:
         # forest
         for i in [pos] + Group:
           i.surf = Forest()
           sayland = 1
+          play_stop()
       if event.key == pygame.K_r:
         # hill
         if (pos.surf == None or pos.surf
@@ -3851,6 +3858,7 @@ class Game:
             i.hill = 1
         else: loadsound("errn1")
         sayland = 1
+        play_stop()
       if event.key == pygame.K_t:
         # volcano
         if pos.surf == None:
@@ -3859,6 +3867,7 @@ class Game:
             i.hill = 0
         else: loadsound("errn1")
         sayland = 1
+        play_stop()
       if event.key == pygame.K_y:
         # mountain
         if pos.surf == None:
@@ -3867,6 +3876,7 @@ class Game:
             i.hill = 0
         else: loadsound("errn1")
         sayland = 1
+        play_stop()
   
       if event.key == pygame.K_F1:
         pass
@@ -3892,7 +3902,7 @@ class Game:
           sleep(loadsound("back1") / 2)
           xy = []
         else:
-          sp.speak(f"desde.")
+          sp.speak(f"from.")
           sleep(loadsound("in1") / 2)
           Group = []
           xy = [[pos.x], [pos.y]]
@@ -3916,6 +3926,7 @@ class Game:
                 pos.belongs = Belongs
                 Belongs.owns.append(pos)
           sayland = 1
+          play_stop()
         if Evt != None:
           pass
         if Name != None:
@@ -3925,6 +3936,7 @@ class Game:
               item.name = Name
           else:pos.name = Name
           sayland = 1
+          play_stop()
   
       if event.key == pygame.K_PAGEUP:
         pass
@@ -4252,6 +4264,14 @@ class Game:
         if get_item2([0, 1], [not_t, yes_t], msg_exit_t,):
           exit()
 
+  def editor_tile_info(self, pos, nation):
+    global sayland
+    if sayland:
+      sayland = 0
+      pos.update()
+      sp.speak(str(pos))
+      pos.play_tile()
+  
   def map_movement(self, event):
     global pos, sayland
     if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
@@ -4367,6 +4387,115 @@ class Game:
       if ambient.day_night[0]: sleep(loadsound("night01", channel=CHTE2) / 5)
     #gc.collect()
 
+  def start(self):
+    global mapeditor, new_game
+    loadsound("back1")
+    run = 1
+    set_logging()
+    say = 1
+    items = [new_t, load_t, world_editor_t, world_creator_t, exit_t]
+    x = 0
+    if dev_mode: sp.speak(f"dev mode.")
+    sleep(2)
+    while run:
+      sleep(0.01)
+      if say:
+        sp.speak(f"{items[x]}.", 1)      
+        say = 0
+      for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+          if event.key == pygame.K_UP:
+            x = basics.selector(items, x, go="up")
+            say = 1
+          if event.key == pygame.K_DOWN:
+            x = basics.selector(items, x, go="down")
+            say = 1
+          if event.key == pygame.K_HOME:
+            x = 0
+            say = 1
+          if event.key == pygame.K_END:
+            x = len(items) - 1
+            say = 1
+          if event.key == pygame.K_RETURN:
+            if items[x] == new_t: 
+              new_game = 1
+              loading_map("maps//", "/*.map")
+            if items[x] == load_t: 
+              new_game = 0 
+              loading_map("saves//", "/*.game")
+            if items[x] == world_editor_t:
+              mapeditor = 1
+              loading_map("maps//", "/*.map")
+              if world: Game().run()
+            if items[x] == world_creator_t:
+              mapeditor = 2
+              map_init()
+              Game().run()
+            if items[x] == exit_t: return
+            if "world" in globals():
+              if self.set_nations(globals()["world"]): 
+                run = 0
+                Game().run()
+              else: del(globals()["world"])
+
+  def set_nations(self, world):
+    say = 1
+    x = 0
+    items = [nt() for nt in nations]
+    for it in items: it.ai = 1
+    world.nations = []
+    while True:
+      sleep(0.01)
+      items.sort(key=lambda x: x in world.nations,reverse=True)
+      if say:
+        itm = items[x]
+        if itm in world.nations: sp.speak(f"{selected_t}.",1)
+        sp.speak(f"{itm.name}")
+        if itm.ai == 0: sp.speak(f"{human_t}.")
+        say = 0
+      
+      for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+          if event.key == pygame.K_UP:
+            x = basics.selector(items, x, go="up")
+            say = 1
+          if event.key == pygame.K_DOWN:
+            x = basics.selector(items, x, go="down")
+            say = 1
+          if event.key == pygame.K_HOME:
+            x = 0
+            say = 1
+          if event.key == pygame.K_END:
+            x = len(items) - 1
+            say = 1
+          if event.key == pygame.K_a:
+            itm = items[x]
+            if itm.ai: itm.ai = 0
+            else: itm.ai = 1
+            say = 1
+          if event.key == pygame.K_SPACE:
+            itm = items[x]
+            say = 1
+            if itm not in world.nations: 
+              world.nations += [itm]
+              sp.speak(f"{selected_t}.",1)
+              sleep(loadsound("set6"))
+            else:
+              world.nations.remove(itm)
+              sp.speak(f"{removed_t}.",1) 
+              sleep(loadsound("set6"))
+          if event.key == pygame.K_RETURN:
+            go = 0
+            for nt in world.nations:
+              if nt.ai == 0: go += 1
+            if len(world.nations) >= 2 and go:
+              loadsound("set5") 
+              return 1
+            else: 
+              sp.speak(f"""needs at least two nations 
+              and one nation set to human.""",1)
+              sleep(loadsound("errn1"))
+              say = 1
   def start_turn(self, nation):
     global sayland
     if pygame.key.get_focused(): sp.speak(f"{nation}.", 1)
@@ -4410,104 +4539,98 @@ class Game:
     # otros.
     sleep(loadsound("notify10") / 2)
     warning_enemy(nation, nation.map)
-
-  def terrain_info(self, pos, nation):
+  
+  def tile_info(self, pos, nation):
     global city_name, local_units, nation_name, terrain_name, sayland
     if sayland:
       sayland = 0
-      if mapeditor == 0:
-        pos.pos_sight(nation, nation.map)
-        pos.update(nation)
-        sq = pos.get_near_tiles(2)
-        nation.pos.map_update(nation, sq)
-        # [it.update(nation) for it in scenary]
-        # nation.update(scenary)
-      elif mapeditor:
+      pos.pos_sight(nation, nation.map)
+      pos.update(nation)
+      sq = pos.get_near_tiles(2)
+      nation.pos.map_update(nation, sq)
+      # [it.update(nation) for it in scenary]
+      # nation.update(scenary)
+      if pos.nation == nation and pos.blocked: sleep(loadsound("nav2") * 0.3)
+      elif pos.nation == nation:
+        sleep(loadsound("nav1") * 0.3)
+      elif pos.nation != nation:
+        if pos.nation == None and pos.sight: sleep(loadsound("nav4") * 0.3)
+      # if pos.name and pos.sight: sp.speak(f"{pos.name}.", 1)
+      if pos in nation.map:
+        pos.play_tile()
+        
+        if pos.threat > 0 and pos.sight:
+          sp.speak(f"hostiles.")
+      if pos.defense > 0:
         pass
-        #nation.pos.map_update(nation, scenary, 1)
-      if mapeditor in [0, 1]:
-        if pos.nation == nation and pos.blocked: sleep(loadsound("nav2") * 0.3)
-        elif pos.nation == nation:
-          sleep(loadsound("nav1") * 0.3)
-        elif pos.nation != nation:
-          if pos.nation == None and pos.sight: sleep(loadsound("nav4") * 0.3)
-        # if pos.name and pos.sight: sp.speak(f"{pos.name}.", 1)
-        if pos in nation.map:
-          pos.play_tile()
-          
-          if pos.threat > 0 and pos.sight:
-            sp.speak(f"hostiles.")
-        if pos.defense > 0:
-          pass
-        if pos in nation.map:
-          if pos.city == None or pos.city.nick != city_name: 
-            city_name = None
-            if pos.city: 
-              city_name = pos.city.nick
-              if pos.sight or pos in nation.nations_tiles:
-                sp.speak(f"{city_name}")
-                loadsound("notify20")
-          if pos.nation == None or str(pos.nation) != nation_name: 
-            nation_name = None
-            if pos.nation: 
-              nation_name = str(pos.nation)
-              if nation_name and pos.sight or pos in nation.nations_tiles:
-                sp.speak(f"{nation_name}")
-                loadsound("notify20")
-          if pos.sight == 0:
-            sp.speak(f"{fog_t}.")
-            if pos not in nation.nations_tiles:
-              city_name = None
-              nation_name = None
-          if pos.sight:
-            squad_units = pos.get_free_squads(nation)
-            total_squads = pos.get_squads(nation)
-            comm_units = pos.get_comm_units(nation)
-            local_units = comm_units+squad_units
-            local_units.sort(key=lambda x: x.scout)
-            local_units.sort(key=lambda x: x.settler)
-            local_units.sort(key=lambda x: x.mp[0], reverse=True)
-            local_units.sort(key=lambda x: len(x.leads), reverse=True)
-            local_units.sort(key=lambda x: x.leadership, reverse=True)
-          if filter_expand == 0 and pos.sight:
-            if comm_units: sp.speak(f"commanders {len(comm_units)}.")
-            if squad_units: sp.speak(f"{squads_t} {len(local_units)}.")
-            if len(total_squads)+len(comm_units):
-              sp.speak(f"({len(comm_units)+len(total_squads)}).")
-            if pos.corpses and pos.sight:
-              corpses = round(sum(sum(i.deads) for i in pos.corpses)) 
-              sp.speak(f"{corpses_t} {corpses}.")
-          sp.speak(f"{pos}")
-          if pos.is_city and (pos.sight or pos in nation.nations_tiles):
-            sp.speak(f"{pos.city}")
-            loadsound("working1")
-          if filter_expand:
-            cost = get_tile_cost(city, pos)
-            sp.speak(f"{cost} {gold_t}.")
-          if pos.sight or pos in nation.nations_tiles: 
-            if pos.buildings:
-              buildings = [b for b in pos.buildings 
-                           if b.type == city_t or nation in b.nations or nation == b.nation ] 
-              if buildings: sp.speak(f"{len(buildings)} {buildings_t}.")
-            if pos.buildings and [b for b in pos.buildings if b.resource_cost[0] < b.resource_cost[1] and b.nation == nation]: 
-              loadsound("construction1", channel=CHTE2)
-            if pos.events:
-              for ev in pos.events:
-                sp.speak(f"{ev.name}")
-                if ev == pos.events[-1]: sp.speak(".")
-                else: sp.speak(",")
-        else:
-          local_units = []
-          sp.speak(f"terra incognita.")
+      if pos in nation.map:
+        if pos.city == None or pos.city.nick != city_name: 
           city_name = None
+          if pos.city: 
+            city_name = pos.city.nick
+            if pos.sight or pos in nation.nations_tiles:
+              sp.speak(f"{city_name}")
+              loadsound("notify20")
+        if pos.nation == None or str(pos.nation) != nation_name: 
           nation_name = None
+          if pos.nation: 
+            nation_name = str(pos.nation)
+            if nation_name and pos.sight or pos in nation.nations_tiles:
+              sp.speak(f"{nation_name}")
+              loadsound("notify20")
+        if pos.sight == 0:
+          sp.speak(f"{fog_t}.")
+          if pos not in nation.nations_tiles:
+            city_name = None
+            nation_name = None
+        if pos.sight:
+          squad_units = pos.get_free_squads(nation)
+          total_squads = pos.get_squads(nation)
+          comm_units = pos.get_comm_units(nation)
+          local_units = comm_units+squad_units
+          local_units.sort(key=lambda x: x.scout)
+          local_units.sort(key=lambda x: x.settler)
+          local_units.sort(key=lambda x: x.mp[0], reverse=True)
+          local_units.sort(key=lambda x: len(x.leads), reverse=True)
+          local_units.sort(key=lambda x: x.leadership, reverse=True)
+        if filter_expand == 0 and pos.sight:
+          if comm_units: sp.speak(f"commanders {len(comm_units)}.")
+          if squad_units: sp.speak(f"{squads_t} {len(local_units)}.")
+          if len(total_squads)+len(comm_units):
+            sp.speak(f"({len(comm_units)+len(total_squads)}).")
+          if pos.corpses and pos.sight:
+            corpses = round(sum(sum(i.deads) for i in pos.corpses)) 
+            sp.speak(f"{corpses_t} {corpses}.")
+        sp.speak(f"{pos}")
+        if pos.is_city and (pos.sight or pos in nation.nations_tiles):
+          sp.speak(f"{pos.city}")
+          loadsound("working1")
+        if filter_expand:
+          cost = get_tile_cost(city, pos)
+          sp.speak(f"{cost} {gold_t}.")
+        if pos.sight or pos in nation.nations_tiles: 
+          if pos.buildings:
+            buildings = [b for b in pos.buildings 
+                         if b.type == city_t or nation in b.nations or nation == b.nation ] 
+            if buildings: sp.speak(f"{len(buildings)} {buildings_t}.")
+          if pos.buildings and [b for b in pos.buildings if b.resource_cost[0] < b.resource_cost[1] and b.nation == nation]: 
+            loadsound("construction1", channel=CHTE2)
+          if pos.events:
+            for ev in pos.events:
+              sp.speak(f"{ev.name}")
+              if ev == pos.events[-1]: sp.speak(".")
+              else: sp.speak(",")
+      else:
+        local_units = []
+        sp.speak(f"terra incognita.")
+        city_name = None
+        nation_name = None
   
   def run(self):
     global city, city_name, nation_name, terrain_name, rng, time
     global Belongs, Evt, Group, move, Name, pos, sayland, scenary, starting, xy
     global nation, num, unit, world, x, y, z
     global filter_expand
-    global hell_nation, wild_nation
     global PLAYING
     global alt, ctrl, shift
     
@@ -4545,8 +4668,6 @@ class Game:
       scenary = world.map
       Unit.ambient = world.ambient
       Nation.world = world
-      # choose_nation():
-      world.nations = NATIONS
       shuffle(world.nations)
       world.cnation = world.nations[0]
       world.season_events()
@@ -4560,7 +4681,7 @@ class Game:
       world.add_random_buildings(world.buildings_value)
       self.new_turn()
       self.next_play()
-    elif new_game == 0:
+    elif mapeditor == 0 and new_game == 0:
       nation = world.nations[world.player_num]
       if nation.cities: pos = nation.cities[0].pos
       else: pos = nation.units[0].pos
@@ -4583,7 +4704,8 @@ class Game:
         n1.map = scenary
         players = Empty()
         world.nations = [n1]
-      self.terrain_info(pos, world.nations[world.player_num])
+      if mapeditor == 0: self.tile_info(pos, world.nations[world.player_num])
+      else: self.editor_tile_info(pos, world.nations[world.player_num])
       pos.play_events()
       
       pressed = list(pygame.key.get_pressed())
@@ -4596,59 +4718,9 @@ class Game:
         if mapeditor == 0:
           self.control_game(event)
           self.control_basic(event)
-        elif mapeditor == 1:
+        elif mapeditor in [1, 2]:
           self.control_editor(event)
 
-
-
-def start():
-  global mapeditor, new_game
-  if mapeditor == 0:
-    loadsound("back1")
-    run = 1
-    set_logging()
-    say = 1
-    items = [new_t, load_t, about_t, exit_t]
-    x = 0
-    if dev_mode: sp.speak(f"dev mode.")
-    sleep(2)
-    while run:
-      sleep(0.001)
-      if say:
-        sp.speak(f"{items[x]}.", 1)      
-        say = 0
-      for event in pygame.event.get():
-        if event.type == pygame.KEYDOWN:
-          if event.key == pygame.K_UP:
-            x = basics.selector(items, x, go="up")
-            say = 1
-          if event.key == pygame.K_DOWN:
-            x = basics.selector(items, x, go="down")
-            say = 1
-          if event.key == pygame.K_HOME:
-            x = 0
-            say = 1
-          if event.key == pygame.K_END:
-            x = len(items) - 1
-            say = 1
-          if event.key == pygame.K_RETURN:
-            if items[x] == new_t: 
-              new_game = 1
-              loading_map("maps//", "/*.map")
-            if items[x] == load_t: 
-              new_game = 0 
-              loading_map("saves//", "/*.game")
-            if items[x] == exit_t: return
-            if "world" in globals():
-              run = 0
-              Game().run()
-  if mapeditor == 1:
-    loading_map("maps//", "/*.map")
-    if world: Game().run()
-  if mapeditor == 2:
-    mapeditor = 1
-    map_init()
-    game()
 
 
 
@@ -4739,4 +4811,4 @@ def change():
   for it in scenary:
     if it.surf.name == "nada": it.surf.name = none_t
 
-start()
+Game().start()
