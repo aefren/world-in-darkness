@@ -1,32 +1,37 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
-import gc
 from glob import glob
 from math import ceil, floor
-import pickle
+from pdb import Pdb
 from random import choice, randint, uniform, shuffle
-import sys
 from time import sleep, time
+import gc
+import pickle
+import sys
 
-import natsort
-import numpy as np
-import pygame
 from pygame.time import get_ticks as ticks
-dev_mode = 1
+import natsort
+import pygame
+
+from language import *
+import numpy as np
+
+
+dev_mode = 0
 if dev_mode == 0:
   exec("import basics")
-  exec("from data.lang.es import *")
   exec("import log_module")
   exec("from data.skills import *")
   exec("import screen_reader")
   exec("from sound import *")
 if dev_mode:
   import basics
-  from data.lang.es import *
   from data.skills import *
   import log_module
   from screen_reader import *
   from sound import *
+
+
 # Some colors.
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -68,6 +73,7 @@ ambient = Ambient()
 
 class Empty:
   pass
+
 
 
 
@@ -118,6 +124,7 @@ class Terrain:
   food_rate = None
 
   def __init__(self):
+    if self.surf.__class__ == EmptySurf: self.surf.name == none_t
     self.buildings = []
     self.corpses = []
     self.effects = []
@@ -151,11 +158,10 @@ class Terrain:
   def add_ghouls(self):
     roll = basics.roll_dice(2)
     if self.units: roll -= 1
-    if roll >= 11:
+    if roll >= 10:
       unit = self.add_unit(Ghoul, hell_t)
-      unit.hp_total = randint(3, 8) * unit.hp
+      unit.hp_total = unit.hp*randint(5, 10)
       unit.update()
-      # rint(f"{roll=} {unit} added in  {self.cords}.")
 
   def add_miasma(self):
     roll = basics.roll_dice(2)
@@ -261,6 +267,44 @@ class Terrain:
       
     return units
 
+  
+  def launch_avalanche(self):
+    if self.hill and self.flood >= 4 and basics.roll_dice(1) >= 5:
+      show_info = 0
+      if self.nation and self.nation.show_info: show_info = 1
+      rate = randint(5, 15)
+      if basics.roll_dice(1) >= 6: rate*= 2
+      if basics.roll_dice(1) >= 6: rate*= 2
+      self.flood -= ceil(rate*self.flood/100)
+      tiles = [it for it in self.get_near_tiles(1)
+               if it.hill == 0 and it != self]
+      tile = choice(tiles)
+      pop_deads = round(rate*tile.pop/100)
+      tile.pop -= pop_deads
+      if tile.nation:
+        msg = f"avalanche in {tile} {tile.cords} {pop_deads} {deads_t}."
+        tile.nation.log[-1] += [msg]
+      if tile.nation:
+        tile.add_corpses(choice(tile.nation.population_type), pop_deads)
+      
+      units = [it for it in tile.units 
+               if it.can_fly == 0 and it.hp_total >= 1]
+      for it in units:
+        if it.nation.show_info: show_info = 1
+        msg = f"{it} losses "
+        _units = it.units
+        unit_deads = rate*it.hp_total/100
+        it.hp_total -= unit_deads*it.hp_total/100
+        if unit_deads/it.hp: it.deads += [unit_deads/it.hp]
+        it.update() 
+        it.add_corpses(tile)
+        msg += f"{_units - it.units} {units_t}."
+        it.nation.log[-1] += [msg]
+        it.log[-1] += [msg]
+      
+      if show_info:
+        sp.speak(f"{rate=:}")
+        sleep(loadsound("avalanche1", channel=CHTE3)/2)
   
   def map_update(self, nation, scenary, editing=0):
     if editing == 0:
@@ -416,6 +460,13 @@ class Terrain:
         self.blocked = 1
         break
 
+  def set_corpses(self):
+    if self.corpses:
+      self.add_miasma()
+      self.add_ghouls()
+      for cr in self.corpses:
+        reducing = randint(5, 20) // cr.hp
+        cr.deads[0] -= reducing
   def set_defense(self, nation, info=0):
     if info: logging.info(f"set_defense for {self}.")
     self.defense = 0
@@ -432,9 +483,10 @@ class Terrain:
     self.grouth_food = self.pop*100/self.food
     self.grouth_food = 100 - self.grouth_food
     self.grouth = self.grouth_food*0.1
-    if self.grouth_food > 90: self.grouth *= 1.5
-    elif self.grouth_food <= 50: self.grouth *= 0.8
-    elif self.grouth_food <= 25: self.grouth *= 0.8
+    if self.grouth_food > 80: self.grouth *= 1.4
+    elif self.grouth_food > 60: self.grouth *= 1.25
+    elif self.grouth_food <= 40: self.grouth *= 0.8
+    elif self.grouth_food <= 20: self.grouth *= 0.8
     for bu in self.buildings:
       if self.city.nation != bu.nation: continue
       if bu.type == city_t:
@@ -584,6 +636,7 @@ class Terrain:
                     and i.corpses]
     if self.city: self.city.raid_outcome = 0
     if self.flood > 0: self.flood -= 1
+    if self.ambient.sseason == summer_t: self.flood -= 1
     self.raided = 0
     if self.unrest > 0: self.unrest -= randint(1, 2)
     if self.unrest > 0: self.unrest -= self.defense * 0.1
@@ -592,13 +645,7 @@ class Terrain:
     for u in self.units_blocked: u.blocked -= 1
     self.units += [u for u in self.units_blocked if u.blocked < 1]
     self.units_blocked = [u for u in self.units_blocked if u.blocked > 0]
-    if self.corpses:
-      self.add_miasma()
-      self.add_ghouls()
-      for cr in self.corpses:
-        reducing = randint(5, 20) // cr.hp
-        # Pdb().set_trace()
-        cr.deads[0] -= reducing
+    self.set_corpses()
 
   def stats_buildings(self):
     for b in self.buildings:
@@ -632,6 +679,7 @@ class Terrain:
     
   def update(self, nation=None, info=0):
     if info: logging.debug(f"update {self} {self.cords}.")
+    if self.surf.__class__ == EmptySurf: self.surf.name = none_t
     self.effects = []
     if mapeditor == 0: 
       self.ambient = world.ambient
@@ -704,6 +752,9 @@ class Terrain:
     self.year = self.ambient.year
 
 
+class EmptySurf(Terrain):
+  name = none_t
+
 
 class Desert(Terrain):
   cost = 2
@@ -712,12 +763,6 @@ class Desert(Terrain):
   name = waste_t
   resource = 1
 
-
-
-class EmptySurf(Terrain):
-
-  def __init__(self):
-    self.name = none_t
 
 
 
@@ -740,9 +785,9 @@ class Grassland(Terrain):
 
 
 class Forest(Terrain):
+  name = forest_t
   cost = 1
   food = 0.7
-  name = forest_t
   resource = 2
 
   def __init__(self):
@@ -761,9 +806,9 @@ class Mountain(Terrain):
 
 
 class Swamp(Terrain):
+  name = swamp_t
   cost = 1
   food = 0.8
-  name = swamp_t
   resource = 1
 
   def __init__(self):
@@ -782,10 +827,10 @@ class Ocean(Terrain):
 
 
 class Plains(Terrain):
+  name = plains_t
   cost = 2
   cost_fly = 2
   food = 200
-  name = plains_t
   resource = 1
 
 
@@ -936,7 +981,6 @@ class World:
       go = 1
       pos = choice(self.map)
       roll = basics.roll_dice(2)
-      if pos.soil.name == waste_t: roll -= 2
       if roll >= ev.cast:
         tiles = pos.get_near_tiles(2)
         for t in tiles:
@@ -1247,7 +1291,7 @@ class Ai:
         msg = f"{uni} in {uni.pos} {uni.pos.cords} stops exploring."
         uni.log[-1] += [msg]
         logging.debug(msg)
-      elif uni.nation.score * 0.5 < uni.nation.seen_threat or nation.defense_mean < 100:
+      elif nation.defense_mean < 100:
         uni.scout = 0
         msg = f"{uni} stops exploring by threats."
         uni.log[-1] += [msg]
@@ -1278,10 +1322,14 @@ class Ai:
         units.sort(key=lambda x: x.mp[1] >= 2 
                    or (x.can_fly or x.forest_survival or x.mountain_survival 
                        or x.swamp_survival), reverse=True)
+        units.sort(key=lambda x: x.ranking,reverse=True)
         for it in units:
+          if info:
+            msg = f"{it} squads {it.squads}."
+            logging.debug(msg)
           if it.squads < 2: basics.ai_join_units(it)
-          if it.squads >= 2: it.scout = 1
-          msg = f"{unit} is now explorer."
+          it.scout = 1
+          msg = f"{it} is now explorer."
           if info: logging.debug(msg)
           it.log[-1] += [msg]
           return
@@ -2203,6 +2251,9 @@ class Ai:
     #setup commander.
     nation.setup_commanders()
     if info: logging.debug(f"setup_commanders {time()-init}.")
+    # agregar exploradores.
+    self.ai_add_explorer(nation)
+    if info: logging.debug(f"ai_add_explorer {time()-init}.")
     # asignar unidades a proteger casillas.
     self.ai_protect_tiles(nation)
     if info: logging.debug(f"ai_protect_tiles {time()-init}.")
@@ -2214,9 +2265,6 @@ class Ai:
     # acciones de unidades en guarnición.
     self.ai_garrison(nation)
     if info: logging.debug(f"ai_garrison {time()-init}.")
-    # agregar exploradores.
-    self.ai_add_explorer(nation)
-    if info: logging.debug(f"ai_add_explorer {time()-init}.")
     # explorar
     self.ai_explore(nation, scenary)
     if info: logging.debug(f"ai_explore {time()-init}.")
@@ -2724,7 +2772,7 @@ def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
   while True:
     sleep(0.011)
     if say:
-      if items2: sp.speak(items2[x], 1)
+      if items2: sp.speak(items2[x])
       else:
         if name == None and simple == 0: sp.speak(items1[x](nation, pos).name, 1)
         elif name and simple:
@@ -3081,7 +3129,7 @@ def menu_city(itm, sound="in1"):
         f"{public_order_t} {round(itm.public_order_total, 1)}.",
         f"{grouth_t} {round(itm.grouth_total,2)}.",
         f"{population_t} {itm.pop}, ({itm.pop_percent}%).",
-        f"militar {itm.pop_military}, ({itm.military_percent}%).",
+        f"{military_t} {itm.pop_military}, ({itm.military_percent}%).",
         f"total {int(itm.pop_total)}.",
         f"{size_t} {len(itm.tiles)}.",
         ]
@@ -3126,7 +3174,7 @@ def menu_city(itm, sound="in1"):
         if event.key == pygame.K_DELETE:
           if training_t in lista[x]:
             if itm.production:
-              itm.get_grouth(itm.production[0].pop)
+              itm.add_pop(itm.production[0].total_pop)
               if itm.production[0].gold > 0:
                 itm.nation.gold += itm.production[0].gold
               del(itm.production[0])
@@ -3367,7 +3415,7 @@ def nation_init():
 
 
 
-def nation_start_position(itm, tiles, info=0):
+def nation_start_position(itm, tiles, info=1):
   global players, pos
   logging.info(f"inicio de posición de {itm}.")
   itm.pos = None
@@ -3646,18 +3694,18 @@ def set_settler(itm, info=1):
     if len(nation.cities) < 2: nation.tiles_far.sort(key=lambda x: itm.pos.get_distance(x, itm.pos))
     tile = nation.tiles_far[0]
     comms = [cm for cm in nation.units_comm
-            if cm.goal == None and cm.pos.around_threat +cm.pos.threat == 0
-            and cm.pos.get_distance(cm.pos, itm.pos) <= 2]
+            if cm.goal == None and cm.pos.around_threat +cm.pos.threat == 0]
+    comms.sort(key=lambda x: itm.pos.get_distance(itm.pos, x.pos))
     if comms:
-      comms.sort(key=lambda x: x.pos.get_distance(x.pos, tile)) 
       comm = comms[0]
       itm.leader = comm
-      itm.join_group()
+      #itm.join_group()
       comm.leads += [itm]
       comm.update()
       comm.set_lead_disband()
       if comm.leadership > comm.leading: comm.create_group(comm.leadership)
       comm.set_army_auto()
+      if comm.pos != itm.pos: comm.move_set(itm.pos) 
       comm.goal = ["settle", tile]
       comm.move_set(tile)
       msg = f"fundará aldea en {tile} {tile.cords}."
@@ -4201,7 +4249,7 @@ class Game:
             or filter_expand or x > -1):
           end_parameters()  
           return
-        if get_item2([0, 1], ["no", "si"], "salir?",):
+        if get_item2([0, 1], [not_t, yes_t], msg_exit_t,):
           exit()
 
   def map_movement(self, event):
@@ -4262,7 +4310,7 @@ class Game:
         elif nation.units: pos = nation.units[0].pos
         sayland = 1
         save_game()
-        return
+        if dev_mode == 1: return
       world.player_num += 1
 
   def new_turn(self):
@@ -4317,7 +4365,7 @@ class Game:
     if ambient.day_night[0] != last_day_night:
       if ambient.day_night[0] == 0: sleep(loadsound("dawn01", channel=CHTE2) / 3)
       if ambient.day_night[0]: sleep(loadsound("night01", channel=CHTE2) / 5)
-    gc.collect()
+    #gc.collect()
 
   def start_turn(self, nation):
     global sayland
@@ -4334,6 +4382,7 @@ class Game:
     # ciudades.
     logging.debug(f"ciudades.")
     for city in nation.cities:
+      city.check_events()
       if city.pos.world.turn > 1: city.population_change()
       city.update()
       city.check_building()
@@ -4374,7 +4423,8 @@ class Game:
         # [it.update(nation) for it in scenary]
         # nation.update(scenary)
       elif mapeditor:
-        nation.pos.map_update(nation, scenary, 1)
+        pass
+        #nation.pos.map_update(nation, scenary, 1)
       if mapeditor in [0, 1]:
         if pos.nation == nation and pos.blocked: sleep(loadsound("nav2") * 0.3)
         elif pos.nation == nation:
@@ -4461,7 +4511,7 @@ class Game:
     global PLAYING
     global alt, ctrl, shift
     
-    # change()
+    #change()
     if startpos: pos = scenary[startpos]
     Belongs = None
     city = None
@@ -4500,7 +4550,9 @@ class Game:
       shuffle(world.nations)
       world.cnation = world.nations[0]
       world.season_events()
-      for t in scenary: t.world = world
+      for it in scenary: 
+        it.world = world
+        it.update()
       
       nation_init()
       [nt.start_turn() for nt in world.nations]
@@ -4592,7 +4644,7 @@ def start():
               Game().run()
   if mapeditor == 1:
     loading_map("maps//", "/*.map")
-    if world: game()
+    if world: Game().run()
   if mapeditor == 2:
     mapeditor = 1
     map_init()
@@ -4630,7 +4682,7 @@ def train_unit(city, items, msg, sound="in1"):
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_i:
-          item_info(item, nation)
+          item.info(nation)
           say = 1
         if event.key == pygame.K_UP:
           x = basics.selector(items, x, go="up")
@@ -4671,12 +4723,6 @@ def warning_enemy(nation, scenary):
 
 
 
-def change():
-  for t in scenary:
-    for uni in t.units:
-      uni.history.kills_record = 0
-      uni.history.raids = 0
-
 
 
 # 0 = juego, 1 = editor de mapa, 3 = crear y editar.
@@ -4689,5 +4735,8 @@ startpos = None
 
 if mapeditor == 0: exec("from game_setup import *")  
 
+def change():
+  for it in scenary:
+    if it.surf.name == "nada": it.surf.name = none_t
 
 start()

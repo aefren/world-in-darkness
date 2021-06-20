@@ -1,3 +1,5 @@
+print("listo.")
+
 '''
 Created on 12 sept. 2019
 

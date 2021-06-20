@@ -6,7 +6,7 @@ from time import sleep, process_time
 
 from numpy import mean
 
-from data.lang.es import *
+from language import *
 from log_module import *
 from sound import *
 import basics
@@ -570,7 +570,7 @@ class Storm(Skill):
   def tile_run(self, itm):
     itm.raining = 1
     itm.storm = 1
-    itm.flood = 2
+    itm.flood += 2
     roll = basics.roll_dice(1)
     if roll >= 5: itm.flood += 1
     if roll >= 6: itm.flood += 1
@@ -995,14 +995,13 @@ class Night(Skill):
 
 class NightFerocity(Skill):
   name = "ferocidad nocturna"
-  desc = "if night: +1 att1, +2 strn, +1 moves."
+  desc = "if night: +2 strn1, +1 moves."
   effect = "self"
   type = "generic"
 
   def run(self, itm):
     if itm.pos and itm.pos.day_night:
       itm.effects.append(self.name) 
-      itm.att1_mod += 1
       itm.strn_mod += 2
       itm.moves_mod += 1
 
@@ -1041,19 +1040,17 @@ class MountainSurvival(Skill):
 
 class Organization(Skill):
   name = "organization"
-  desc = "+1 off, +1 dfs. +1 resolve if unit is not sacred."
+  desc = "+1 off, +1 dfs."
   effect = "leading"
   ranking = 1.2
   type = "generic"
   tags = ["leader"]
 
   def run(self, itm):
-    if (itm.nation in self.itm.belongs
-        and human_t in itm.traits and itm.leadership == 0):
+    if itm.nation in self.itm.belongs and human_t in itm.traits:
       itm.effects.append(self.name)
       itm.dfs_mod += 1
       itm.off_mod += 1
-      itm.resolve_mod += 1
 
 
 class Pestilence(Skill):
@@ -1188,7 +1185,6 @@ class Rain(Skill):
     itm.raining = 1
     itm.flood += 1
     roll = basics.roll_dice(1)
-    if roll >= 5: itm.flood += 1
     if roll >= 6: itm.flood += 1
     if itm.soil.name == waste_t: self.turns -= 2
     for ev in itm.events:
@@ -1335,7 +1331,7 @@ class Spread(Skill):
 
 class Surrounded(Skill):
   effect = "self"
-  desc = "+1 off, str if 3 squads. +2 off, str if 7 squads. +3 off, str if 10 squads."
+  desc = "+1 off, str if 3 squads. +2 off, str if 6 squads. +3 off, str if 10 squads."
   name = "rodeados"
   type = "generic"
 

@@ -4,7 +4,7 @@ exec("import data.items")
 
 
 #Difficulty.
-DIFFICULTY = 50
+DIFFICULTY = 66
 DIFFICULTY_TYPE = "dynamic"
 #Random Buildings.
 random_buildings = data.items.random_buildings
@@ -14,12 +14,13 @@ buildings_value = 20
 ELF = WoodElves()
 ELF.ai = 1
 HOLY = HolyEmpire()
-HOLY.ai = 1
+HOLY.ai = 0
 TRANS = Valahia()
-TRANS.ai = 0
+TRANS.ai = 1
 
 NATIONS = [HOLY, ELF, TRANS]
 
 #Random factions.
 RANDOM_FACTIONS = [Malignant(), Hell(), Nature(), Order(), Orcs(), Wild()]
-
+ 
+lang = "es" # en, es.

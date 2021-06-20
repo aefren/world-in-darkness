@@ -2,7 +2,7 @@ from time import sleep
 from math import ceil
 from random import randint
 
-from data.lang.es import *
+from language import *
 from log_module import logging
 from screen_reader import sp
 from sound import *

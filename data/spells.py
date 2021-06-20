@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import basics
-from data.lang.es import *
+from language import *
 from data.items import *
 
 
@@ -311,7 +311,7 @@ class EatCorpses(Spell):
 
   def run(self, itm):
     itm.update()
-    if (FeedingFrenzy.name not in [s.__class__.name for s in itm.skills] 
+    if (FeedingFrenzy.name not in [sk.__class__.name for sk in itm.skills] 
         and itm.pos.corpses):
       corpses = sum(sum(i.deads) for i in itm.pos.corpses)
       sk = FeedingFrenzy(itm)
@@ -337,6 +337,7 @@ class EatCorpses(Spell):
       itm.other_skills += [sk]
       msg = f"{itm} cannivalizes {corpses} {corpses_t}"
       itm.log[-1] += [msg]
+      itm.pos.world.log[-1] += [msg]
       if itm.show_info: sleep(loadsound("spell37") // 2)
     else:
       itm.log[-1] += [f"can not cannivalize"] 
@@ -403,18 +404,17 @@ class CastRain(Spell):
   def run(self, itm):
     if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
-    dist = 3
+    dist = 1
     roll = basics.roll_dice(1)
     if roll >= 6: dist += 2
-    elif roll >= 5: dist += 1
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
     casting = Rain
     casting.turns = randint(2, 3)
     if itm.pos.ambient.sseason == winter_t: casting.turns += randint(2, 4)
     if basics.roll_dice(1) == 6: casting.turns += 2
-    if itm.pos.soil.name == waste_t: casting.turns = randint(1, 2)
     for s in sq:
+      if s.soil.name == waste_t and basics.roll_dice(1) >= 2: continue
       if all(i not in [Storm.name, Rain.name] for i in [ev.name for ev in s.events]):
         s.events += [casting(s)]
         s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
@@ -480,17 +480,14 @@ class CastStorm(Spell):
     if itm.show_info: sleep(loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
     self.set_msg0(itm)
     dist = 1
-    roll = basics.roll_dice(1)
-    if roll >= 6: dist += 2
-    elif roll >= 5: dist += 1
     pos = itm.pos
     sq = pos.get_near_tiles(dist)
     casting = Storm
     casting.turns = randint(2, 3)
     if itm.pos.ambient.sseason == winter_t: casting.turns += randint(1, 2)
-    if roll >= 6: casting.turns += 2
     if itm.pos.soil.name == waste_t: casting.turns = 1 
     for s in sq:
+      if s.soil.name == waste_t: continue
       if all(i not in [Storm.name] for i in [ev.name for ev in s.events]):
         s.events += [casting(s)]
         s.events = [evt for evt in s.events if evt.name != BloodRaining.name]
@@ -750,9 +747,9 @@ class RaiseDead(Spell):
     
     msg = f"{itm} lanza {self.name}."
     logging.info(msg)
-    raised.auto_attack()
     raised.pos = tile
     raised.pos.units.append(raised)
+    raised.auto_attack()
     msg = f"reanimados {raised}."
     itm.log[-1].append(msg)
     if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
