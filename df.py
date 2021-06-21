@@ -3952,19 +3952,19 @@ class Game:
   
     if event.type == pygame.KEYDOWN:
       if ctrl:
-        if event.key == pygame.K_7:
+        if event.key == pygame.K_7 and dev_mode:
           pos.add_unit(OrcWarrior, orcs_t, 1)
-        if event.key == pygame.K_8:
+        if event.key == pygame.K_8 and dev_mode:
           pos.add_unit(Velites, holy_empire_t, 1)
-        if event.key == pygame.K_9:
+        if event.key == pygame.K_9 and dev_mode:
           pos.add_unit(OrcCaptain, orcs_t, 1)
-        if event.key == pygame.K_0:
+        if event.key == pygame.K_0 and dev_mode:
           pos.add_unit(Decarion, holy_empire_t, 1)
         if event.key == pygame.K_F1:
-          world.show_random_units()
+          if dev_mode: world.show_random_units()
         if  event.key == pygame.K_F2:
-          world.show_random_buildings()
-        if  event.key == pygame.K_TAB:
+          if dev_mode: world.show_random_buildings()
+        if  event.key == pygame.K_TAB and dev_mode:
           basics.view_log(world.log, nation)
         if event.key == pygame.K_l:
           if x < 0: return
@@ -4432,11 +4432,13 @@ class Game:
               map_init()
               Game().run()
             if items[x] == exit_t: return
+            if new_game:
+              if ("world" in globals() 
+                  and self.set_nations(globals()["world"]) == None):
+                del(globals()["world"])
             if "world" in globals():
-              if self.set_nations(globals()["world"]): 
-                run = 0
-                Game().run()
-              else: del(globals()["world"])
+              run = 0
+              Game().run()
 
   def set_nations(self, world):
     say = 1
@@ -4496,6 +4498,9 @@ class Game:
               and one nation set to human.""",1)
               sleep(loadsound("errn1"))
               say = 1
+          if event.key == pygame.K_ESCAPE:
+            loadsound("back1")
+            return 
   def start_turn(self, nation):
     global sayland
     if pygame.key.get_focused(): sp.speak(f"{nation}.", 1)
