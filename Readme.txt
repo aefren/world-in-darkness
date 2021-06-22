@@ -1,6 +1,5 @@
-Cuenta en Github: https://github.com/aefren/dark-fantasy
+Requirements to launch without build:
 
-Requisitos para ejecutar sin build:
 Python 3.8. 64 bits.
 pywin32            227.
 pygame             1.9.6.

@@ -1,18 +1,18 @@
 dev_mode = 0
 if dev_mode == 0:
-  exec("from data.items import *")
+    exec("from data.items import *")
 elif dev_mode:
-  from data.items import *
+    from data.items import *
 
 
-#Difficulty.
+# Difficulty.
 DIFFICULTY = 66
 DIFFICULTY_TYPE = "dynamic"
-#Random Buildings.
+# Random Buildings.
 random_buildings = random_buildings
 buildings_value = 20
 
-#factions.
+# factions.
 #ELF = WoodElves()
 #ELF.ai = 1
 #HOLY = HolyEmpire()
@@ -22,7 +22,7 @@ buildings_value = 20
 
 #NATIONS = [HOLY, ELF, TRANS]
 
-#Random factions.
+# Random factions.
 #RANDOM_FACTIONS = [Malignant(), Hell(), Nature(), Order(), Orcs(), Wild()]
- 
-lang = "es" # en, es.
+
+lang = "es"  # en, es.
