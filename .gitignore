@@ -9,5 +9,4 @@ testing/
 test.py
 *.game
 *.log
-*.map
 *.pyc
