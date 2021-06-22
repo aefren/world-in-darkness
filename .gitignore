@@ -1,0 +1,13 @@
+.gitattributes
+.pydevproject
+.project
+.settings/
+log/
+__pycache__/
+TelosysTools/
+testing/
+test.py
+*.game
+*.log
+*.map
+*.pyc
