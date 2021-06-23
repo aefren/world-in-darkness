@@ -8,7 +8,7 @@ from data.names import *
 from data.skills import *
 
 import basics
-import numpy as np
+#import numpy as np
 
 
 
@@ -234,8 +234,10 @@ class Building:
             say = 1
             loadsound("s1")
           if event.key == pygame.K_F12:
-            sp.speak(f"on.", 1)
-            sp.speak(f"off.", 1)
+            if dev_module:
+              sp.speak(f"on.", 1)
+              Pdb().set_trace()
+              sp.speak(f"off.", 1)
           if event.key == pygame.K_ESCAPE:
             sleep(loadsound("back1") / 2)
             return
@@ -1653,7 +1655,7 @@ class Nation:
       self.defense_min = sum(it.defense_min for it in self.cities)
       self.defense_total = sum(it.defense_total for it in self.cities) / len(self.cities)
       self.defense_total_percent = sum(it.defense_total_percent for it in self.cities) / len(self.cities)
-      self.defense_mean = int(mean([i.defense_total_percent for i in self.cities]))
+      self.defense_mean = int(basics.mean([i.defense_total_percent for i in self.cities]))
       self.score = round(sum(ct.defense_min for ct in self.cities))
       self.score += round(sum(ct.defense_total for ct in self.cities) / 20)
       self.set_threat()
@@ -2861,7 +2863,8 @@ class Unit:
             pass
           if event.key == pygame.K_RETURN:
             if self.spells: return self.spells[x](self)
-          if event.key == pygame.K_F12:
+          if event.key == pygame.K_F12 and ctrl and shift:
+            if dev_mode == 0:return
             sp.speak(f"on", 1)
             Pdb().set_trace()
             sp.speak(f"off", 1)
@@ -2942,7 +2945,8 @@ class Unit:
               self.set_hire(units[x])
             else: sleep(loadsound("errn1") / 2)
             say = 1
-          if event.key == pygame.K_F12:
+          if event.key == pygame.K_F12 and ctrl and shift:
+            if dev_mode == 0:return
             sp.speak(f"on.", 1)
             Pdb().set_trace()
             sp.speak(f"off.", 1)
@@ -3151,9 +3155,10 @@ class Unit:
           if event.key == pygame.K_s:
             self.set_auto_explore()
           if event.key == pygame.K_F12:
-            sp.speak(f"debug on.", 1)
-            Pdb().set_trace()
-            sp.speak(f"debug off.", 1)
+            if dev_mode:
+              sp.speak(f"debug on.", 1)
+              Pdb().set_trace()
+              sp.speak(f"debug off.", 1)
           if event.key == pygame.K_ESCAPE:
             return sleep(loadsound("back1") / 2)
 

@@ -71,9 +71,12 @@ def get_cast(itm):
           pass
         if event.key == pygame.K_RETURN:
           if itm.spells: return itm.spells[x](itm)
+          
         if event.key == pygame.K_F12:
-          sp.speak(f"on", 1)
-          sp.speak(f"off", 1)
+          if dev_mode:
+            sp.speak(f"on", 1)
+            Pdb().set_trace()
+            sp.speak(f"off", 1)
         if event.key == pygame.K_ESCAPE:
           loadsound("back3")
           return
@@ -118,6 +121,13 @@ def get_unrest_mod(num):
   if num <= -20: return 2
   if num <= 20: return 1
   else: return 0
+
+
+
+def mean(items):
+  value = sum(items)
+  value / len(items)
+  return value
 
 
 
@@ -200,10 +210,11 @@ def view_log(log, nation, sound="book_open01", x=None):
           view_log(nation.devlog, nation)
         if  event.key == pygame.K_RETURN:
           if isinstance(log[x][y], list): view_log(log[x][y][1], nation, x=0)
-        if  event.key == pygame.K_F12:
-            sp.speak(f"debug on", 1)
-            Pdb().set_trace()
-            sp.speak(f"debug off", 1)
+        if event.key == pygame.K_F12:
+          if dev_mode:
+              sp.speak(f"debug on", 1)
+              Pdb().set_trace()
+              sp.speak(f"debug off", 1)
         if  event.key == pygame.K_ESCAPE:
           return sleep(loadsound("back1") / 2)
 

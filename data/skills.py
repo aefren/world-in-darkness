@@ -4,7 +4,7 @@ from pdb import Pdb
 from random import randint, shuffle, choice, uniform
 from time import sleep, process_time
 
-from numpy import mean
+#from numpy import mean
 
 from language import *
 from log_module import *

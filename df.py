@@ -14,7 +14,7 @@ import natsort
 import pygame
 
 from language import *
-import numpy as np
+#import numpy as np
 
 
 dev_mode = 0
@@ -245,7 +245,7 @@ class Terrain:
       if s != self and s in nation.map:
         self.food_value += s.food
         self.res_value += s.resource
-        self.mean = mean([self.food_value, self.res_value])
+        self.mean = basics.mean([self.food_value, self.res_value])
   
   def get_free_squads(self, nation):
     units = []
@@ -1112,7 +1112,7 @@ class World:
             items[x].set_army(items[x].nation)
           if event.key == pygame.K_i:
             items[x].info(items[x].nation)
-          if event.key == pygame.K_F12:
+          if event.key == pygame.K_F12 and ctrl and shift:
             sp.speak(f"on",1)
             Pdb().set_trace()
             sp.speak(f"off",1)
@@ -1395,7 +1395,7 @@ class Ai:
       tiles = [i for i in tiles 
                if i.sight and (i.bu or i.is_city)]
       tiles.sort(key=lambda x: len(x.buildings), reverse=True) 
-      tiles.sort(key=lambda x: mean([x.threat, x.around_threat]))
+      tiles.sort(key=lambda x: basics.mean([x.threat, x.around_threat]))
       for it in tiles:
         logging.debug(f"can_capture {can_capture}.")
         if can_capture < 1: break
@@ -2696,8 +2696,9 @@ def create_building(city, items, sound="in1"):
           if itm.can_build():
             return itm
           else: error()
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
+          Pdb().set_trace()
           sp.speak(f"debug off.", 1)
         if event.key == pygame.K_ESCAPE:
           sleep(loadsound("back1") / 2)
@@ -2796,8 +2797,10 @@ def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
         else:
           if simple == 0:return items1[x](nation, pos)
           elif simple:return items1[x]
-      if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
+      if (event.type == pygame.KEYDOWN and event.key == pygame.K_F12 and ctrl 
+          and shift):
         sp.speak("on", 1)
+        Pdb().set_trace()
         sp.speak("off", 1)
       if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
         loadsound("back3")
@@ -2870,8 +2873,9 @@ def info_tile(pos, nation, sound="in1"):
             say = 1
         if event.key == pygame.K_DELETE:
           pass
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
+          Pdb().set_trace()
           sp.speak(f"debug off.", 1)
         if event.key == pygame.K_ESCAPE:
           sleep(loadsound("back1") / 2)
@@ -3095,8 +3099,9 @@ def menu_building(pos, nation, sound="in1"):
             say = 1
         if event.key == pygame.K_DELETE:
           pass
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
+          Pdb().set_trace()
           sp.speak(f"debug off.", 1)
         if event.key == pygame.K_ESCAPE:
           sleep(loadsound("back1") / 2)
@@ -3184,7 +3189,7 @@ def menu_city(itm, sound="in1"):
               sp.speak(f"{deleted_t}.")
               itm.update()
               itm.nation.update(scenary)
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
           Pdb().set_trace()
           sp.speak(f"debug off.", 1)
@@ -3330,8 +3335,9 @@ def menu_unit(items, sound="in1"):
             sayland = 1
             sleep(loadsound("set6") / 2)
             return
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
+          Pdb().set_trace()
           sp.speak(f"debug off.", 1)
         if event.key == pygame.K_ESCAPE:
           sleep(loadsound("back1") / 2)
@@ -3562,8 +3568,10 @@ def select_item(msg, building, sound, limit=0):
         x = len(building) - 1
         loadsound("s1")
 
-      if event.type == pygame.KEYDOWN and event.key == pygame.K_F12:
+      if (event.type == pygame.KEYDOWN and event.key == pygame.K_F12 and ctrl 
+          and shift):
         sp.speak("on")
+        Pdb().set_trace()
         sp.speak("off")
 
       if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
@@ -4249,10 +4257,8 @@ class Game:
       if ctrl == 0 and event.key == pygame.K_F9:
         if mapeditor == 0: save_game()
       if ctrl == 0 and event.key == pygame.K_F10:
-        if pos.city: ct = pos.city
-        Pdb().set_trace()
-        sp.speak(f"pdb off.")
-      if ctrl == 0 and event.key == pygame.K_F12:
+        pass
+      if event.key == pygame.K_F12 and ctrl and shift:
         sp.speak("on", 1)
         Pdb().set_trace()
         sp.speak("off", 1)
@@ -4771,7 +4777,7 @@ def train_unit(city, items, msg, sound="in1"):
           if req_unit(item, nation, city):
             return item
           else: error()
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"debug on.", 1)
           Pdb().set_trace()
           sp.speak(f"debug off.", 1)
@@ -4817,3 +4823,4 @@ def change():
     if it.surf.name == "nada": it.surf.name = none_t
 
 Game().start()
+

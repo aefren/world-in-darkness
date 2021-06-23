@@ -2,11 +2,14 @@
 .pydevproject
 .project
 .settings/
-log/
+build/
+dist/
 __pycache__/
+setup.py
 TelosysTools/
 testing/
 test.py
 *.game
 *.log
 *.pyc
+*.spec

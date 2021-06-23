@@ -1,9 +1,9 @@
-dev = 0
+dev_mode = 0
 # available languages: en, es.
 lang = "en" 
-if dev == 0:
+if dev_mode == 0:
   if lang == "es": exec("from data.lang.es import *") 
   elif lang == "en": exec("from data.lang.en import *")
-elif dev == 1:
+elif dev_mode == 1:
   if lang == "es": from data.lang.es import * 
   elif lang == "en": from data.lang.en import *
