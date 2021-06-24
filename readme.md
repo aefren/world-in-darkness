@@ -1,4 +1,4 @@
-## Introduction.
+	## Introduction.
 
 This is an unfinished turn based strategy game.
 
