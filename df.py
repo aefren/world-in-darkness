@@ -199,6 +199,43 @@ class Terrain:
     sayland = 1
     return unit
 
+  def get_around_tiles(self, nation, info=0):
+    sp.speak(f"around tiles.",1)
+    forest = [forest_t, 0]
+    glacier = [glacier_t, 0]
+    grassland = [grassland_t, 0]
+    hill = [hill_t, 0]
+    mountain = [mountain_t, 0]
+    ocean = [ocean_t, 0]
+    plains = [plains_t, 0]
+    tundra = [tundra_t, 0]
+    swamp = [swamp_t, 0]
+    volcano = [volcano_t, 0]
+    waste = [waste_t, 0]
+    items = [forest, glacier, grassland, hill, mountain, ocean, plains, 
+             tundra, swamp, volcano, waste]
+    for tl in self.get_near_tiles(1):
+      if tl == self: continue
+      if tl not in nation.map: continue
+      if tl.hill: hill[1] += 1
+      elif tl.surf.name != none_t:
+        if tl.surf.name == swamp_t: swamp[1] += 1
+        if tl.surf.name == forest_t: forest[1] += 1
+        if tl.surf.name == mountain_t: mountain[1] += 1
+        if tl.surf.name == volcano_t: volcano[1] += 1
+      elif tl.surf.name == none_t:
+        if tl.soil.name == coast_t: ocean[1] += 1
+        if tl.soil.name == plains_t: plains[1] += 1
+        if tl.soil.name == grassland_t: grassland[1] += 1
+        if tl.soil.name == waste_t: waste[1] += 1
+        if tl.soil.name == tundra_t: tundra[1] += 1
+        if tl.soil.name == glacier_t: glacier[1] += 1
+    
+    items = [it for it in items if it[1]]
+    items.sort(key=lambda x: x[1],reverse=True)
+    for it in items:
+      sp.speak(f"{it[0]}: {it[1]}.")
+    
   def get_comm_units(self, nation):
     units = []
     for i in self.units:
@@ -3144,11 +3181,11 @@ def menu_city(itm, sound="in1"):
 
     for event in pygame.event.get():
       if event.type == pygame.KEYDOWN:
-        if event.key == pygame.K_F1:
+        if event.key == pygame.K_F1 and dev_mode:
           sp.speak(f"defense total {itm.defense_total}.", 1)
           sp.speak(f"defense total percent {itm.defense_total_percent}.")
           sp.speak(f"defense_min {itm.defense_min}.")
-        if event.key == pygame.K_F2:
+        if event.key == pygame.K_F2 and dev_mode:
           sp.speak(f"seen threat {itm.seen_threat}.", 1)
         if event.key == pygame.K_UP:
           x = basics.selector(lista, x, go="up")
@@ -3162,6 +3199,8 @@ def menu_city(itm, sound="in1"):
         if event.key == pygame.K_END:
           x = len(lista) - 1
           say = 1
+        if  event.key == pygame.K_TAB and dev_mode:
+          view_log(nation.devlog, nation)
         if event.key == pygame.K_RETURN:
           if training_t in lista[x]:
             all_av_units = [i for i in itm.all_av_units]
@@ -3249,7 +3288,7 @@ def menu_nation(nation, sound="book_open01"):
             if uni.goal == capture: capture += 1
             if uni.goal == stalk_t: stalk += 1
           sp.speak(f"{capture=:}, {stalk=:}.",1)
-        if event.key == pygame.K_F12:
+        if event.key == pygame.K_F12 and ctrl and shift:
           sp.speak(f"pdb on.")
           Pdb().set_trace()
           sp.speak(f"debug off.", 1)
@@ -3974,11 +4013,10 @@ class Game:
           if dev_mode: world.show_random_buildings()
         if  event.key == pygame.K_TAB and dev_mode:
           basics.view_log(world.log, nation)
-        if event.key == pygame.K_l:
+        if event.key == pygame.K_l and dev_mode:
           if x < 0: return
           item = local_units[x]
           basics.view_log(item.log, item.nation)
-      
       if ctrl == 0:
         if event.key == pygame.K_a:
           if x > -1:
@@ -4008,11 +4046,12 @@ class Game:
             sayland = 1
     
         if event.key == pygame.K_h:
+          pass
           # Hire.
-          if pos.buildings == []: return
-          if nation in local_units[x].belongs and local_units[x].can_hire:
+          #if pos.buildings == []: return
+          #if nation in local_units[x].belongs and local_units[x].can_hire:
             #local_units[x].get_hire_units()
-            pass
+            #pass
     
         if event.key == pygame.K_i:
           if x > -1: local_units[x].info(nation)
@@ -4025,7 +4064,7 @@ class Game:
             unit = []
             x = -1
         if event.key == pygame.K_l:
-          if x < 0: return loadsound("errn1")
+          if x < 0: return
           if (x > -1 and nation in local_units[x].belongs 
               and local_units[x].leadership): 
             local_units[x].set_leads()
@@ -4227,28 +4266,17 @@ class Game:
         if event.key == pygame.K_d:
           sp.speak(f"defensa {round(pos.defense, 1)}.")
           sp.speak(f"{around_defense_t} {pos.around_defense}.")
-          sp.speak(f"{pos.defense_req= }")
+          if dev_mode: sp.speak(f"{pos.defense_req= }")
         if event.key == pygame.K_t:
           sp.speak(f"{threat_t} {pos.threat}.")
           sp.speak(f"{around_threat_t} {pos.around_threat}.")
         if event.key == pygame.K_l:
           if pos in nation.map:
-            msg = f"""
-            {ocean_t} {pos.around_coast},
-            {hill_t} {pos.around_hill},
-            {forest_t} {pos.around_forest},
-            {plains_t} {pos.around_plains},
-            {swamp_t} {pos.around_swamp},
-            {grassland_t} {pos.around_grassland},
-            {waste_t} {pos.around_waste},
-            {tundra_t} {pos.around_tundra},
-            {glacier_t} {pos.around_glacier}.
-            """
-            sp.speak(msg)
+            pos.get_around_tiles(nation)
         if event.key == pygame.K_v:
-          sp.speak(f"valor {pos.food_value}, {pos.res_value}.", 1)
-          sp.speak(f"{pos.mean}.")
-        
+          pass
+          #sp.speak(f"valor {pos.food_value}, {pos.res_value}.", 1)
+          #sp.speak(f"{pos.mean}.")
       if event.key == pygame.K_z:
         pos.update(nation)
         sayland = 1

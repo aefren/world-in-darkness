@@ -46,12 +46,18 @@ Eventos: lluvia, tormenta, enjambre de langostas…
 Las casillas también muestran que unidades tiene, siempre que la unidad esté visible para todos.
 
 También muestra los edificios, o si tiene ciudad.
+<br>
+<br>
 
+### navegando por las casillas.
 Para moverte entre casillas usa las flechas de navegación “arriba”, “abajo”, “izquierda”, “derecha”.
 
 Con las teclas “1, 2, 3…” también recibes información rápida y con la tecla “I” abres el diálogo de información detallada de la casilla.
+
+Con la tecla "d" obtienes un reporte rápido de la defensa en esa casilla, con "t" las amenazas alrededor de la casilla, con "l" información de las casillas que están al rededor.
 <br>
 <br>
+
 ## Ciudades.
 Cada ciudad tiene varios atributos. Crecimiento, recursos, orden público, ingresos, costo de mantenimiento, porcentaje de población militar, porcentaje de 
 población civil.

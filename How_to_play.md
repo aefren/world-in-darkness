@@ -48,10 +48,15 @@ Events: Rain, Storm, Swarm of lobsters ...
 The tiles also shows units in that tile , if the unit is not hidden.
 
 It also shows the buildings (if the building is not hidden), or if it has a city.
+<br>
+<br>
 
+### examining the tiles.
 To move between tiles use the navigation arrows,"up", "Down", "Left", "Right".
 
-With the "1, 2, 3 ..." keys you also receive quick information and with the "I" key you open the tile detailed information dialog.<br>
+With the "1, 2, 3 ..." keys you also receive quick information and with the "I" key you open the tile detailed information dialog.
+
+with "L" key you look tiles around, with "t" gets the threats around, with "d" gets a quick defence information.
 <br>
 <br>
 

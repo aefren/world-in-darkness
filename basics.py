@@ -205,9 +205,6 @@ def view_log(log, nation, sound="book_open01", x=None):
           y = len(log[x]) - 1
           loadsound("book_pageturn1")
           say = 1
-        if  event.key == pygame.K_TAB:
-          say = 1
-          view_log(nation.devlog, nation)
         if  event.key == pygame.K_RETURN:
           if isinstance(log[x][y], list): view_log(log[x][y][1], nation, x=0)
         if event.key == pygame.K_F12:
