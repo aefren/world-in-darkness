@@ -1,6 +1,9 @@
-	## Introduction.
+## Introduction.
 
 This is an unfinished turn based strategy game.
+
+[Here a quick guide to play](Quick Guide.md)
+[Aquí una guía rápida del juego](Guía rápida.md)
 
 ## Run without executable.
 
