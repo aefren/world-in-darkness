@@ -3312,23 +3312,23 @@ def menu_nation(nation, sound="book_open01"):
                 if event.key == pygame.K_END:
                     x = len(nations) - 1
                     say = 1
-                if event.key == pygame.K_1:
+                if event.key == pygame.K_1 and dev_mode:
                     sp.speak(f"scouts {len(nations[x].units_scout)}", 1)
                     sp.speak(f"comms {len(nations[x].units_comm)}")
-                if event.key == pygame.K_2:
+                if event.key == pygame.K_2 and dev_mode:
                     sp.speak(
                         f"build military path {nation.path.build_military}", 1)
                     sp.speak(f"build food path {nation.path.build_food}")
                     sp.speak(
                         f"upkeep_limit {nation.upkeep} of {nation.upkeep_limit}.")
-                if event.key == pygame.K_3:
+                if event.key == pygame.K_3 and dev_mode:
                     sp.speak(
                         f"{nation.defense_mean=:}, {nation.attack_factor=:}.")
                     sp.speak(
                         f"stalk rate {nation.defense_mean/nation.stalk_rate}.")
                     sp.speak(
                         f"capture rate {nation.defense_mean/nation.capture_rate}.")
-                if event.key == pygame.K_4:
+                if event.key == pygame.K_4 and dev_mode:
                     stalk = 0
                     capture = 0
                     for uni in nation.units:
@@ -4320,7 +4320,7 @@ class Game:
                 if event.key == pygame.K_5:
                     sp.speak(f"cost {pos.cost}.")
                     sp.speak(f"{size_t} {pos.size}.")
-                if event.key == pygame.K_6:
+                if event.key == pygame.K_6 and dev_mode:
                     sp.speak(pos.food_rate, 1)
                     sp.speak(f"{pos.flood= }.")
                     sp.speak(f"{len(nation.units_comm)=:}.")
