@@ -494,6 +494,13 @@ class City:
     def launch_event(self):
         pass
 
+    def maintenanse(self):
+        if self.upkeep < self.nation.gold:
+            self.nation.gold -= self.upkeep
+        else:
+            # raise a revelion on the city.
+            pass
+
     def population_change(self):
         self.update()
         grouth = round(self.grouth_total * self.pop / 100, 1)
@@ -860,7 +867,9 @@ class City:
         self.units_wild_rnk = sum(i.ranking for i in self.units_wild)
 
     def start_turn(self):
+        self.update()
         self.outcome_raided = 0
+        self.maintenanse()
 
     def status(self, info=0):
         logging.info(f"city status {self}.")
@@ -1472,11 +1481,10 @@ class Nation:
         [bu.set_hidden(self) for bu in buildings]
 
     def set_income(self):
-        self.last_income = 0
-        self.last_outcome = 0
-        [ct.income_change() for ct in self.cities]
         [ct.start_turn() for ct in self.cities]
+        self.last_income = sum(ct.income_total for ct in self.cities)
         self.last_income += self.raid_income
+        self.last_outcome = sum(ct.raid_outcome for ct in self.cities)
         msg1 = f"{income_t} {self.last_income}."
         msg2 = f"lost by raiders {self.last_outcome}."
         msg3 = f"{total_t} {self.last_income-self.last_outcome}."
@@ -3301,10 +3309,10 @@ class Unit:
         pass
 
     def maintenanse(self):
-        # logging.debug(f"mantenimiento de {self} de {self.nation}.")
+        # logging.debug(f"maintenanse {self} de {self.nation}.")
         if self.upkeep > 0 and self.nation.gold >= self.upkeep:
             self.nation.gold -= self.upkeep_total
-            logging.debug(f"{self} cobra {self.upkeep_total}.")
+            logging.debug(f"{self} gets {self.upkeep_total}.")
         elif self.upkeep > 0 and self.nation.gold < self.upkeep:
             self.disband()
 
@@ -4503,13 +4511,13 @@ class Unit:
         # init = time()
         if self.hp_total < 1: return
         self.start_turn()
+        if self.pos.world.turn > 1: self.maintenanse()
         self.restoring()
         self.set_hidden(self.pos)
         self.join_group()
         if self.goto:
             self.move_unit(self)
         self.attrition()
-        self.maintenanse()
         # print(f"{time()-init}")
 
     def update(self):

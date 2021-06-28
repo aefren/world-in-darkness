@@ -955,7 +955,6 @@ class World:
             if basics.roll_dice(1) >= 5:
                 building.av_units.sort(
                     key=lambda x: x.leadership > 1, reverse=True)
-            #building.av_units.sort(key=lambda x: x.leadership > 1, reverse=True)
             if info: logging.debug(f"adding unit from {building}.")
             for uni in building.av_units:
                 logging.debug(f"adding {uni.name}.")
@@ -2251,24 +2250,27 @@ class Ai:
         logging.info(
             f"{turn_t} {of_t} {nation}. ai = {nation.ai}, info = {nation.show_info}.")
         init = time()
-        sp.speak(f"{nation}.")
-        # ingresos.
-        nation.set_income()
+        if dev_mode: sp.speak(f"{nation}.")
+        # nation population changes.
+        [city.population_change()
+         for city in nation.cities if city.pos.world.turn > 1]
+        # nation income.
+        if nation.pos.world.turn > 1: nation.set_income()
         if info: logging.debug(f"{nation} nation.set_income {time()-init}.")
         nation.set_hidden_buildings()
 
-        # ciudades.
-        for ct in nation.cities:
-            ct.check_events()
-            if ct.pos.world.turn > 1: ct.population_change()
-            ct.set_downgrade()
-            ct.set_upgrade()
-            ct.check_training()
-            ct.check_building()
-            ct.status()
-            ct.set_seen_units(new=1)
-            ct.set_av_units()
+        # cities.
+        [city.check_events() for city in nation.cities]
+        [city.set_downgrade() for city in nation.cities]
+        [city.set_upgrade() for city in nation.cities]
+        [city.check_training() for city in nation.cities]
+        [city.check_building() for city in nation.cities]
+        [city.status() for city in nation.cities]
+        [city.set_seen_units(new=1) for city in nation.cities]
+        [city.set_av_units() for city in nation.cities]
         if info: logging.debug(f"cities {time()-init}.")
+        print(f"ready.")
+        nation.set_income()
 
         # units.
         logging.debug(f"movimiento de unidades.")
@@ -4609,18 +4611,18 @@ class Game:
         nation.pos.map_update(nation, nation.map)
         nation.update(nation.map)
         if nation.pos.world.turn > 1: nation.set_hidden_buildings()
-        # ingresos.
+        # nation population changes.
+        [city.population_change()
+         for city in nation.cities if city.pos.world.turn > 1]
+        # nation income.
         if nation.pos.world.turn > 1: nation.set_income()
-        # ciudades.
+        # cities.
         logging.debug(f"ciudades.")
-        for city in nation.cities:
-            city.check_events()
-            if city.pos.world.turn > 1: city.population_change()
-            city.update()
-            city.check_building()
-            city.check_training()
-            city.status()
-            city.update()
+        [city.check_events() for city in nation.cities]
+        [city.update() for city in nation.cities]
+        [city.check_building() for city in nation.cities]
+        [city.check_training() for city in nation.cities]
+        [city.status() for city in nation.cities]
 
         # initial placement.
         if nation.cities == [] and world.turn == 1:
@@ -4630,11 +4632,11 @@ class Game:
         logging.debug(f"unidades.")
         for uni in nation.units:
             uni.start_turn()
-            uni.restoring()
+            if uni.pos.world.turn > 1: uni.restoring()
             uni.set_hidden(uni.pos)
             if uni.goto: uni.move_unit()
-            uni.attrition()
-            uni.maintenanse()
+            if uni.pos.world.turn > 1:uni.attrition()
+            if uni.pos.world.turn > 1: uni.maintenanse()
         self.ai.ai_explore(nation, scenary)
         nation.update(nation.map)
         nation.set_seen_nations()

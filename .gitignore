@@ -1,6 +1,7 @@
 .gitattributes
-.pydevproject
+.metrics
 .project
+.pydevproject
 .settings/
 build/
 dist/
