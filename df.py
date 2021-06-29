@@ -4407,7 +4407,7 @@ class Game:
                 # print(f"ai_random. {time()-init}.")
 
             nation = world.nations[world.player_num]
-            if nation.ai:
+            if nation.ai == 0:
                 logging.info(f"{turn_t} {of_t} {nation}.")
                 self.start_turn(nation)
                 nation.pos.map_update(nation, nation.map)
@@ -4426,8 +4426,9 @@ class Game:
                 if nation.cities: pos = nation.cities[0].pos
                 elif nation.units: pos = nation.units[0].pos
                 sayland = 1
-                if dev_mode:save_game()
-                if dev_mode == 1: return
+                if dev_mode:
+                    save_game()
+                    return
             world.player_num += 1
 
     def new_turn(self):
