@@ -231,7 +231,7 @@ class Building:
                         say = 1
                         loadsound("s1")
                     if event.key == pygame.K_F12:
-                        if dev_module:
+                        if dev_mode:
                             sp.speak(f"on.", 1)
                             Pdb().set_trace()
                             sp.speak(f"off.", 1)
@@ -1805,6 +1805,7 @@ class Unit:
     strn = 1
     pn = 0
     offensive_skills = []
+    spells = []
 
     armor_ign = 0
     common = 0
@@ -1866,7 +1867,6 @@ class Unit:
     show_info = 0
     sight = 1
     sort_chance = 50
-    spells = []
     squads = 1
     stopped = 0
     swamp_survival = 0
@@ -1890,6 +1890,7 @@ class Unit:
         if self.ln == 0: self.ln = self.min_units
         self.offensive_skills = [i(self) for i in self.offensive_skills]
         self.other_skills = []
+        self.spells = [i(self) for i in self.spells]
         self.squads_position = [self]
         self.traits = [i for i in self.traits]
         self.terrain_skills = [i(self) for i in self.terrain_skills]

@@ -3775,7 +3775,7 @@ def set_defend_pos(defense_need, itm, pos, info=0):
 def set_settler(itm, info=1):
     logging.info(f"ajuste colono en {itm.pos}, {itm.pos.cords}.")
     if info: logging.debug(
-        f"colonos {len([i for i in nation.units if i.settler])}.units_se")
+        f"settlers {len([i for i in nation.units if i.settler])}.")
     if itm.pos.city.defense_total < itm.pos.city.seen_threat * 1.5:
         if info: logging.debug(f"lack of defense.")
         return
@@ -3799,7 +3799,6 @@ def set_settler(itm, info=1):
             if comm.leadership > comm.leading: comm.create_group(
                 comm.leadership)
             comm.set_army_auto()
-            if comm.pos != itm.pos: comm.move_set(itm.pos)
             comm.goal = ["settle", tile]
             comm.move_set(tile)
             msg = f"fundará aldea en {tile} {tile.cords}."
@@ -3807,7 +3806,7 @@ def set_settler(itm, info=1):
                 logging.debug(msg)
                 comm.nation.log[-1] += [msg]
                 comm.log[-1] += [msg]
-            if dev_mode: 
+            if dev_mode:
                 sp.speak(msg)
             sleep(1)
 
@@ -4637,7 +4636,7 @@ class Game:
             if uni.pos.world.turn > 1: uni.restoring()
             uni.set_hidden(uni.pos)
             if uni.goto: uni.move_unit()
-            if uni.pos.world.turn > 1:uni.attrition()
+            if uni.pos.world.turn > 1: uni.attrition()
             if uni.pos.world.turn > 1: uni.maintenanse()
         self.ai.ai_explore(nation, scenary)
         nation.update(nation.map)
