@@ -3807,7 +3807,8 @@ def set_settler(itm, info=1):
                 logging.debug(msg)
                 comm.nation.log[-1] += [msg]
                 comm.log[-1] += [msg]
-            sp.speak(msg)
+            if dev_mode: 
+                sp.speak(msg)
             sleep(1)
 
 

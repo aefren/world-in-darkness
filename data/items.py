@@ -9660,7 +9660,7 @@ class Valahia(Nation):
         # Non starting tiles.
         self.generic_soil = [grassland_t, plains_t, tundra_t, waste_t]
         self.generic_surf = [forest_t, none_t]
-        self.generic_hill = [0, 1]
+        self.generic_hill = [0]
 
         # edificios iniciales disponibles.
         self.av_buildings = [Necropolis, Fields, HallsOfTheDeads,
