@@ -96,14 +96,14 @@ class Spell:
     def init(self, itm, target=None):
         target = target
         if self.target:
-            if (any(i in self.target for i in ["beast", "cavalry", "infantry", "civil"])
-                    and target == None):
+            if (any(i in self.target for i in [
+                    "beast", "cavalry", "infantry", "civil"]) and target is None):
                 units = [i for i in itm.pos.units
                          if i.nation == itm.nation and i != itm]
                 target = basics.get_unit(units, itm.nation)
-                if target == None: return
+                if target is None: return
         conditions = self.check_conditions(itm, target)
-        if conditions != None: return conditions
+        if conditions is not None: return conditions
         check = self.check_cost(itm)
         if check != 1: return check
         cast = self.check_cast(itm)
@@ -415,7 +415,8 @@ class CastRain(Spell):
         if basics.roll_dice(1) == 6: casting.turns += 2
         for s in sq:
             if s.soil.name == waste_t and basics.roll_dice(1) >= 2: continue
-            if all(i not in [Storm.name, Rain.name] for i in [ev.name for ev in s.events]):
+            if all(i not in [Storm.name, Rain.name]
+                   for i in [ev.name for ev in s.events]):
                 s.events += [casting(s)]
                 s.events = [evt for evt in s.events if evt.name !=
                             BloodRaining.name]
@@ -723,7 +724,7 @@ class RaiseDead(Spell):
                     raised = de(itm.nation)
                     dead = cr
                     break
-        if raised == None: return
+        if raised is None: return
         raised.pos = itm.pos
         if sum(dead.deads) * total_hp >= total_hp:
             raised.hp_total = total_hp
@@ -1011,7 +1012,8 @@ class SummonSecondSun(Spell):
         tiles = [t for t in tiles if t.sight]
         go = 0
         for t in tiles:
-            if malignant_t in t.units_effects or Eclipse.name in [ev.name for ev in t.events]:
+            if malignant_t in t.units_effects or Eclipse.name in [
+                    ev.name for ev in t.events]:
                 go = 1
         if go: self.init(itm)
 
@@ -1119,7 +1121,8 @@ class SummonEclipse(Spell):
         tiles = [t for t in tiles if t.sight]
         go = 0
         for t in tiles:
-            if malignant_t in t.units_effects or SecondSun.name in [ev.name for ev in t.events]:
+            if malignant_t in t.units_effects or SecondSun.name in [
+                    ev.name for ev in t.events]:
                 go = 1
         if go: self.init(itm)
 

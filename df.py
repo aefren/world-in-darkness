@@ -49,8 +49,19 @@ class Ambient:
 
     def __init__(self):
         self.day_night = [0, [day_t, night_t]]
-        self.month = [0, [january_t, february_t, march_t, april_t, may_t, june_t,
-                          july_t, august_t, september_t, october_t, november_t, december_t]]
+        self.month = [0,
+                      [january_t,
+                       february_t,
+                       march_t,
+                       april_t,
+                       may_t,
+                       june_t,
+                       july_t,
+                       august_t,
+                       september_t,
+                       october_t,
+                       november_t,
+                       december_t]]
         self.season = [2, [winter_t, spring_t, summer_t, autum_t]]
         self.time = [0, [morning_t, noon_t, afternoon_t,
                          evening_t, night_t, midnight_t, dawn_t]]
@@ -166,7 +177,8 @@ class Terrain:
             corpses += sum(cr.deads)
         corpses = ceil(corpses / 10)
         sk = Miasma(self)
-        if roll + corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
+        if roll + \
+                corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
             sk.turns = randint(2, 5)
             self.events += [sk]
         elif sk.name in [ev.name for ev in self.events] and roll >= 10:
@@ -255,7 +267,8 @@ class Terrain:
         x = [self.x - value, self.x + value]
         y = [self.y - value, self.y + value]
         for t1 in self.scenary:
-            if (t1.x >= x[0] and t1.x <= x[1]) and (t1.y >= y[0] and t1.y <= y[1]):
+            if (t1.x >= x[0] and t1.x <= x[1]) and (
+                    t1.y >= y[0] and t1.y <= y[1]):
                 tiles.append(t1)
         return tiles
 
@@ -406,7 +419,8 @@ class Terrain:
                                 if s1 not in nation.map:
                                     nation.map.append(s1)
                                     # print(f"se agrega {s1}.")
-                                if s1.surf.name not in [forest_t] and s1.hill not in [1]:
+                                if s1.surf.name not in [
+                                        forest_t] and s1.hill not in [1]:
                                     s1.sight = 1
 
     def set_around(self, nation):
@@ -457,7 +471,7 @@ class Terrain:
             if tl.sight and tl != self:
                 self.around_corpses += len(tl.corpses)
                 if nation:
-                    if tl.nation != nation and tl.nation != None:
+                    if tl.nation != nation and tl.nation is not None:
                         self.around_nations += [tl.nation]
                     if tl.nation == nation: self.around_snations += [tl.nation]
                     units = tl.get_free_squads(
@@ -479,8 +493,15 @@ class Terrain:
         for bu in self.buildings:
             self.buildings_tags += bu.tags
             self.buildings_nation += [bu.nation]
-        if self.soil.name == ocean_t and any(i for i in [self.around_plains,
-                                                         self.around_grassland, self.around_waste, self.around_tundra, self.around_glacier, self.around_forest, self.around_swamp]):
+        if self.soil.name == ocean_t and any(
+            i for i in [
+                self.around_plains,
+                self.around_grassland,
+                self.around_waste,
+                self.around_tundra,
+                self.around_glacier,
+                self.around_forest,
+                self.around_swamp]):
             self.coast = 1
             self.soil.name = coast_t
         elif self.soil.name != ocean_t and self.around_coast:
@@ -520,8 +541,8 @@ class Terrain:
         self.grouth = self.grouth_food * 0.1
         if self.grouth_food > 80: self.grouth *= 1.4
         elif self.grouth_food > 60: self.grouth *= 1.25
-        elif self.grouth_food <= 40: self.grouth *= 0.8
-        elif self.grouth_food <= 20: self.grouth *= 0.8
+        elif self.grouth_food <= 50: self.grouth *= 0.8
+        elif self.grouth_food <= 25: self.grouth *= 0.8
         for bu in self.buildings:
             if self.city.nation != bu.nation: continue
             if bu.type == city_t:
@@ -535,7 +556,7 @@ class Terrain:
         if self.surf.name not in self.nation.main_pop_surf: self.grouth *= 0.6
 
     def set_income(self):
-        if self.nation == None or self.pop == 0: return
+        if self.nation is None or self.pop == 0: return
         if self.pop: self.populated = round(self.pop / self.food * 100)
         self.income = self.pop * self.nation.gold_rate
         self.incomes = [self.income]
@@ -550,7 +571,7 @@ class Terrain:
 
     def set_public_order(self, info=0):
         if info: logging.debug(f"set_public_order.")
-        if self.nation == None: return
+        if self.nation is None: return
         if self.pop < 1:
             self.pop = 0
             self.public_order = 0
@@ -607,7 +628,8 @@ class Terrain:
             if uni.hp_total > 0:
                 unit_skills = uni.get_skills()
                 for sk in unit_skills:
-                    if sk.effect in ["all", "friend"] and sk.name not in self.skill_names:
+                    if sk.effect in [
+                            "all", "friend"] and sk.name not in self.skill_names:
                         self.skills += [sk]
                         self.skill_names += [sk.name]
 
@@ -668,8 +690,10 @@ class Terrain:
             ev.tile_run(self)
         self.events = [ev for ev in self.events if ev.turns > 0]
         self.burned = 0
-        self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1 and sum(i.deads) > 0
-                        and i.corpses]
+        self.corpses = [
+            i for i in self.corpses +
+            self.units if i.hp_total < 1 and sum(
+                i.deads) > 0 and i.corpses]
         if self.city: self.city.raid_outcome = 0
         if self.flood > 0: self.flood -= 1
         if self.ambient.sseason == summer_t: self.flood -= 1
@@ -732,9 +756,11 @@ class Terrain:
 
         # eliminando unidades, generando corpses.
         try:
-            self.corpses = [i for i in self.corpses + self.units if i.hp_total < 1
-                            and sum(i.deads) > 0 and i.corpses]
-        except: Pdb().set_trace()
+            self.corpses = [
+                i for i in self.corpses +
+                self.units if i.hp_total < 1 and sum(
+                    i.deads) > 0 and i.corpses]
+        except Exception: Pdb().set_trace()
         self.units = [it for it in self.units
                       if it.hp_total >= 1]
         self.set_blocked()
@@ -752,8 +778,8 @@ class Terrain:
 
         self.buildings = [b for b in self.buildings if b.resource_cost[0] >= 1]
         self.bu = len(self.buildings)
-        self.in_progress = 1 if [i for i in self.buildings
-                                 if i.resource_cost[0] < i.resource_cost[1]] else 0
+        self.in_progress = 1 if [
+            i for i in self.buildings if i.resource_cost[0] < i.resource_cost[1]] else 0
 
         # Stats.
         self.stats_tiles()
@@ -937,7 +963,7 @@ class World:
                     if value < 1: break
 
     def add_random_unit(self, value, info=1):
-        logging.info(f"add_random_unit {value=:}.")
+        logging.info(f"add_frandom_unit {value=:}.")
         count = randint(1, 3)
         if basics.roll_dice(1) == 6: count += 1
         tries = 20
@@ -968,7 +994,7 @@ class World:
                 if info: logging.debug(f"agregará {uni}.")
                 try:
                     uni.update()
-                except: Pdb().set_trace
+                except Exception: Pdb().set_trace()
                 if uni.units > 1 and uni.leadership == 0:
                     if info: logging.debug(f"randomly set units number")
                     uni.hp_total = randint(30, 60) * uni.hp_total / 100
@@ -1099,7 +1125,7 @@ class World:
         sleep(loadsound(sound) / 2)
         self.update(self.map)
         units = [i for i in self.units if i.hp_total >= 1
-                 and i.leader == None]
+                 and i.leader is None]
         items = units
         self.nations_score = sum(n.score for n in self.nations)
 
@@ -1259,12 +1285,13 @@ class Ai:
                 if rnd > itm.pos.threat:
                     try:
                         itm.auto_attack()
-                    except: Pdb().set_trace()
+                    except Exception: Pdb().set_trace()
                     if any(i <= 0 for i in [itm.mp[0], itm.hp_total]): return
 
                 # moves.
                 if itm.mp[0] > 0 and itm.will_less == 0:
-                    if itm.pos.around_threat + itm.pos.threat < itm.ranking and basics.roll_dice(1) >= 5:
+                    if itm.pos.around_threat + \
+                            itm.pos.threat < itm.ranking and basics.roll_dice(1) >= 5:
                         if info: logging.debug(f"no moves by randomness.")
                         return
                     itm.random_move()
@@ -1320,8 +1347,8 @@ class Ai:
         if info: logging.debug(f"{nation.score=:}, {nation.seen_threat=:}.")
         for uni in nation.units_scout:
             distanse_limit = uni.mp[1] + uni.nation.explore_range
-            if (uni.pos.get_distance(uni.pos, uni.city.pos) >= distanse_limit - 1
-                    and basics.roll_dice(2) >= 10):
+            if (uni.pos.get_distance(uni.pos, uni.city.pos) >=
+                    distanse_limit - 1 and basics.roll_dice(2) >= 10):
                 uni.scout = 0
                 msg = f"{uni} in {uni.pos} {uni.pos.cords} stops exploring."
                 uni.log[-1] += [msg]
@@ -1355,9 +1382,10 @@ class Ai:
                 units = [it for it in ct.nation.get_free_squads()
                          if it.will_less == 0]
                 if info: logging.debug(f"final units {len(units)}.")
-                units.sort(key=lambda x: x.mp[1] >= 2
-                           or (x.can_fly or x.forest_survival or x.mountain_survival
-                               or x.swamp_survival), reverse=True)
+                units.sort(
+                    key=lambda x: x.mp[1] >= 2 or (
+                        x.can_fly or x.forest_survival or x.mountain_survival or x.swamp_survival),
+                    reverse=True)
                 units.sort(key=lambda x: x.ranking, reverse=True)
                 for it in units:
                     if info:
@@ -1457,7 +1485,7 @@ class Ai:
     def ai_divide_units(self, nation):
         units = [i for i in nation.units
                  if i.can_join and i.goto == []
-                 and i.leader == None and i.leads == []]
+                 and i.leader is None and i.leads == []]
         for i in units:
             i.pos.update(i.nation)
             if i.pos.around_threat > i.ranking * 0.5: continue
@@ -1551,8 +1579,8 @@ class Ai:
         if units: logging.debug(f"{len(units)} exploradores.")
         for uni in units:
             tries = 10
-            while ((uni.mp[0] > 0 and uni.hp_total > 0 and uni.goto == [] and uni.city)
-                   and tries > 0):
+            while ((uni.mp[0] > 0 and uni.hp_total >
+                    0 and uni.goto == [] and uni.city) and tries > 0):
                 tries -= 1
                 distanse = uni.mp[1] + uni.nation.explore_range
                 sq1 = uni.city.pos.get_near_tiles(distanse)
@@ -1600,7 +1628,7 @@ class Ai:
                         itm.goal = None
                         return
                     else: Pdb().set_trace()
-                elif settler == None:
+                elif settler is None:
                     itm.go_home()
             # stalk.
             if itm.goal[0] == stalk_t:
@@ -1722,8 +1750,10 @@ class Ai:
                         and x.defense == 0, reverse=True)
                 sq.sort(key=lambda x: x.public_order, reverse=True,)
                 if uni.ranged:
-                    sq.sort(key=lambda x: x.hill
-                            or (x.surf and x.surf.name == forest_t), reverse=True)
+                    sq.sort(
+                        key=lambda x: x.hill or (
+                            x.surf and x.surf.name == forest_t),
+                        reverse=True)
                 sq.sort(key=lambda x: uni.get_favland(x), reverse=True)
                 sq.sort(key=lambda x: x.defense_req - x.defense, reverse=True)
                 sq.sort(key=lambda x: military_t in x.buildings_tags
@@ -1758,7 +1788,9 @@ class Ai:
         nation.devlog[-1] += [
             f"unidades iniciales {len([i for i in nation.units if i.garrison and i.pos.around_threat+i.pos.threat])}."]
         # joining forcetl.
-        for uni in [i for i in nation.units if i.garrison and i.pos.around_threat + i.pos.threat]:
+        for uni in [
+                i for i in nation.units if i.garrison and i.pos.around_threat +
+                i.pos.threat]:
             if uni.hp_total < 1 or uni.will_less: continue
             nation.devlog[-1] += [f"{uni} in {uni.pos} {uni.pos.cords}."]
             sq = uni.pos.get_near_tiles(1)
@@ -1773,7 +1805,7 @@ class Ai:
                 try:
                     moves = max(it.moves + it.moves_mod for it in units
                                 if nation not in it.belongs)
-                except: Pdb().set_trace()
+                except Exception: Pdb().set_trace()
                 rng = max(it.range[1]
                           for it in units if nation not in it.belongs)
                 if info: logging.debug(f"rnd inicial {rnd}.")
@@ -1807,7 +1839,8 @@ class Ai:
                     msg = f"reduced by not mountaint tile to {rnd}."
                     nation.devlog[-1] += {msg}
                     if info: logging.debug(msg)
-                if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill:
+                if uni.mounted and tl.surf.name in [
+                        forest_t, swamp_t] or tl.hill:
                     rnd *= 0.5
                     msg = f"reduced by forest or hill or swamp to {rnd}."
                     nation.devlog[-1] += {msg}
@@ -1833,7 +1866,7 @@ class Ai:
                     nation.devlog[-1] += {msg}
                     if info: logging.debug(msg)
                 if (rng >= 6 and uni.range[1] < rng
-                        and uni.shield == None and uni.armor == None):
+                        and uni.shield is None and uni.armor is None):
                     rnd *= 0.6
                     msg = f"reduced by rng{rnd}."
                     nation.devlog[-1] += {msg}
@@ -1927,7 +1960,8 @@ class Ai:
                     msg = f"reduced by not mountaint tile to {rnd}."
                     nation.devlog[-1] += {msg}
                     if info: logging.debug(msg)
-                if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill:
+                if uni.mounted and tl.surf.name in [
+                        forest_t, swamp_t] or tl.hill:
                     rnd *= 0.5
                     msg = f"reduced by forest or hill or swamp to {rnd}."
                     nation.devlog[-1] += {msg}
@@ -2048,7 +2082,8 @@ class Ai:
                     msg = f"reduced by not mountaint tile to {rnd}."
                     nation.devlog[-1] += {msg}
                     if info: logging.debug(msg)
-                if uni.mounted and tl.surf.name in [forest_t, swamp_t] or tl.hill:
+                if uni.mounted and tl.surf.name in [
+                        forest_t, swamp_t] or tl.hill:
                     rnd *= 0.5
                     msg = f"reduced by forest or hill or swamp to {rnd}."
                     nation.devlog[-1] += {msg}
@@ -2074,7 +2109,7 @@ class Ai:
                     nation.devlog[-1] += {msg}
                     if info: logging.debug(msg)
                 if (rng >= 6 and uni.range[1] < rng
-                        and uni.shield == None and uni.armor == None):
+                        and uni.shield is None and uni.armor is None):
                     rnd *= 0.6
                     msg = f"reduced by rng{rnd}."
                     nation.devlog[-1] += {msg}
@@ -2196,7 +2231,7 @@ class Ai:
                     logging.debug(f"{uni_food=:}.")
                 for it in sq:
                     if info:
-                        msg = f"""{it} {it.cords}. {it.food_need=:}, {it.food=:}, 
+                        msg = f"""{it} {it.cords}. {it.food_need=:}, {it.food=:},
             {it.defense=:}, {it.around_threat+it.threat=:}."""
                         uni.log[-1] += [msg]
                         logging.debug(msg)
@@ -2216,7 +2251,7 @@ class Ai:
                         continue
                     if uni.ranking + it.defense > it.around_threat:
                         if uni.pos != it:
-                            msg = f"""free move to {it} {it.cords}. 
+                            msg = f"""free move to {it} {it.cords}.
               defense {it.defense}, around threat {it.around_threat}."""
                             if info: logging.debug(msg)
                             uni.log[-1] += [msg]
@@ -2225,7 +2260,7 @@ class Ai:
                         break
 
             # return to home.
-            elif uni.pos.nation != uni.nation and uni.goal == None:
+            elif uni.pos.nation != uni.nation and uni.goal is None:
                 if info: logging.debug(f"out of nation.")
                 num = 1
                 tries = 6
@@ -2270,7 +2305,6 @@ class Ai:
         [city.set_av_units() for city in nation.cities]
         if info: logging.debug(f"cities {time()-init}.")
         print(f"ready.")
-        nation.set_income()
 
         # units.
         logging.debug(f"movimiento de unidades.")
@@ -2297,7 +2331,7 @@ class Ai:
         # colonos.
         logging.debug(f"colonos {len([i for i in nation.units if i.settler])}.")
         [set_settler(it) for it in nation.units
-         if it.settler and it.leader == None]
+         if it.settler and it.leader is None]
         # liberar unidades de edificios que no son amenazados.
         self.set_free_units(nation)
         if info: logging.debug(f"ai_set_free units {time()-init}.")
@@ -2377,9 +2411,13 @@ class Ai:
         nation.tiles.sort(key=lambda x: x.around_threat +
                           x.threat, reverse=True)
         nation.tiles.sort(
-            key=lambda x: x.is_city and x.around_threat + x.threat, reverse=True)
+            key=lambda x: x.is_city and x.around_threat +
+            x.threat,
+            reverse=True)
         nation.tiles.sort(
-            key=lambda x: x.city.capital and x.is_city and x.around_threat + x.threat, reverse=True)
+            key=lambda x: x.city.capital and x.is_city and x.around_threat +
+            x.threat,
+            reverse=True)
         for tl in nation.tiles:
             if tl.blocked: continue
             defense_needs = tl.around_threat
@@ -2387,7 +2425,7 @@ class Ai:
             if tl.defense_req > defense_needs: defense_needs = tl.defense_req
             defense = sum(uni.ranking for uni in tl.units
                           if nation in uni.belongs and uni.goto == []
-                          and uni.leader == None)
+                          and uni.leader is None)
             if defense < 80 * defense_needs / 100:
                 if info:
                     msg1 = f"{tl}. {tl.cords} needs {defense_needs-defense} defense."
@@ -2408,7 +2446,7 @@ class Ai:
                         nation.devlog[-1] += [f"breaks tile checking by 80% defense."]
                         break
                     if s.units and info:
-                        msg2 = f"""checking units in {s} {s.cords} 
+                        msg2 = f"""checking units in {s} {s.cords}
             {s.around_threat=:}, {s.threat=:}."""
                         nation.devlog[-1] += [msg2]
                     for uni in s.units:
@@ -2448,15 +2486,16 @@ class Ai:
                                 nation.devlog[-1] += [msg]
                                 logging.debug(msg)
                             continue
-                        if (tl.is_city and tl.around_threat + tl.threat == 0
-                                and s.around_threat + s.threat and uni.garrison):
+                        if (tl.is_city and tl.around_threat + tl.threat ==
+                                0 and s.around_threat + s.threat and uni.garrison):
                             if info:
                                 msg = f"breaks by threat."
                                 uni.log[-1] += [msg]
                                 nation.devlog[-1] += [msg]
                                 logging.debug(msg)
                             continue
-                        if s.is_city and uni.garrison and len(uni.pos.units) < 2:
+                        if s.is_city and uni.garrison and len(
+                                uni.pos.units) < 2:
                             if info:
                                 msg = f"breaks by city less than 3 garrison.."
                                 uni.log[-1] += [msg]
@@ -2515,8 +2554,8 @@ class Ai:
                                 nation.devlog[-1] += [msg]
                                 logging.debug(msg)
                             continue
-                        buildings = [bu for bu in s.buildings
-                                     if bu.nation == nation and military_t in bu.tags]
+                        buildings = [
+                            bu for bu in s.buildings if bu.nation == nation and military_t in bu.tags]
                         if buildings and tl.around_threat + tl.threat < tl.defense:
                             if info:
                                 msg = f"defending military buildings."
@@ -2528,7 +2567,7 @@ class Ai:
                         ranking += uni.ranking
                         nation.devlog[-1] += [f"added."]
                 if info:
-                    msg = f"""{len(units)} unidades disponibles iniciales. 
+                    msg = f"""{len(units)} unidades disponibles iniciales.
           ranking total {ranking}."""
                     logging.debug(msg)
                 if units == []: continue
@@ -2536,15 +2575,18 @@ class Ai:
                            x.food_total <= tl.food, reverse=True)
                 if tl.surf.name == forest_t:
                     units.sort(
-                        key=lambda x: x.forest_survival or x.ranged, reverse=True)
+                        key=lambda x: x.forest_survival or x.ranged,
+                        reverse=True)
                     if info: logging.debug(f"sort to forest.")
                 if tl.surf.name == swamp_t:
                     units.sort(
-                        key=lambda x: x.swamp_survival or x.ranged, reverse=True)
+                        key=lambda x: x.swamp_survival or x.ranged,
+                        reverse=True)
                     if info: logging.debug(f"sort to swamp.")
                 if tl.hill:
                     units.sort(
-                        key=lambda x: x.mountain_survival or x.ranged, reverse=True)
+                        key=lambda x: x.mountain_survival or x.ranged,
+                        reverse=True)
                     if info: logging.debug(f"sort to hill.")
                 if tl.surf.name in [forest_t, swamp_t] or tl.hill:
                     units.sort(key=lambda x: x.mounted)
@@ -2564,7 +2606,8 @@ class Ai:
                             and tl.around_threat + tl.threat <= tl.defense):
                         if info: uni.log[-1] += [f"lack of food and not threat found."]
                         continue
-                    if defense + uni.ranking > defense_needs * 1.2 and tl.around_threat + tl.threat == 0:
+                    if defense + uni.ranking > defense_needs * \
+                            1.2 and tl.around_threat + tl.threat == 0:
                         uni.split((1))
                         msg = f"splited."
                         if info: logging.debug(msg)
@@ -2606,7 +2649,7 @@ class Ai:
         for t in nation.tiles:
             # if t.is_city: continue
             units = [u for u in t.units if nation in u.belongs and u.garrison
-                     and u.leader == None]
+                     and u.leader is None]
             defense = sum(u.ranking for u in units if u.garrison)
             defense_need = max(t.defense_req, t.around_threat + t.threat)
             if defense > defense_need: continue
@@ -2680,7 +2723,7 @@ class Ai:
         logging.info(f"ai_train_comm {nation} turn {world.turn}.")
         nation.update(nation.map)
         units = sum([i.units for i in nation.units
-                     if i.leader == None and i.leadership == 0
+                     if i.leader is None and i.leadership == 0
                      and i.settler == 0])
         comms = sum(com.leadership - com.leading for com in nation.units_comm)
         if info: logging.debug(f"{units=:}, {comms=:}.")
@@ -2726,7 +2769,7 @@ class Ai:
                     if spl.name in banned: continue
                     if info: logging.debug(spl.name)
                     init = spl.ai_run(uni)
-                    if init != None:
+                    if init is not None:
                         uni.log[-1] += [init]
                         logging.debug(init)
                         banned += [spl.name]
@@ -2737,8 +2780,8 @@ class Ai:
         if nation.income < nation.upkeep and nation.gold < nation.upkeep * 1.5:
             logging.debug(
                 f"nation income{nation.income}. upkeep {nation.upkeep}. gold {nation.gold}.")
-            units = [i for i in nation.units if i.upkeep > 0 and i.leadership == 0
-                     and i.goto == []]
+            units = [i for i in nation.units if i.upkeep >
+                     0 and i.leadership == 0 and i.goto == []]
             units.sort(key=lambda x: x.ranking,)
             if units: uni = units[0]
 
@@ -2857,7 +2900,7 @@ def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
         if say:
             if items2: sp.speak(items2[x])
             else:
-                if name == None and simple == 0: sp.speak(
+                if name is None and simple == 0: sp.speak(
                     items1[x](nation, pos).name, 1)
                 elif name and simple:
                     sp.speak(items1[x].name, 1)
@@ -2880,8 +2923,8 @@ def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
                 else:
                     if simple == 0: return items1[x](nation, pos)
                     elif simple: return items1[x]
-            if (event.type == pygame.KEYDOWN and event.key == pygame.K_F12 and ctrl
-                    and shift):
+            if (event.type == pygame.KEYDOWN and event.key ==
+                    pygame.K_F12 and ctrl and shift):
                 sp.speak("on", 1)
                 Pdb().set_trace()
                 sp.speak("off", 1)
@@ -3131,7 +3174,9 @@ def menu_building(pos, nation, sound="in1"):
                     if pos.blocked:
                         loadsound("errn1")
                         continue
-                    if isinstance(items[x], str) == False and items[x].is_complete and items[x].upgrade:
+                    if isinstance(
+                            items[x],
+                            str) == False and items[x].is_complete and items[x].upgrade:
                         item = get_item2(items1=items[x].upgrade, msg="mejorar")
                         if item:
                             if item.check_tile_req(pos):
@@ -3155,9 +3200,8 @@ def menu_building(pos, nation, sound="in1"):
                     say = 1
 
                 if event.key == pygame.K_DELETE:
-                    if (items[x].type == city_t
-                        or items[x].resource_cost[0] == items[x].resource_cost[1]
-                            or items[x].pos.blocked):
+                    if (items[x].type == city_t or items[x].resource_cost[0]
+                            == items[x].resource_cost[1] or items[x].pos.blocked):
                         loadsound("errn1")
                         continue
                     items[x].pos.buildings.remove(items[x])
@@ -3168,7 +3212,9 @@ def menu_building(pos, nation, sound="in1"):
                     if pos.blocked:
                         loadsound("errn1")
                         continue
-                    if isinstance(items[x], str) and pos.city and pos.nation == nation:
+                    if isinstance(
+                            items[x],
+                            str) and pos.city and pos.nation == nation:
                         building = create_building(
                             pos.city, nation.av_buildings)
                         if building:
@@ -3502,7 +3548,7 @@ def nation_init():
             if nat.ai == 0: nat.info = 1
             nation_start_position(nat, world.map)
         for nat in world.nations:
-            if nat.pos == None: done = 0
+            if nat.pos is None: done = 0
         if done:
             for nat in world.nations: nation_set_start_position(nat)
             break
@@ -3606,7 +3652,7 @@ def save_game():
     name = f"{world.nations[world.player_num]} {turn_t} {world.turn}"
     try:
         os.stat(main_dir)
-    except:
+    except Exception:
         os.mkdir(main_dir)
         print(f"error.")
     file = open(main_dir + name + ".game", "wb")
@@ -3651,8 +3697,8 @@ def select_item(msg, building, sound, limit=0):
                 x = len(building) - 1
                 loadsound("s1")
 
-            if (event.type == pygame.KEYDOWN and event.key == pygame.K_F12 and ctrl
-                    and shift):
+            if (event.type == pygame.KEYDOWN and event.key ==
+                    pygame.K_F12 and ctrl and shift):
                 sp.speak("on")
                 Pdb().set_trace()
                 sp.speak("off")
@@ -3701,7 +3747,7 @@ def set_logging():
     main_dir = os.getcwd() + str("/logs/")
     try:
         os.stat(main_dir)
-    except:
+    except Exception:
         os.mkdir(main_dir)
         print(f"error.")
 
@@ -3713,10 +3759,12 @@ def set_near_tiles(nation, scenary):
         ct.tiles_near = [it for it in ct.tiles_near if it.city ==
                          None and it.nation == None]
         ct.tiles_far = [it for it in nation.map]
-        ct.tiles_far = [it for it in ct.tiles_far if it.get_distance(it, ct.pos) in [
-            3, 4]]
+        ct.tiles_far = [
+            it for it in ct.tiles_far if it.get_distance(
+                it, ct.pos) in [
+                3, 4]]
         ct.tiles_far = [it for it in ct.tiles_far
-                        if it.city == None and it.nation == None
+                        if it.city is None and it.nation is None
                         and it.soil.name in nation.generic_soil
                         and it.surf.name in nation.generic_surf
                         and it.hill in ct.nation.generic_hill]
@@ -3786,8 +3834,9 @@ def set_settler(itm, info=1):
         if len(nation.cities) < 2: nation.tiles_far.sort(
             key=lambda x: itm.pos.get_distance(x, itm.pos))
         tile = nation.tiles_far[0]
-        comms = [cm for cm in nation.units_comm
-                 if cm.goal == None and cm.pos.around_threat + cm.pos.threat == 0]
+        comms = [
+            cm for cm in nation.units_comm if cm.goal is None and cm.pos.around_threat +
+            cm.pos.threat == 0]
         comms.sort(key=lambda x: itm.pos.get_distance(itm.pos, x.pos))
         if comms:
             comm = comms[0]
@@ -3849,10 +3898,10 @@ class Game:
                 uni.restoring()
                 uni.set_hidden(uni.pos)
                 if uni.goto: uni.moving_unit()
-                if uni.goto == [] and uni.will_less == 0 and uni.leader == None:
+                if uni.goto == [] and uni.will_less == 0 and uni.leader is None:
                     uni.oportunist_attack()
                 uni.attrition()
-                if uni.leader == None: self.ai.ai_action_random(uni)
+                if uni.leader is None: self.ai.ai_action_random(uni)
 
     def control_basic(self, event):
         global nation
@@ -3949,8 +3998,8 @@ class Game:
                     play_stop()
             if event.key == pygame.K_r:
                 # hill
-                if (pos.surf == None or pos.surf
-                        and pos.surf.name not in [mountain_t, river_t, swamp_t, volcano_t]):
+                if (pos.surf is None or pos.surf and pos.surf.name not in [
+                        mountain_t, river_t, swamp_t, volcano_t]):
                     for i in [pos] + Group:
                         i.hill = 1
                 else: loadsound("errn1")
@@ -3958,7 +4007,7 @@ class Game:
                 play_stop()
             if event.key == pygame.K_t:
                 # volcano
-                if pos.surf == None:
+                if pos.surf is None:
                     for i in [pos] + Group:
                         i.surf = Volcano()
                         i.hill = 0
@@ -3967,7 +4016,7 @@ class Game:
                 play_stop()
             if event.key == pygame.K_y:
                 # mountain
-                if pos.surf == None:
+                if pos.surf is None:
                     for i in [pos] + Group:
                         i.surf = Mountain()
                         i.hill = 0
@@ -3993,8 +4042,8 @@ class Game:
                     xy[1].append(pos.y)
                     xy = [sorted(i) for i in xy]
                     for item in scenary:
-                        if ((item.x >= xy[0][0] and item.y >= xy[1][0])
-                                and (item.x <= xy[0][1] and item.y <= xy[1][1])):
+                        if ((item.x >= xy[0][0] and item.y >= xy[1][0]) and (
+                                item.x <= xy[0][1] and item.y <= xy[1][1])):
                             Group.append(item)
                     sleep(loadsound("back1") / 2)
                     xy = []
@@ -4005,7 +4054,7 @@ class Game:
                     xy = [[pos.x], [pos.y]]
 
             if event.key == pygame.K_RETURN:
-                if Belongs != None:
+                if Belongs is not None:
                     if Group:
                         for item in Group:
                             if item.belongs:
@@ -4020,15 +4069,15 @@ class Game:
                         if pos.belongs and pos.belongs == Belongs:
                             sp.speak(f"{deleted_t}.", 1)
                             pos.belongs = None
-                        elif pos.belongs == None or pos.belongs != Belongs:
+                        elif pos.belongs is None or pos.belongs != Belongs:
                             sp.speak(f"{added_t}.", 1)
                             pos.belongs = Belongs
                             Belongs.owns.append(pos)
                     sayland = 1
                     play_stop()
-                if Evt != None:
+                if Evt is not None:
                     pass
-                if Name != None:
+                if Name is not None:
                     loadsound("set5")
                     if Group:
                         for item in Group:
@@ -4134,7 +4183,7 @@ class Game:
                         sayland = 1
                 if event.key == pygame.K_n:
                     # nombrar casilla.
-                    if x == -1 and pos.nation == None or pos.nation == nation:
+                    if x == -1 and pos.nation is None or pos.nation == nation:
                         pos.name = naming()
                     # nombrar unidad.
                     elif x >= 0 and local_units[x].nation == nation: local_units[x].nick = naming()
@@ -4177,7 +4226,8 @@ class Game:
                             nation.update(scenary)
                             sayland = 1
                 if event.key == pygame.K_DELETE:
-                    if x == -1 or (local_units and nation not in local_units[x].belongs):
+                    if x == - \
+                            1 or (local_units and nation not in local_units[x].belongs):
                         error()
                         return
                     if get_item2([0, 1], ["no", "si"], "Eliminar unidad",):
@@ -4197,9 +4247,9 @@ class Game:
                     y = basics.selector(nation.cities, y, "up")
                     try:
                         pos = nation.cities[y].pos
-                    except:
+                    except Exception:
                         pos = nation.cities[0].pos
-                        print(f"error.")
+                        # print(f"error.")
                     sayland = 1
                 if event.key == pygame.K_END:
                     unit = []
@@ -4211,7 +4261,7 @@ class Game:
                     y = basics.selector(nation.cities, y, "down")
                     try:
                         pos = nation.cities[y].pos
-                    except:
+                    except Exception:
                         pos = nation.cities[0].pos
                         print(f"error.")
                     sayland = 1
@@ -4240,7 +4290,7 @@ class Game:
                 if event.key == pygame.K_F5:
                     sayland = 1
                     nation.update(nation.map)
-                    units = [uni for uni in nation.units if uni.leader == None]
+                    units = [uni for uni in nation.units if uni.leader is None]
                     menu_unit(units)
                 if event.key == pygame.K_F6:
                     sayland = 1
@@ -4354,8 +4404,8 @@ class Game:
                 Pdb().set_trace()
                 sp.speak("off", 1)
             if event.key == pygame.K_ESCAPE:
-                if (Belongs or Evt or Group or Name != None or unit != [] or rng
-                        or filter_expand or x > -1):
+                if (Belongs or Evt or Group or Name is not None or unit !=
+                        [] or rng or filter_expand or x > -1):
                     end_parameters()
                     return
                 if get_item2([0, 1], [not_t, yes_t], msg_exit_t,):
@@ -4533,8 +4583,8 @@ class Game:
                             Game().run()
                         if items[x] == exit_t: return
                         if new_game:
-                            if ("world" in globals()
-                                    and self.set_nations(globals()["world"]) == None):
+                            if ("world" in globals() and self.set_nations(
+                                    globals()["world"]) is None):
                                 del(globals()["world"])
                         if "world" in globals():
                             run = 0
@@ -4594,7 +4644,7 @@ class Game:
                             loadsound("set5")
                             return 1
                         else:
-                            sp.speak(f"""needs at least two nations 
+                            sp.speak(f"""needs at least two nations
               and one nation set to human.""", 1)
                             sleep(loadsound("errn1"))
                             say = 1
@@ -4661,7 +4711,7 @@ class Game:
             elif pos.nation == nation:
                 sleep(loadsound("nav1") * 0.3)
             elif pos.nation != nation:
-                if pos.nation == None and pos.sight: sleep(
+                if pos.nation is None and pos.sight: sleep(
                     loadsound("nav4") * 0.3)
             # if pos.name and pos.sight: sp.speak(f"{pos.name}.", 1)
             if pos in nation.map:
@@ -4672,14 +4722,14 @@ class Game:
             if pos.defense > 0:
                 pass
             if pos in nation.map:
-                if pos.city == None or pos.city.nick != city_name:
+                if pos.city is None or pos.city.nick != city_name:
                     city_name = None
                     if pos.city:
                         city_name = pos.city.nick
                         if pos.sight or pos in nation.nations_tiles:
                             sp.speak(f"{city_name}")
                             loadsound("notify20")
-                if pos.nation == None or str(pos.nation) != nation_name:
+                if pos.nation is None or str(pos.nation) != nation_name:
                     nation_name = None
                     if pos.nation:
                         nation_name = str(pos.nation)
@@ -4718,11 +4768,12 @@ class Game:
                     sp.speak(f"{cost} {gold_t}.")
                 if pos.sight or pos in nation.nations_tiles:
                     if pos.buildings:
-                        buildings = [b for b in pos.buildings
-                                     if b.type == city_t or nation in b.nations or nation == b.nation]
+                        buildings = [b for b in pos.buildings if b.type ==
+                                     city_t or nation in b.nations or nation == b.nation]
                         if buildings: sp.speak(
                             f"{len(buildings)} {buildings_t}.")
-                    if pos.buildings and [b for b in pos.buildings if b.resource_cost[0] < b.resource_cost[1] and b.nation == nation]:
+                    if pos.buildings and [
+                            b for b in pos.buildings if b.resource_cost[0] < b.resource_cost[1] and b.nation == nation]:
                         loadsound("construction1", channel=CHTE2)
                     if pos.events:
                         for ev in pos.events:

@@ -454,8 +454,8 @@ class ForestSurvival(Skill):
 
 class ForestTerrain(Skill):
     effect = "all"
-    desc = """-2 moves for grount unit, -4 move for mounted unit, -1 off, 
-  -1 dfs.unit can not charge, ignores forest survival and flying units. 
+    desc = """-2 moves for grount unit, -4 move for mounted unit, -1 off,
+  -1 dfs.unit can not charge, ignores forest survival and flying units.
   +4 stealth."""
     name = "forest terrain"
     type = "generic"
@@ -556,9 +556,9 @@ class Storm(Skill):
 
 class HillTerrain(Skill):
     name = "hill terrain"
-    desc = """-2 moves for grount units, -4 move for mounted unit, 
-  unit can not charge, -1 dfs, -1 off. 
-  ignores mountain survival and fying units. +5 range if unit is ranged. 
+    desc = """-2 moves for grount units, -4 move for mounted unit,
+  unit can not charge, -1 dfs, -1 off.
+  ignores mountain survival and fying units. +5 range if unit is ranged.
   +4 stealth."""
     effect = "all"
     type = "generic"
@@ -727,7 +727,7 @@ class LeadershipExceeded(Skill):
     tags = ["leader"]
 
     def run(self, itm):
-        if itm.leader == None: return
+        if itm.leader is None: return
         if itm.leader.extra_leading >= 1:
             itm.effects += [f"{self.name} {itm.leader.extra_leading}%."]
             factor = itm.leader.extra_leading
@@ -899,8 +899,9 @@ class Miasma(Skill):
             if itm.nation.show_info: sleep(
                 loadsound("notify23", channel=CHTE2) // 1.5)
 
-        units = [it for it in itm.units if it.poisonres == 0
-                 and death_t not in it.traits and Intoxicated.name not in [s.name for s in it.skills] and it.hp_total >= 1]
+        units = [
+            it for it in itm.units if it.poisonres == 0 and death_t not in it.traits and Intoxicated.name not in [
+                s.name for s in it.skills] and it.hp_total >= 1]
         roll = basics.roll_dice(1)
         if roll >= 6 and units:
             unit = choice(units)
@@ -915,7 +916,7 @@ class Miasma(Skill):
                 if unit.nation.show_info: sleep(loadsound("notify28"))
                 try:
                     msg = f"{unit} at {unit.pos} {unit.pos.cords} has been intoxicated."
-                except: Pdb().set_trace()
+                except Exception: Pdb().set_trace()
                 unit.log[-1] += [msg]
                 unit.nation.log[-1] += [msg]
                 unit.pos.world.log[-1] += [msg]
@@ -935,7 +936,7 @@ class mist(Skill):
 
 class Night(Skill):
     name = night_t
-    desc = """if unit is not dark vision -1 off (-2 if unit is ranged), 
+    desc = """if unit is not dark vision -1 off (-2 if unit is ranged),
   -1dfs (-2 if unit is ranged), -1 resolve. +2 stealth."""
     effect = "all"
     type = "generic"
@@ -1083,7 +1084,7 @@ class PikeSquare (Skill):
     type = "generic"
 
     def run(self, itm):
-        if itm.target == None: return
+        if itm.target is None: return
         if itm.dist not in range(itm.weapon1.range_min, itm.weapon1.range_max + 1): return
         if itm.squads >= 2:
             itm.effects.append(self.name + str(1))
@@ -1355,7 +1356,8 @@ class SecondSun(Skill):
         self.turns -= 1
         itm.events = [ev for ev in itm.events if ev.name != Eclipse.name]
         itm.day_night = 1
-        if any(i not in [Rain.name, Storm.name] for i in [ev.name for ev in itm.events]):
+        if any(i not in [Rain.name, Storm.name]
+               for i in [ev.name for ev in itm.events]):
             for uni in itm.units:
                 roll = basics.roll_dice(2)
                 if uni.aligment in [malignant_t, hell_t]:
@@ -1382,7 +1384,7 @@ class SwampSurvival(Skill):
 
 class SwampTerrain(Skill):
     effect = "all"
-    desc = """-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit, 
+    desc = """-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit,
   unit can not charge. ignores swamp survival and flying units."""
     name = "swamp terrain"
     type = "generic"
@@ -1534,8 +1536,8 @@ class VigourMourtis(Skill):
 class Undisciplined(Skill):
     name = "undisciplined"
     desc = """if unit is not leaded.
-  at start of each turn one of those options can occur: 
-  loss a random unit number. 
+  at start of each turn one of those options can occur:
+  loss a random unit number.
   generate unrest in tile if unit is in a city tile."""
     effect = "self"
     ranking = 1

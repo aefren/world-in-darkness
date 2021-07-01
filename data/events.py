@@ -54,7 +54,7 @@ class Looting(Event):
                     try:
                         steal = randint(int(self.itm.nation.gold * 0.1),
                                         int(self.itm.nation.gold * 0.5))
-                    except: Pdb().set_trace()
+                    except Exception: Pdb().set_trace()
                     self.itm.nation.gold -= steal
                     msg = f'{steal} {gold_t} stealed from nation.'
                 buildings = [
@@ -95,7 +95,7 @@ class Reanimation(Event):
                         dead = it
                         raised = cr(t.nation)
                     break
-            if dead == None: break
+            if dead is None: break
             if sum(dead.deads) * dead.hp >= total_hp:
                 raised.hp_total = total_hp
                 dead.deads[0] -= total_hp / dead.hp

@@ -162,7 +162,7 @@ def selector(item, x, go='', wrap=0, sound='s1', snd=1):
 
 
 def view_log(log, nation, sound="book_open01", x=None):
-    if x != None: x = x
+    if x is not None: x = x
     else: x = len(log) - 1
     y = 0
     say = 1

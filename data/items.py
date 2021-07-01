@@ -127,9 +127,11 @@ class Building:
             return 0
         if self.local_unique and basics.has_name(self.pos.buildings, self.name):
             return 0
-        if self.city_unique and basics.has_name(self.pos.city.buildings, self.name):
+        if self.city_unique and basics.has_name(
+                self.pos.city.buildings, self.name):
             return 0
-        if self.global_unique and basics.has_name(self.pos.nation.buildings, self.name):
+        if self.global_unique and basics.has_name(
+                self.pos.nation.buildings, self.name):
             return 0
         return 1
 
@@ -539,8 +541,9 @@ class City:
         self.all_av_units = []
         for b in self.buildings:
             if b.pos.blocked == 0:
-                self.all_av_units += [i for i in b.av_units_pre if i.name not in [
-                    av.name for av in self.all_av_units]]
+                self.all_av_units += [
+                    i for i in b.av_units_pre if i.name not in [
+                        av.name for av in self.all_av_units]]
             if (b.is_complete and b.pos.blocked == 0):
                 self.all_av_units += [i for i in b.av_units if i.name not in [
                     av.name for av in self.all_av_units]]
@@ -571,8 +574,8 @@ class City:
         self.defense_min = 0
         self.hostile_ranking = 0
         units = [i for i in self.units
-                 if self.nation in i.belongs and i.goal == None
-                 and i.leader == None and i.scout == 0 and i.settler == 0]
+                 if self.nation in i.belongs and i.goal is None
+                 and i.leader is None and i.scout == 0 and i.settler == 0]
         self.defense = sum(i.ranking for i in self.pos.units if i.garrison)
         for i in units:
             if i.garrison and i.pos == self.pos: i.city = self
@@ -627,7 +630,8 @@ class City:
             units = t.get_free_squads(self.nation) + \
                 t.get_comm_units(self.nation)
             for uni in units:
-                if (self.nation not in uni.belongs and uni not in self.seen_units[-1]):
+                if (
+                        self.nation not in uni.belongs and uni not in self.seen_units[-1]):
                     self.seen_units[-1].append(uni)
 
         self.seen_threat = 0
@@ -710,7 +714,8 @@ class City:
             return units
 
         # more ranged enemies.
-        if self.seen_ranged_rnk > (self.units_ranged_rnk + self.units_fly_rnk) * 0.5:
+        if self.seen_ranged_rnk > (
+                self.units_ranged_rnk + self.units_fly_rnk) * 0.5:
             if info: logging.debug(f"contra ranged.")
             _units = [i for i in units if i.ranged
                       or i.armor
@@ -770,7 +775,8 @@ class City:
             if _sacred: return _sacred
 
         # Forest.
-        if self.pos.around_forest + self.pos.around_hill >= 3 and basics.roll_dice(1) >= 5:
+        if self.pos.around_forest + \
+                self.pos.around_hill >= 3 and basics.roll_dice(1) >= 5:
             _units = [
                 i for i in units if i.can_fly or i.forest_survival or i.mountain_survival]
             if info: logging.debug(f"forest and hills.")
@@ -797,7 +803,8 @@ class City:
         if info: logging.debug(f"av mounted {len(_mounted)}.")
         if info: logging.debug(f"total rnk {total_rnk}.")
         if info: logging.debug(f"limit {self.nation.units_mounted_limit}.")
-        if (basics.roll_dice(1) >= 5 and _mounted and total_rnk < self.nation.units_mounted_limit):
+        if (basics.roll_dice(1) >= 5 and _mounted and total_rnk <
+                self.nation.units_mounted_limit):
             if info: logging.debug(f"mounted.")
             _units = [i for i in units if i.mounted]
             if _units: return _units
@@ -822,8 +829,8 @@ class City:
         return units
 
     def set_units_types(self):
-        units = [i for i in self.units if i.leader == None or
-                 (i.leader and i.leader.goal == None)]
+        units = [i for i in self.units if i.leader is None or
+                 (i.leader and i.leader.goal is None)]
         self.comm_lead_traits = []
         self.comm_lead_aligments = []
         self.units_fly = []
@@ -1159,7 +1166,7 @@ class Nation:
         if itm.capital: itm.set_capital_bonus()
         tiles = pos.get_near_tiles(1)
         for t in tiles:
-            if t.nation == None:
+            if t.nation is None:
                 itm.tiles.append(t)
                 t.city = itm
                 t.nation = self
@@ -1317,9 +1324,8 @@ class Nation:
                 if uni.leadership - 5 > uni.leading and uni.goto == []]
 
     def get_free_squads(self):
-        units_free = [it for it in self.units if it.scout == 0 and it.settler == 0
-                      and it.goto == [] and it.goal == None
-                      and it.leadership == 0]
+        units_free = [it for it in self.units if it.scout == 0 and it.settler ==
+                      0 and it.goto == [] and it.goal is None and it.leadership == 0]
 
         self.units_free = []
         for i in units_free:
@@ -1526,7 +1532,7 @@ class Nation:
                 t for t in nt.seen_tiles if str(t.nation) == str(nt)]
         self.seen_nations = [nt for nt in self.seen_nations if nt.seen_tiles]
         for t in self.map:
-            if t.sight == 0 or t.nation == None: continue
+            if t.sight == 0 or t.nation is None: continue
             t.update(self)
             if (str(t.nation) != str(self)
                     and str(t.nation) not in self.str_nations):
@@ -1980,7 +1986,8 @@ class Unit:
         roll = basics.roll_dice(1)
         logging.debug(f"{food =: }, {resolve =: } {roll =: }.")
         if roll < food:
-            if self.desert_survival and self.pos.name == waste_t and basics.roll_dice(1) >= 3:
+            if self.desert_survival and self.pos.name == waste_t and basics.roll_dice(
+                    1) >= 3:
                 logging.debug(f"sobreviviente del desierto.")
                 return
             disband = 1
@@ -2011,9 +2018,12 @@ class Unit:
         if self.other_skills:
             try:
                 loadsound(
-                    choice(self.other_skills[0].sound), channel=CHUNE1, vol=0.25)
-            except: loadsound("notify27", channel=CHUNE1, vol=0.25)
-            for sk in self.other_skills: sp.speak(f"{sk.name}")
+                    choice(
+                        self.other_skills[0].sound),
+                    channel=CHUNE1,
+                    vol=0.25)
+            except Exception: 
+                for sk in self.other_skills: sp.speak(f"{sk.name}")
         belongs = [nt.name for nt in self.belongs]
         sp.speak(f"{belongs}.")
         sp.speak(f"hp {self.hp_total}.")
@@ -2045,8 +2055,8 @@ class Unit:
         self.update()
 
     def burn(self, cost=0):
-        buildings = [b for b in self.pos.buildings if b.type == building_t and b.nation != self.nation
-                     and self.nation in b.nations and b.resource_cost[0] > 0]
+        buildings = [b for b in self.pos.buildings if b.type == building_t and b.nation !=
+                     self.nation and self.nation in b.nations and b.resource_cost[0] > 0]
         if buildings and self.mp[0] >= cost and self.can_burn:
             if [i for i in self.pos.units
                     if i.nation not in self.belongs]:
@@ -2085,13 +2095,16 @@ class Unit:
                 if self.pos.nation and self.nation != self.pos.nation:
                     self.pos.nation.log[-1].append(msg)
                 logging.debug(msg)
-            if self.pos.nation and any(i for i in [self.nation.show_info, self.pos.nation.show_info]):
+            if self.pos.nation and any(
+                i for i in [
+                    self.nation.show_info,
+                    self.pos.nation.show_info]):
                 sleep(loadsound("build_burn01", channel=CHTE1) * 0.5)
 
     def can_pass(self, pos):
         try:
             if pos.soil.name in self.soil and pos.surf.name in self.surf: return True
-        except: Pdb().set_trace()
+        except Exception: return False
 
     def check_enemy(self, pos, is_city=0, info=0):
         if info: logging.debug(f"check enemy, {is_city=:}.")
@@ -2110,7 +2123,7 @@ class Unit:
     def check_position(self):
         logging.debug(f"checking position.")
         if self.pos.is_city and self.pos.nation not in self.belongs and self.hidden == 0:
-            if self.check_enemy(self.pos, is_city=1) == None:
+            if self.check_enemy(self.pos, is_city=1) is None:
                 if self.nation not in self.pos.world.random_nations:
                     if self.pos.defense >= 50 * self.pos.city.pop / 100: self.take_city()
 
@@ -2208,7 +2221,7 @@ class Unit:
         # Shield setting.
         if weapon.shield and self.combat_shield(target, info): return
         # Hits setting.
-        if weapon.hits and self.combat_hits(self.off + self.off_mod, info) == None: return
+        if weapon.hits and self.combat_hits(self.off + self.off_mod, info) is None: return
         # Hit_to
         hit_res = self.combat_hit_to(target)
         hit_to = hit_res[0]
@@ -2290,7 +2303,12 @@ class Unit:
             res = target.hres + target.hres_mod
         return hit_to, res
 
-    def combat_menu(self, target=None, attacker_log=[], defender_log=[], info=0):
+    def combat_menu(
+            self,
+            target=None,
+            attacker_log=[],
+            defender_log=[],
+            info=0):
         logging.info(f"combat_menu for {self}.")
         self.update()
         if self not in self.pos.units:
@@ -2392,29 +2410,22 @@ class Unit:
           vs {units[1]} {health_t} {units[1].hp_total}. ranking {units[1].ranking}.",
                     f"{resolve_t}: {units[0].resolve+units[0].resolve_mod} ({units[0].resolve_mod}) VS "
                     f"{units[1].resolve+units[1].resolve_mod} ({units[1].resolve_mod}).",
-
                     f"{moves_t}: {units[0].moves+units[0].moves_mod} ({units[0].moves_mod}) VS "
                     f"{units[1].moves+units[1].moves_mod} ({units[1].moves_mod}).",
-
                     f"{skills_t} {units[0].skill_names}. VS {units[1].skill_names}.",
                     f"{effects_t} {units[0].effects}. VS {units[1].effects}.",
-
                     f"dfs: {units[0].dfs+units[0].dfs_mod} ({units[0].dfs_mod}) VS "
                     f"{units[1].dfs+units[1].dfs_mod} ({units[1].dfs_mod})",
-
                     f"res: {units[0].res+units[0].res_mod} ({units[0].res_mod}) VS "
                     f"{units[1].res+units[1].res_mod} ({units[1].res_mod})",
-
                     f"hres: {units[0].hres+units[0].hres_mod} ({units[0].hres_mod}) VS "
                     f"{units[1].hres+units[1].hres_mod} ({units[1].hres_mod})",
-
                     f"off: {units[0].off+units[0].off_mod} (+{units[0].off_mod}) "
                     f"VS {units[1].off+units[1].off_mod} (+{units[1].off_mod}).",
                     f"strn: {units[0].strn+units[0].strn_mod} (+{units[0].strn_mod}) "
                     f"VS {units[1].strn+units[1].strn_mod} (+{units[1].strn_mod}).",
                     f"shield: {shields[0]} VS {shields[1]}.",
-                    f"armor: {armors[0]} VS {armors[1]}."
-                ]
+                    f"armor: {armors[0]} VS {armors[1]}."]
 
                 for i in units:
                     i.temp_log = temp_log
@@ -2459,9 +2470,9 @@ class Unit:
                     [i.stats_battle() for i in [self, target] if i.hp_total >= 1]
                     self.combat_post(target, info)
                     msg2 = f"""
-          {kills_t} {sum(self.kills)}, {deads_t} {sum(self.deads)}, 
-          {fled_t} {sum(self.fled)}. VS 
-          {kills_t} {sum(target.kills)}, {deads_t} {sum(target.deads)}, 
+          {kills_t} {sum(self.kills)}, {deads_t} {sum(self.deads)},
+          {fled_t} {sum(self.fled)}. VS
+          {kills_t} {sum(target.kills)}, {deads_t} {sum(target.deads)},
           {fled_t} {sum(target.fled)}.
           """
                     for it in [attacker_log, defender_log]:
@@ -2544,7 +2555,7 @@ class Unit:
         weapons = [self.weapon1, self.weapon2, self.weapon3]
 
         for wp in weapons:
-            if wp == None: continue
+            if wp is None: continue
             if self. dist not in range(wp.range_min, wp.range_max + 1): continue
             wp.update()
             weapon = wp
@@ -2566,7 +2577,7 @@ class Unit:
             weapon.after_melee()
             weapon.effects()
 
-        if weapon == None: return
+        if weapon is None: return
         self.hits_failed[-1] = self.attacks[-1] - self.strikes[-1]
         if self.damage_done[-1] and self.target.hidden:
             self.temp_log += [f"{self.target} revealed."]
@@ -2574,8 +2585,7 @@ class Unit:
 
         self.temp_log += [
             f"{attacks_t} {self.attacks[-1]}, {hits_failed_t} {self.hits_failed[-1]}, "
-            f"{hits_t} {self.strikes[-1]}.",
-        ]
+            f"{hits_t} {self.strikes[-1]}.", ]
         if self.hits_resisted[-1]: self.temp_log += [
             f"resisted {self.hits_resisted[-1]}."]
         if self.hits_armor_blocked[-1]: self.temp_log += [
@@ -2586,8 +2596,7 @@ class Unit:
             f"to the head {self.hits_head[-1]}, to the body {self.hits_body[-1]}.",
             f"{wounds_t} {self.hits_body[-1]+self.hits_head[-1]}, "
             f"{damage_t} {self.damage_done[-1]}, {critical_t} {self.critical_damage}.",
-            f"{deads_t} {self.target.deads[-1]}."
-        ]
+            f"{deads_t} {self.target.deads[-1]}."]
 
     def combat_sacred_damage(self, damage, target, info=0):
         if self.damage_sacred + self.damage_sacred_mod and undead_t in target.traits:
@@ -2650,7 +2659,7 @@ class Unit:
         cast = self.get_cast()
         if cast:
             init = cast.init(self)
-            if init != None:
+            if init is not None:
                 self.log[-1] += [init]
                 logging.debug(init)
             self.nation.update(self.nation.map)
@@ -2711,7 +2720,7 @@ class Unit:
                   if it.nation not in self.belongs and it != self
                   and it.hidden == 0]
         _units = [it for it in _units
-                  if it.leader == None or it.leader and it.leader.pos != it.pos]
+                  if it.leader is None or it.leader and it.leader.pos != it.pos]
         [it.update() for it in _units]
         _units.sort(key=lambda x: sum(
             [x.off, x.off_mod, x.strn, x.strn_mod]), reverse=True)
@@ -2719,14 +2728,14 @@ class Unit:
         _units.sort(key=lambda x: x.ranged, reverse=True)
         _units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
 
-        if target == None:
+        if target is None:
             if _units: target = _units[0]
             else: return
 
         if self.leadership:
             attackers = self.squads_position
             leader1 = self
-        elif self.leader == None or self.leader and self.pos != self.leader.pos:
+        elif self.leader is None or self.leader and self.pos != self.leader.pos:
             attackers = self.squads_position
             leader1 = self
         elif self.leader and self.pos == self.leader.pos:
@@ -2738,7 +2747,7 @@ class Unit:
         if target.leadership:
             defenders = target.squads_position
             leader2 = target
-        elif (target.leader == None or target.leader
+        elif (target.leader is None or target.leader
               and target.leader.pos != target.pos):
             defenders = _units
             leader2 = defenders[0]
@@ -2750,17 +2759,18 @@ class Unit:
         squads2 = [str(i) for i in leader2.squads_position]
 
         if target.pos.city:
-            combat_location = f"""{combat_t} {in_t} {pos.city}, {pos}, {pos.cords}  
+            combat_location = f"""{combat_t} {in_t} {pos.city}, {pos}, {pos.cords}
       {from_t} {self.pos}, {self.pos.cords}."""
         else:
-            combat_location = f"""{combat_t} {in_t} {pos}, {pos.cords} "  
+            combat_location = f"""{combat_t} {in_t} {pos}, {pos.cords} "
       {from_t} {self.pos}, {self.pos.cords}."""
 
-        combat_desc = [f"{attacking_t} {leader1}, {ranking_t} {leader1.ranking}.",
-                       f"{squads1}.",
-                       f"{defending_t} {leader2}, {ranking_t} {leader2.ranking}.",
-                       f"{squads2}.",
-                       ]
+        combat_desc = [
+            f"{attacking_t} {leader1}, {ranking_t} {leader1.ranking}.",
+            f"{squads1}.",
+            f"{defending_t} {leader2}, {ranking_t} {leader2.ranking}.",
+            f"{squads2}.",
+        ]
         attacker_log = copy.deepcopy([combat_location, [combat_desc]])
         defender_log = copy.deepcopy([combat_location, [combat_desc]])
         self.nation.log[-1] += [attacker_log]
@@ -2786,8 +2796,10 @@ class Unit:
         info = 1 if any(it.show_info == 1 for it in [leader1, leader2]) else 0
         if info: sleep(loadsound("warn4", channel=CHTE3) / 2)
         while attackers and defenders:
-            attackers[0].combat_menu(defenders[0],
-                                     attacker_log=attacker_log, defender_log=defender_log)
+            attackers[0].combat_menu(
+                defenders[0],
+                attacker_log=attacker_log,
+                defender_log=defender_log)
             attackers = [it for it in attackers if it. hp_total >= 1]
             defenders = [it for it in defenders if it. hp_total >= 1]
 
@@ -3069,7 +3081,7 @@ class Unit:
         [s.update(self.nation) for s in sq]
         if info: logging.debug(f"{len(sq)} casillas para retirada.")
         shuffle(sq)
-        sq.sort(key=lambda x: x.nation == None, reverse=True)
+        sq.sort(key=lambda x: x.nation is None, reverse=True)
         sq.sort(key=lambda x: x.nation == self.nation, reverse=True)
         sq.sort(key=lambda x: x.threat)
         sq.sort(key=lambda x: x.cost)
@@ -3189,20 +3201,19 @@ class Unit:
                 if self.demon_souls: lista += [
                     f"demon souls {self.demon_souls}."]
 
-                lista += [
-                    f"{magic_t} {power}.",
-                    f"mp {mp}.",
-                    f"{moves_t} {self.moves+self.moves_mod} ({self.moves_mod}).",
-                    f"{resolve_t} {self.resolve+self.resolve_mod} ({self.resolve_mod}).",
-                    f"global skills {global_skills}.",
-                    f"{defense_t} {self.dfs+self.dfs_mod} ({self.dfs_mod}).",
-                    f"{resiliency_t} {self.res+self.res_mod} ({self.res_mod}).",
-                    f"h res {self.hres+self.hres_mod} ({self.hres_mod}).",
-                    f"{basearm_t} {self.arm+self.arm_mod} ({self.arm_mod}).",
-                    f"{armor_t} {armor}.",
-                    f"{shield_t} {shield}.",
-                    f"defensive skills {defensive_skills}.",
-                ]
+                lista += [f"{magic_t} {power}.",
+                          f"mp {mp}.",
+                          f"{moves_t} {self.moves+self.moves_mod} ({self.moves_mod}).",
+                          f"{resolve_t} {self.resolve+self.resolve_mod} ({self.resolve_mod}).",
+                          f"global skills {global_skills}.",
+                          f"{defense_t} {self.dfs+self.dfs_mod} ({self.dfs_mod}).",
+                          f"{resiliency_t} {self.res+self.res_mod} ({self.res_mod}).",
+                          f"h res {self.hres+self.hres_mod} ({self.hres_mod}).",
+                          f"{basearm_t} {self.arm+self.arm_mod} ({self.arm_mod}).",
+                          f"{armor_t} {armor}.",
+                          f"{shield_t} {shield}.",
+                          f"defensive skills {defensive_skills}.",
+                          ]
                 if self.weapon1:
                     lista += [
                         f"{weapon_t} {self.weapon1}",
@@ -3222,8 +3233,7 @@ class Unit:
                     f"{offensive_t} {self.off+self.off_mod} ({self.off_mod}).",
                     f"{strength_t} {self.strn+self.strn_mod} ({self.strn_mod}).",
                     f"offensive skills {offensive_skills}.",
-                    f"spells {spells}."
-                ]
+                    f"spells {spells}."]
 
                 sp.speak(lista[x])
                 say = 0
@@ -3451,7 +3461,7 @@ class Unit:
                     for it in alt:
                         if it.threat < ranking:
                             if (self.day_night
-                                and (it.nation != self.nation and it.nation != None)
+                                and (it.nation != self.nation and it.nation is not None)
                                     and basics.roll_dice(1) >= 3):
                                 if info: logging.debug(
                                     f"will avoid hills by night.")
@@ -3495,7 +3505,7 @@ class Unit:
                             f"{it.threat=: }. {it} {it.cords}.")
                         if it.threat < self.group_ranking * 0.8:
                             if (self.day_night
-                                and (it.nation != self.nation and it.nation != None)
+                                and (it.nation != self.nation and it.nation is not None)
                                     and basics.roll_dice(1) >= 3):
                                 if info: logging.debug(
                                     f"will avoid hills by night.")
@@ -3684,7 +3694,10 @@ class Unit:
                 self.pos.nation.log[-1].append(msg)
                 self.log[-1].append(msg)
                 self.nation.log[-1].append(msg)
-                if any(i for i in [self.pos.nation.show_info, self.show_info]) and raided:
+                if any(
+                    i for i in [
+                        self.pos.nation.show_info,
+                        self.show_info]) and raided:
                     sleep(loadsound("spell34", channel=CHTE3))
             if self.pos.pop:
                 logging.debug(f"{self.pop=:}.")
@@ -3720,14 +3733,20 @@ class Unit:
                     sq = self.pos.get_near_tiles(1)
                     sq = [s for s in sq if s.nation == self.pos.nation]
                     for s in sq: s.unrest += randint(15, 30)
-                    if any(i for i in [self.pos.nation.show_info, self.show_info]):
+                    if any(
+                        i for i in [
+                            self.pos.nation.show_info,
+                            self.show_info]):
                         sleep(loadsound("spell33", channel=CHTE3) * 0.2)
                 if deads:
                     msg = f"{deads} población perdida."
                     self.pos.nation.log[-1].append(msg)
                     self.log[-1].append(msg)
                     self.nation.log[-1].append(msg)
-                    if any(i for i in [self.show_info, self.pos.nation.show_info]):
+                    if any(
+                        i for i in [
+                            self.show_info,
+                            self.pos.nation.show_info]):
                         sleep(loadsound("spell36", channel=CHTE3) // 2)
             logging.info(f"raid_income {round(self.pos.nation.raid_income)}.")
             self.pos.city.update()
@@ -3736,7 +3755,7 @@ class Unit:
         logging.debug(
             f"movimiento aleatoreo para {self} en {self.pos}, {self.pos.cords}.")
         done = 0
-        if sq == None:
+        if sq is None:
             sq = self.pos.get_near_tiles(value)
             sq = [it for it in sq if self.can_pass(it)]
             if info: logging.debug(f"{len(sq)} casillas iniciales.")
@@ -3867,12 +3886,13 @@ class Unit:
             if sk.type == "start turn":
                 try:
                     sk.run(self)
-                except: Pdb().set_trace()
-            if sk.turns > 0: sk.turns -= 1
+                except Exception: Pdb().set_trace() 
+                if sk.turns > 0: sk.turns -= 1
         self.global_skills = [
             sk for sk in self.global_skills if sk.turns == -1 or sk.turns > 0]
         self.offensive_skills = [
-            sk for sk in self.offensive_skills if sk.turns == -1 or sk.turns > 0]
+            sk for sk in self.offensive_skills if sk.turns == -
+            1 or sk.turns > 0]
         self.other_skills = [
             sk for sk in self.other_skills if sk.turns == -1 or sk.turns > 0]
         self.terrain_skills = [
@@ -3957,7 +3977,7 @@ class Unit:
     def set_attack(self):
         if self.mp[0] < 0: return
         logging.debug(f"ataque hidden.")
-        if self.pos == None: Pdb().set_trace()
+        if self.pos is None: Pdb().set_trace()
         enemies = [i for i in self.pos.units
                    if i.nation not in self.belongs and i.hidden == 0]
         if enemies:
@@ -4150,7 +4170,7 @@ class Unit:
         if self.pos.city and self.pos.nation in self.belongs:
             threats += [self.pos.city.seen_threat]
         threat = max(threats)
-        if threat < self.pos.defense * 0.5 and self.goal == None:
+        if threat < self.pos.defense * 0.5 and self.goal is None:
             leadership *= 0.8
         if info:
             msg = f"lead disband: {threat=:}, {self.pos.defense=:}."
@@ -4195,12 +4215,12 @@ class Unit:
         if self.level > level: self.level_up()
 
     def set_name(self):
-        if self.namelist == None: return
+        if self.namelist is None: return
         while True:
             for i in self.namelist:
                 if i != self.namelist[0]: self.nick += " "
                 self.nick += choice(i)
-            if basics.has_name(self.nation.units, self.nick) == None: return
+            if basics.has_name(self.nation.units, self.nick) is None: return
             else: self.nick = str()
 
     def set_ranking(self):
@@ -4482,8 +4502,7 @@ class Unit:
 
         try:
             self.pos.units.remove(self)
-        except:
-            logging.warning(f"{self} not in {self.pos}, {self.pos.cords}.")
+        except Exception: logging.warning(f"{self} not in {self.pos}, {self.pos.cords}.")
         goto.units.append(self)
         self.pos = goto
         if self.goto: del(self.goto[0])
@@ -4532,7 +4551,7 @@ class Unit:
         self.goto_pos = []
         for i in self.goto: self.goto_pos.append(i[1])
         if self.id == 0: self.set_id()
-        if self.city == None:
+        if self.city is None:
             if self.nation and self.nation.cities: self.city = choice(
                 self.nation.cities)
 
@@ -4540,7 +4559,7 @@ class Unit:
         if self.pos:
             if self.log == []: self.log.append(
                 [f"{turn_t} {self.pos.world.turn}."])
-            if self.pos.nation != self.nation and self.pos.nation != None and self.pos not in self.tiles_hostile:
+            if self.pos.nation != self.nation and self.pos.nation is not None and self.pos not in self.tiles_hostile:
                 self.tiles_hostile.append(self.pos)
                 # logging.debug(f"hostiles explorados {len(self.tiles_hostile)}.")
 
@@ -4548,7 +4567,7 @@ class Unit:
         self.ranged = 0
         try:
             self.units = ceil(self.hp_total / self.hp)
-        except: Pdb().set_trace()
+        except Exception: Pdb().set_trace()
         if self.hp_total > self.units * self.hp: self.hp_total = self.units_self.hp
         if self.units < 0: self.units = 0
         if self.power < 0: self.power = 0
@@ -4559,7 +4578,7 @@ class Unit:
             self.can_recall = 0
             self.pop = 0
         if self.can_hide: self.hidden = 1
-        if self.can_charge and self.target == None: self.charges = 1
+        if self.can_charge and self.target is None: self.charges = 1
         if self.revealed: self.hidden = 0
         if self.hp_total > 0: self.squads = ceil(self.units / self.min_units)
         if self.squads > self.max_squads:
@@ -4587,7 +4606,7 @@ class Unit:
                                     self.weapon3.range_max]
         try:
             self.range = [min(ranges), max(ranges)]
-        except: Pdb().set_trace()
+        except Exception: Pdb().set_trace()
         if self.range[1] >= 6: self.ranged = 1
 
         self.pn = [self.weapon1.pn]
