@@ -209,6 +209,7 @@ class Terrain:
 
     def get_around_tiles(self, nation, info=0):
         sp.speak(f"around tiles.", 1)
+        coast = [coast_t, 0]
         forest = [forest_t, 0]
         glacier = [glacier_t, 0]
         grassland = [grassland_t, 0]
@@ -220,24 +221,25 @@ class Terrain:
         swamp = [swamp_t, 0]
         volcano = [volcano_t, 0]
         waste = [waste_t, 0]
-        items = [forest, glacier, grassland, hill, mountain,
+        items = [coast, forest, glacier, grassland, hill, mountain,
                  ocean, plains, tundra, swamp, volcano, waste]
         for tl in self.get_near_tiles(1):
             if tl == self: continue
             if tl not in nation.map: continue
             if tl.hill: hill[1] += 1
             elif tl.surf.name != none_t:
-                if tl.surf.name == swamp_t: swamp[1] += 1
                 if tl.surf.name == forest_t: forest[1] += 1
                 if tl.surf.name == mountain_t: mountain[1] += 1
+                if tl.surf.name == swamp_t: swamp[1] += 1
                 if tl.surf.name == volcano_t: volcano[1] += 1
             elif tl.surf.name == none_t:
-                if tl.soil.name == coast_t: ocean[1] += 1
-                if tl.soil.name == plains_t: plains[1] += 1
+                if tl.soil.name == coast_t: coast[1] += 1
                 if tl.soil.name == grassland_t: grassland[1] += 1
-                if tl.soil.name == waste_t: waste[1] += 1
-                if tl.soil.name == tundra_t: tundra[1] += 1
                 if tl.soil.name == glacier_t: glacier[1] += 1
+                if tl.soil.name == ocean_t: ocean[1] += 1
+                if tl.soil.name == plains_t: plains[1] += 1
+                if tl.soil.name == tundra_t: tundra[1] += 1
+                if tl.soil.name == waste_t: waste[1] += 1
 
         items = [it for it in items if it[1]]
         items.sort(key=lambda x: x[1], reverse=True)
@@ -436,6 +438,7 @@ class Terrain:
         self.around_glacier = 0
         self.around_hill = 0
         self.around_mountain = 0
+        self.around_ocean = 0
         self.around_nations = []
         self.around_snations = []
         self.around_plains = 0

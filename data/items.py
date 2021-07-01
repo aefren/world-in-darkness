@@ -1076,8 +1076,8 @@ class Nation:
         self.soil = [waste_t, glacier_t,
                      grassland_t, ocean_t, plains_t, tundra_t]
         self.surf = [none_t]
-        # allowed near tiles.
-        self.min_around_desert = 0
+        # Minimum terrain request.
+        self.min_around_coast = 0
         self.min_around_forest = 0
         self.min_around_glacier = 0
         self.min_around_grassland = 0
@@ -1088,8 +1088,9 @@ class Nation:
         self.min_around_swamp = 0
         self.min_around_tundra = 0
         self.min_around_volcano = 0
-        # not allowed near tiles.
-        self.max_around_waste = 10
+        self.min_around_waste = 0
+        # Maximum aroundterrain request.
+        self.max_around_coast = 10
         self.max_around_forest = 10
         self.max_around_glacier = 10
         self.max_around_grassland = 10
@@ -1100,6 +1101,7 @@ class Nation:
         self.max_around_swamp = 10
         self.max_around_tundra = 10
         self.max_around_volcano = 10
+        self.max_around_waste = 10
         # Non starting tiles.
         self.generic_soil = [grassland_t, plains_t, tundra_t, waste_t]
         self.generic_surf = [forest_t, none_t, swamp_t, ]
@@ -1432,7 +1434,7 @@ class Nation:
         if tile.around_volcano < self.min_around_volcano:
             go = 0
             if info: logging.debug(f"volcan.")
-        if tile.around_waste < self.min_around_desert:
+        if tile.around_waste < self.min_around_waste:
             go = 0
             if info: logging.debug(f"decert.")
         return go
@@ -2028,7 +2030,7 @@ class Unit:
                         self.other_skills[0].sound),
                     channel=CHUNE1,
                     vol=0.25)
-            except Exception: 
+            except Exception:
                 for sk in self.other_skills: sp.speak(f"{sk.name}")
         belongs = [nt.name for nt in self.belongs]
         sp.speak(f"{belongs}.")
@@ -3892,7 +3894,7 @@ class Unit:
             if sk.type == "start turn":
                 try:
                     sk.run(self)
-                except Exception: Pdb().set_trace() 
+                except Exception: Pdb().set_trace()
                 if sk.turns > 0: sk.turns -= 1
         self.global_skills = [
             sk for sk in self.global_skills if sk.turns == -1 or sk.turns > 0]
