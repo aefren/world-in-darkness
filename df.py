@@ -4609,7 +4609,9 @@ class Game:
                 itm = items[x]
                 if itm in world.nations: sp.speak(f"{selected_t}.", 1)
                 sp.speak(f"{itm.name}")
-                if itm.ai == 0: sp.speak(f"{human_t}.")
+                if itm in world.nations:
+                    if itm.ai: sp.speak(f"AI Controlled.")
+                    else:sp.speak(f"Human Controlled.")
                 say = 0
 
             for event in pygame.event.get():
@@ -4628,20 +4630,22 @@ class Game:
                         say = 1
                     if event.key == pygame.K_a:
                         itm = items[x]
-                        if itm.ai: itm.ai = 0
-                        else: itm.ai = 1
-                        say = 1
+                        if itm.ai: 
+                            itm.ai = 0
+                            sp.speak(f"Human Controlled.")
+                        else: 
+                            itm.ai = 1
+                            sp.speak(f"AI Controlled.")
                     if event.key == pygame.K_SPACE:
                         itm = items[x]
-                        say = 1
                         if itm not in world.nations:
                             world.nations += [itm]
-                            sp.speak(f"{selected_t}.", 1)
                             sleep(loadsound("set6"))
+                            sp.speak(f"{selected_t}.", 1)
                         else:
                             world.nations.remove(itm)
-                            sp.speak(f"{removed_t}.", 1)
                             sleep(loadsound("set6"))
+                            sp.speak(f"{removed_t}.", 1)
                     if event.key == pygame.K_RETURN:
                         go = 0
                         for nt in world.nations:

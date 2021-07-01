@@ -9499,14 +9499,15 @@ class HolyEmpire(Nation):
         self.soil = [plains_t, grassland_t]
         self.surf = [none_t]
         # Minimum terrain request.
-        self.min_around_grassland = 3
-        self.min_around_plains = 0
+        #self.min_around_grassland = 3
+        #self.min_around_plains = 0
         # Maximum aroundterrain request.
         self.max_around_forest = 2
-        self.max_around_coast = 2
+        self.max_around_coast = 1
         self.max_around_swamp = 1
         self.max_around_tundra = 0
         self.max_around_glacier = 0
+        self.max_around_waste = 0
         # All terrains.
         self.all_terrains = [waste_t, grassland_t, plains_t, tundra_t]
         # Non starting tiles.
@@ -9590,9 +9591,9 @@ class WoodElves(Nation):
         self.soil = [plains_t, grassland_t]
         self.surf = [forest_t]
         # Minimum terrain request.
-        self.min_around_forest = 4
+        self.min_around_forest = 6
         # Maximum aroundterrain request.
-        self.max_around_coast = 2
+        self.max_around_coast = 1
         self.max_around_swamp = 0
         # All terrains.
         self.all_terrains = [grassland_t, plains_t, tundra_t]
@@ -9675,12 +9676,13 @@ class Valahia(Nation):
         self.soil = [grassland_t, plains_t, waste_t]
         self.surf = [forest_t, none_t]
         # Minimum terrain request.
-        self.min_around_plains = 2
-        self.min_around_forest = 1
+        #self.min_around_plains = 2
+        #self.min_around_forest = 1
         # Maximum aroundterrain request.
-        self.max_around_coast = 2
-        # self.max_around_waste = 2
-        self.max_around_hill = 2
+        self.max_around_coast = 1
+        self.max_around_forest = 2
+        #self.max_around_hill = 2
+        self.max_around_waste = 2
         # All terrains.
         self.all_terrains = [waste_t, glacier_t,
                              grassland_t, plains_t, tundra_t]
