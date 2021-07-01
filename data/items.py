@@ -1399,9 +1399,12 @@ class Nation:
 
     def check_min_tiles(self, tile, info=1):
         go = 1
-        if tile.around_coast < self.min_around_ocean:
+        if tile.around_coast < self.min_around_coast:
             go = 0
             if info: logging.debug(f"coast.")
+        if tile.around_ocean < self.min_around_ocean:
+            go = 0
+            if info: logging.debug(f"ocean.")
         if tile.around_forest < self.min_around_forest:
             go = 0
             if info: logging.debug(f"forest.")
@@ -1436,9 +1439,12 @@ class Nation:
 
     def check_max_tiles(self, tile, info=1):
         stop = 0
-        if tile.around_coast > self.max_around_ocean:
+        if tile.around_coast > self.max_around_coast:
             stop = 1
-            if info: logging.debug(f"Osean.")
+            if info: logging.debug(f"coast.")
+        if tile.around_ocean > self.max_around_ocean:
+            stop = 1
+            if info: logging.debug(f"ocean.")
         if tile.around_forest > self.max_around_forest:
             stop = 1
             if info: logging.debug(f"Forest.")
@@ -9486,16 +9492,16 @@ class HolyEmpire(Nation):
         super().__init__()
         # City names.
         self.city_names = holy_empire_citynames
-        # Casilla inicial permitida.
+        # Start position.
         self.hill = [0]
         self.soil = [plains_t, grassland_t]
         self.surf = [none_t]
-        # Terrenos adyacentes permitidos
-        self.min_around_grassland = 4
+        # Minimum terrain request.
+        self.min_around_grassland = 3
         self.min_around_plains = 0
-        # terrenos adyacentes no permitidos.
+        # Maximum aroundterrain request.
         self.max_around_forest = 2
-        self.max_around_ocean = 2
+        self.max_around_coast = 2
         self.max_around_swamp = 1
         self.max_around_tundra = 0
         self.max_around_glacier = 0
@@ -9577,14 +9583,14 @@ class WoodElves(Nation):
         super().__init__()
         # City names.
         self.city_names = elven_citynames
-        # Casilla inicial permitida.
+        # Start position.
         self.hill = [0]
         self.soil = [plains_t, grassland_t]
         self.surf = [forest_t]
-        # Terrenos adyacentes permitidos
-        self.min_around_forest = 5
-        # terrenos adyacentes no permitidos.
-        self.max_around_ocean = 0
+        # Minimum terrain request.
+        self.min_around_forest = 4
+        # Maximum aroundterrain request.
+        self.max_around_coast = 2
         self.max_around_swamp = 0
         # All terrains.
         self.all_terrains = [grassland_t, plains_t, tundra_t]
@@ -9662,16 +9668,15 @@ class Valahia(Nation):
 
     def __init__(self):
         super().__init__()
-        # Start tile
+        # Start position.
         self.hill = [1]
         self.soil = [grassland_t, plains_t, waste_t]
         self.surf = [forest_t, none_t]
         # Minimum terrain request.
         self.min_around_plains = 2
         self.min_around_forest = 1
-        # self.min_around_hill = 1
         # Maximum aroundterrain request.
-        self.max_around_ocean = 0
+        self.max_around_coast = 2
         # self.max_around_waste = 2
         self.max_around_hill = 2
         # All terrains.

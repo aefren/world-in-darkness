@@ -386,7 +386,7 @@ class Terrain:
         elif self.soil.name == waste_t: loadsound("terra_waste1", channel=CHT1)
         elif self.soil.name == grassland_t: loadsound("terra_grass1", channel=CHT1)
         elif self.soil.name == plains_t: loadsound("terra_plains1", channel=CHT1)
-        elif self.soil.name == ocean_t: loadsound("terra_ocean1", channel=CHT3, vol=0.1)
+        elif self.soil.name in [ocean_t, coast_t]: loadsound("terra_ocean1", channel=CHT3, vol=0.1)
         elif self.soil.name == coast_t: loadsound("terra_ocean1", channel=CHT3, vol=0.1)
         elif self.soil.name == tundra_t: loadsound("terra_tundra1", channel=CHT1, vol=0.2)
 
@@ -539,8 +539,8 @@ class Terrain:
         self.grouth_food = self.pop * 100 / self.food
         self.grouth_food = 100 - self.grouth_food
         self.grouth = self.grouth_food * 0.1
-        if self.grouth_food > 80: self.grouth *= 1.4
-        elif self.grouth_food > 60: self.grouth *= 1.25
+        if self.grouth_food > 80: self.grouth *= 1.3
+        elif self.grouth_food > 60: self.grouth *= 1.2
         elif self.grouth_food <= 50: self.grouth *= 0.8
         elif self.grouth_food <= 25: self.grouth *= 0.8
         for bu in self.buildings:
@@ -580,11 +580,12 @@ class Terrain:
 
         # From food.
         self.public_order = 100
-        if self.pop / self.food * 100 > 50: self.public_order -= 10
-        elif self.pop / self.food * 100 > 75: self.public_order -= 30
+        if self.pop / self.food * 100 > 20: self.public_order -= 10
+        elif self.pop / self.food * 100 > 40: self.public_order -= 20
+        elif self.pop / self.food * 100 > 60: self.public_order -= 30
+        elif self.pop / self.food * 100 > 80: self.public_order -= 40
         elif self.pop / self.food * 100 > 100: self.public_order -= 50
         elif self.pop / self.food * 100 > 150: self.public_order -= 70
-        elif self.pop / self.food * 100 > 200: self.public_order -= 80
         self.after_food = self.public_order
         if info: logging.debug(f"after food {self.public_order= }.")
 
@@ -610,7 +611,8 @@ class Terrain:
         if info: logging.debug(f"after buildings {self.public_order= }.")
 
         # From units.
-        if self.defense and self.pop: self.public_order += self.defense / self.pop * 100
+        if self.defense and self.pop:
+            self.public_order += (self.defense / self.pop * 100) / 2
         self.after_defense = self.public_order
         if info: logging.debug(f"after units defense {self.public_order= }.")
 
@@ -740,6 +742,7 @@ class Terrain:
     def update(self, nation=None, info=0):
         if info: logging.debug(f"update {self} {self.cords}.")
         if self.surf.__class__ == EmptySurf: self.surf.name = none_t
+        if self.soil.__class__ == Ocean: self.soil.name = coast_t
         self.effects = []
         if mapeditor == 0:
             self.ambient = world.ambient
