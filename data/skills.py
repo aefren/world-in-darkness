@@ -699,7 +699,7 @@ class Intoxicated(Skill):
             itm.log[-1] += [msg]
             itm.nation.log[-1] += [msg]
             itm.units -= deads
-            if itm.info: sleep(loadsound("spell34", channel=CHTE3) / 2)
+            if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
 
 
 class Inspiration(Skill):

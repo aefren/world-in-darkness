@@ -1172,7 +1172,7 @@ class Nation:
                 itm.tiles.append(t)
                 t.city = itm
                 t.nation = self
-        msg = f"{hamlet_t} {itm.nick} se establece en {itm.pos} {itm.pos.cords}."
+        msg = f"{itm} {settled_t} {in_t} {itm.pos} {itm.pos.cords}."
         logging.info(msg)
         self.log[-1].append(msg)
         itm.add_pop(itm.pop)
@@ -1181,6 +1181,8 @@ class Nation:
         itm.status()
         for t in itm.tiles: t.unrest += itm.initial_unrest * uniform(0.5, 1.5)
         self.update(scenary)
+        if self.show_info: sp.speak(msg,1)
+        sleep(2)
         logging.debug(
             f"{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.")
 
@@ -4087,16 +4089,20 @@ class Unit:
         logging.info(f"set_leads for {self}")
         self.update()
         av_units = self.set_lead_traits(self.pos.units)
-        t = 0
         say = 1
+        t = 0
+        units = []
         x = 0
         while True:
             sleep(0.001)
             if say:
                 items = [self.leads, av_units]
+                if x >= len(items[t]): x = len(items[t]) - 1
                 if items[t] == []: sp.speak(f"{empty_t}.")
                 else:
-                    sp.speak(items[t][x].basic_info())
+                    try:
+                        sp.speak(items[t][x].basic_info())
+                    except Exception: Pdb().set_trace()
                 say = 0
 
             for event in pygame.event.get():
@@ -4127,11 +4133,38 @@ class Unit:
                         loadsound("s1")
                     if event.key == pygame.K_F1:
                         sp.speak(f"{self.leading} {of_t} {self.leadership}.", 1)
+                    if event.key == pygame.K_b:
+                        items[t][x].set_settlemment()
+                        say = 1
+                    if event.key == pygame.K_h:
+                        items[t][x].set_cast()
+
                     if event.key == pygame.K_i:
                         if items[t]: items[t][x].info(self.nation)
+                    if event.key == pygame.K_j:
+                        if len(units) > 1:
+                            units[0].join_units(units, 1)
+                            say = 1
+                            units = []
                     if event.key == pygame.K_p:
                         self.set_army(self.nation)
                         say = 1
+
+                    if event.key == pygame.K_s:
+                        items[t][x].split()
+                        say = 1
+                        units = []
+                    if event.key == pygame.K_SPACE:
+                        if items[t]:
+                            unit = items[t][x]
+                            if unit not in units:
+                                loadsound("selected1")
+                                sp.speak(f"{selected_t}", 1.)
+                                units += [unit]
+                            elif unit in units:
+                                sp.speak(f"{unselected_t}.", 1)
+                                units.remove(unit)
+                                loadsound("unselected1")
                     if event.key == pygame.K_RETURN:
                         if items[t] == []:
                             loadsound("errn1")
@@ -4323,9 +4356,15 @@ class Unit:
             self.ranking += sum(i.ranking for i in self.leads) * 0.8
 
     def set_settlemment(self):
-        placement = choice(self.buildings)
-        if placement(self.nation, self.pos).check_tile_req(self.pos):
-            self.nation.add_city(placement, self)
+        if self.settler == 0: return
+        placemment = None
+        if self.nation.ai: placemment = choice(self.buildings)
+        else:
+            placemment = itm = basics.get_item2(
+                items1=self.buildings, msg="crear", simple=1)
+        if placemment is None: return
+        if placemment(self.nation, self.pos).check_tile_req(self.pos):
+            self.nation.add_city(placemment, self)
             return 1
         else:
             logging.debug(f"{self} no puede fundar aldea en {self.pos}.")
@@ -4441,6 +4480,8 @@ class Unit:
             self.hp_total -= self.min_units * self.hp
             self.pop -= unit.pop
             unit.name = self.name
+            unit.leader = self.leader
+            if self.leader: unit.leader.leads += [unit]
             unit.city = self.city
             unit.demon_souls = self.demon_souls
             unit.garrison = self.garrison

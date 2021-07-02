@@ -2893,52 +2893,6 @@ def expand_city(city, pos):
         return False
 
 
-def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
-    x = 0
-    if all(i == [] for i in [items1, items2]):
-        error(info=1)
-        return
-    if sound: sleep(loadsound(sound) / 2)
-    say = 1
-    sp.speak(msg, 1)
-    while True:
-        sleep(0.011)
-        if say:
-            if items2: sp.speak(items2[x])
-            else:
-                if name is None and simple == 0: sp.speak(
-                    items1[x](nation, pos).name, 1)
-                elif name and simple:
-                    sp.speak(items1[x].name, 1)
-                    sp.speak(items1[x].id, 1)
-            say = 0
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
-                items1[x](nation, nation.pos).info()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-                x = basics.selector(items1, x, go="up")
-                say = 1
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-                x = basics.selector(items1, x, go="down")
-                say = 1
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                sp.speak(msg, 1)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                sleep(loadsound("back3") / 2)
-                if items2: return x
-                else:
-                    if simple == 0: return items1[x](nation, pos)
-                    elif simple: return items1[x]
-            if (event.type == pygame.KEYDOWN and event.key ==
-                    pygame.K_F12 and ctrl and shift):
-                sp.speak("on", 1)
-                Pdb().set_trace()
-                sp.speak("off", 1)
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                loadsound("back3")
-                sleep(0.001)
-                return
-
 
 def get_tile_cost(city, pos):
     cost = city.nation.tile_cost
@@ -3183,7 +3137,7 @@ def menu_building(pos, nation, sound="in1"):
                     if isinstance(
                             items[x],
                             str) == False and items[x].is_complete and items[x].upgrade:
-                        item = get_item2(items1=items[x].upgrade, msg="mejorar")
+                        item = basics.get_item2(items1=items[x].upgrade, msg="mejorar")
                         if item:
                             if item.check_tile_req(pos):
                                 if item.gold > nation.gold:
@@ -4134,20 +4088,17 @@ class Game:
                         menu_building(pos, nation)
                         pos.update(nation)
                 if event.key == pygame.K_b:
-                    if x > -1 and local_units[x].buildings and pos.sight:
-                        if local_units[x].mp[0] < 1:
-                            error(info=1, msg="sin movimientos")
-                            return
-                        itm = get_item2(
-                            items1=local_units[x].buildings, msg="crear", simple=1)
-                        if itm:
-                            if itm(nation, local_units[x].pos).can_build() == 0:
-                                error()
-                                return
-                            local_units[x].nation.add_city(itm, local_units[x])
-                            pos.pos_sight(nation, nation.map)
-                            sayland = 1
-                            x = -1
+                    local_units[x].set_settlemment()
+                        #itm = get_item2(
+                            #items1=local_units[x].buildings, msg="crear", simple=1)
+                        #if itm:
+                            #if itm(nation, local_units[x].pos).can_build() == 0:
+                                #error()
+                                #return
+                            #local_units[x].nation.add_city(itm, local_units[x])
+                    #pos.pos_sight(nation, nation.map)
+                    sayland = 1
+                    x = -1
                 if event.key == pygame.K_c:
                     if x > -1:
                         local_units[x].set_cast()
@@ -4165,7 +4116,7 @@ class Game:
                     if x > -1: local_units[x].info(nation)
                     elif x < 0: info_tile(pos, nation)
                 if event.key == pygame.K_j:
-                    # unir.
+                    # Join units.
                     if len(unit) > 1:
                         unit[0].join_units(unit, 1)
                         sayland = 1
@@ -4207,7 +4158,7 @@ class Game:
                         if local_units[x] not in unit:
                             loadsound("selected1")
                             sp.speak(f"{selected_t}", 1.)
-                            unit.append(local_units[x])
+                            unit += [local_units[x]]
                         elif local_units[x] in unit:
                             sp.speak(f"{unselected_t}.", 1)
                             unit.remove(local_units[x])
@@ -4236,7 +4187,7 @@ class Game:
                             1 or (local_units and nation not in local_units[x].belongs):
                         error()
                         return
-                    if get_item2([0, 1], ["no", "si"], "Eliminar unidad",):
+                    if basics.get_item2([0, 1], ["no", "si"], "Eliminar unidad",):
                         local_units[x].disband()
                         sayland = 1
                         x -= 1
@@ -4414,7 +4365,7 @@ class Game:
                         [] or rng or filter_expand or x > -1):
                     end_parameters()
                     return
-                if get_item2([0, 1], [not_t, yes_t], msg_exit_t,):
+                if basics.get_item2([0, 1], [not_t, yes_t], msg_exit_t,):
                     exit()
 
     def editor_tile_info(self, pos, nation):

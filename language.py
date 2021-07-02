@@ -1,4 +1,4 @@
-dev_mode = 1
+dev_mode = 0
 # available languages: en, es.
 lang = "en"
 if dev_mode == 0:

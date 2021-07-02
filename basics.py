@@ -58,10 +58,10 @@ def get_cast(itm):
                     loadsound("s2")
                     say = 1
                 if event.key == pygame.K_UP:
-                    x = basics.selector(itm.spells, x, go="up")
+                    x = selector(itm.spells, x, go="up")
                     say = 1
                 if event.key == pygame.K_DOWN:
-                    x = basics.selector(itm.spells, x, go="down")
+                    x = selector(itm.spells, x, go="down")
                     say = 1
                 if event.key == pygame.K_i:
                     pass
@@ -76,6 +76,52 @@ def get_cast(itm):
                 if event.key == pygame.K_ESCAPE:
                     loadsound("back3")
                     return
+
+
+def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
+    x = 0
+    if all(i == [] for i in [items1, items2]):
+        error(info=1)
+        return
+    if sound: sleep(loadsound(sound) / 2)
+    say = 1
+    sp.speak(msg, 1)
+    while True:
+        sleep(0.011)
+        if say:
+            if items2: sp.speak(items2[x])
+            else:
+                if name is None and simple == 0: sp.speak(
+                    items1[x](nation, pos).name, 1)
+                elif simple:
+                    sp.speak(items1[x].name, 1)
+            say = 0
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
+                items1[x](nation, nation.pos).info()
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                x = selector(items1, x, go="up")
+                say = 1
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+                x = selector(items1, x, go="down")
+                say = 1
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                sp.speak(msg, 1)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                sleep(loadsound("back3") / 2)
+                if items2: return x
+                else:
+                    if simple == 0: return items1[x](nation, pos)
+                    elif simple: return items1[x]
+            if (event.type == pygame.KEYDOWN and event.key ==
+                    pygame.K_F12 and ctrl and shift):
+                sp.speak("on", 1)
+                Pdb().set_trace()
+                sp.speak("off", 1)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                loadsound("back3")
+                sleep(0.001)
+                return
 
 
 def get_unit(items, nation=None, sound=None):
