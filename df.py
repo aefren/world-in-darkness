@@ -3137,7 +3137,7 @@ def menu_building(pos, nation, sound="in1"):
                     if isinstance(
                             items[x],
                             str) == False and items[x].is_complete and items[x].upgrade:
-                        item = basics.get_item2(items1=items[x].upgrade, msg="mejorar")
+                        item = basics.get_item2(items1=items[x].upgrade, nation=nation, msg="mejorar")
                         if item:
                             if item.check_tile_req(pos):
                                 if item.gold > nation.gold:
@@ -4291,13 +4291,16 @@ class Game:
                         f"hp res: {itm.hp_res+itm.hp_res_mod}.")
                     sp.speak(f"mp {itm.mp[0]} {of_t} {itm.mp[1]}.")
                 if event.key == pygame.K_3:
-                    sp.speak(f"{itm.get_total_food()}")
+                    for sk in itm.other_skills: 
+                        sp.speak(f"{sk.name}")
                 if event.key == pygame.K_4:
+                    sp.speak(f"{itm.get_total_food()}")                    
+                if event.key == pygame.K_5:
+                    sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
+                if event.key == pygame.K_6:
                     sp.speak(
                         f"power {itm.power} {of_t} {itm.power_max+itm.power_max_mod}.")
                     sp.speak(f"power res {itm.power_res}.")
-                if event.key == pygame.K_5:
-                    sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
                 if event.key == pygame.K_0:
                     sp.speak(f" garrison {local_units[x].garrison}.", 1)
                     sp.speak(f"scout {local_units[x].scout}.")

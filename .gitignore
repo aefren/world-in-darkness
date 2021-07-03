@@ -1,4 +1,5 @@
 .gitattributes
+log.log
 .metrics
 .project
 .pydevproject

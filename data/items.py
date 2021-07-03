@@ -2726,21 +2726,23 @@ class Unit:
     def combat_pre(self, pos, target=None, info=1):
         logging.info(f"pre_combat for {self}.")
         self.update()
-        _units = [it for it in pos.units
-                  if it.nation not in self.belongs and it != self
-                  and it.hidden == 0]
-        _units = [it for it in _units
-                  if it.leader is None or it.leader and it.leader.pos != it.pos]
+        _units = [it for it in pos.units if it.hidden == 0
+                  and self.nation not in it.belongs]
+        _commanded_units = [it for it in _units
+                            if it.leadership 
+                            or it.leader and it.leader.pos == it.pos]
+        
+        _local_units = [it for it in _units
+                        if it not in _commanded_units]
         [it.update() for it in _units]
-        _units.sort(key=lambda x: sum(
-            [x.off, x.off_mod, x.strn, x.strn_mod]), reverse=True)
-        _units.sort(key=lambda x: x.units, reverse=True)
-        _units.sort(key=lambda x: x.ranged, reverse=True)
-        _units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
+        shuffle(_local_units)
+        #_units.sort(key=lambda x: x.ranged, reverse=True)
+        #_units.sort(key=lambda x: x.mp[0] > 0, reverse=True)
 
+        if _units == []: return
         if target is None:
-            if _units: target = _units[0]
-            else: return
+            if _commanded_units: target = _commanded_units[0]
+            else: target = _local_units[0]
 
         if self.leadership:
             attackers = self.squads_position
@@ -2759,7 +2761,7 @@ class Unit:
             leader2 = target
         elif (target.leader is None or target.leader
               and target.leader.pos != target.pos):
-            defenders = _units
+            defenders = _local_units
             leader2 = defenders[0]
             defenders.sort(key=lambda x: x != leader2, reverse=True)
         elif target.leader and target.pos == target.leader.pos:
@@ -4136,7 +4138,7 @@ class Unit:
                     if event.key == pygame.K_b:
                         items[t][x].set_settlemment()
                         say = 1
-                    if event.key == pygame.K_h:
+                    if event.key == pygame.K_c:
                         items[t][x].set_cast()
 
                     if event.key == pygame.K_i:

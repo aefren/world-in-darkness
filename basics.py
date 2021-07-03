@@ -78,7 +78,14 @@ def get_cast(itm):
                     return
 
 
-def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
+def get_item2(
+        items1=[],
+        items2=[],
+        msg="",
+        name=None,
+        nation=None,
+        simple=0,
+        sound="in1"):
     x = 0
     if all(i == [] for i in [items1, items2]):
         error(info=1)
@@ -92,7 +99,7 @@ def get_item2(items1=[], items2=[], msg="", name=None, simple=0, sound="in1"):
             if items2: sp.speak(items2[x])
             else:
                 if name is None and simple == 0: sp.speak(
-                    items1[x](nation, pos).name, 1)
+                    items1[x](nation, nation.pos).name)
                 elif simple:
                     sp.speak(items1[x].name, 1)
             say = 0
