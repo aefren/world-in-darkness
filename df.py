@@ -315,8 +315,8 @@ class Terrain:
 
         return units
 
-    def launch_avalanche(self):
-        if self.hill and self.flood >= 4 and basics.roll_dice(1) >= 5:
+    def event_avalanche(self):
+        if self.hill and self.flood >= 3 and basics.roll_dice(1) >= 5:
             show_info = 0
             if self.nation and self.nation.show_info: show_info = 1
             rate = randint(5, 15)
@@ -667,7 +667,7 @@ class Terrain:
                 self.terrain_events += [HillTerrain(self)]
         if self.soil.name == tundra_t:
             # self.terrain_events = [e for e in self.terrain_events
-                                 # if e.name != SwampTerrain.name]
+            # if e.name != SwampTerrain.name]
             if TundraTerrain.name not in [e.name for e in self.terrain_events]:
                 self.terrain_events += [TundraTerrain(self)]
         # day.
@@ -693,6 +693,7 @@ class Terrain:
         self.storm = 0
         for ev in self.events:
             ev.tile_run(self)
+        self.event_avalanche()
         self.events = [ev for ev in self.events if ev.turns > 0]
         self.burned = 0
         self.corpses = [
@@ -1515,8 +1516,14 @@ class Ai:
             if info: logging.debug(f"skipping by build military path.")
             return
         if city.buildings_military_complete == []: return "not military buildings."
-        if len(city.tiles) >= 11 and len(city.buildings_military_complete) < 2: return "lack of military buildings."
-        if len(city.tiles) >= 13 and len([b for b in city.buildings_military_complete if b.level == 2]) < 2: return "lack of military buildings."
+        if city.defense_total_percent < 150:
+            return "not enough defense"
+        if len(city.tiles) >= 12 and len(city.buildings_military_complete) < 2: 
+            return "lack of military buildings."
+        if (len(city.tiles) >= 15
+                and len([b for b in city.buildings_military_complete 
+                    if b.level == 2]) < 2):
+            return "lack of improved military buildings."
         if city.seen_threat > 50 * city.defense_total / 100:
             msg = f"seen threat {city.seen_threat}. total defense {city.defense_total} hight threatss. to expand"
             city.nation.devlog[-1] += [msg]
@@ -2893,7 +2900,6 @@ def expand_city(city, pos):
         return False
 
 
-
 def get_tile_cost(city, pos):
     cost = city.nation.tile_cost
     distance = pos.get_distance(pos, city.pos)
@@ -3137,7 +3143,8 @@ def menu_building(pos, nation, sound="in1"):
                     if isinstance(
                             items[x],
                             str) == False and items[x].is_complete and items[x].upgrade:
-                        item = basics.get_item2(items1=items[x].upgrade, nation=nation, msg="mejorar")
+                        item = basics.get_item2(
+                            items1=items[x].upgrade, nation=nation, msg="mejorar")
                         if item:
                             if item.check_tile_req(pos):
                                 if item.gold > nation.gold:
@@ -4087,15 +4094,16 @@ class Game:
                     if x < 0 and pos in nation.map:
                         menu_building(pos, nation)
                         pos.update(nation)
-                if event.key == pygame.K_b:
-                    local_units[x].set_settlemment()
-                        #itm = get_item2(
-                            #items1=local_units[x].buildings, msg="crear", simple=1)
-                        #if itm:
-                            #if itm(nation, local_units[x].pos).can_build() == 0:
-                                #error()
-                                #return
-                            #local_units[x].nation.add_city(itm, local_units[x])
+                if event.key == pygame.K_b and x > -1:
+                    if local_units[x].nation == nation:
+                        local_units[x].set_settlemment()
+                        # itm = get_item2(
+                        # items1=local_units[x].buildings, msg="crear", simple=1)
+                        # if itm:
+                        # if itm(nation, local_units[x].pos).can_build() == 0:
+                        # error()
+                        # return
+                        #local_units[x].nation.add_city(itm, local_units[x])
                     #pos.pos_sight(nation, nation.map)
                     sayland = 1
                     x = -1
@@ -4187,7 +4195,8 @@ class Game:
                             1 or (local_units and nation not in local_units[x].belongs):
                         error()
                         return
-                    if basics.get_item2([0, 1], ["no", "si"], "Eliminar unidad",):
+                    if basics.get_item2(
+                            [0, 1], ["no", "si"], "Eliminar unidad",):
                         local_units[x].disband()
                         sayland = 1
                         x -= 1
@@ -4291,10 +4300,10 @@ class Game:
                         f"hp res: {itm.hp_res+itm.hp_res_mod}.")
                     sp.speak(f"mp {itm.mp[0]} {of_t} {itm.mp[1]}.")
                 if event.key == pygame.K_3:
-                    for sk in itm.other_skills: 
+                    for sk in itm.other_skills:
                         sp.speak(f"{sk.name}")
                 if event.key == pygame.K_4:
-                    sp.speak(f"{itm.get_total_food()}")                    
+                    sp.speak(f"{itm.get_total_food()}")
                 if event.key == pygame.K_5:
                     sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
                 if event.key == pygame.K_6:
@@ -4565,7 +4574,7 @@ class Game:
                 sp.speak(f"{itm.name}")
                 if itm in world.nations:
                     if itm.ai: sp.speak(f"AI Controlled.")
-                    else:sp.speak(f"Human Controlled.")
+                    else: sp.speak(f"Human Controlled.")
                 say = 0
 
             for event in pygame.event.get():
@@ -4584,10 +4593,10 @@ class Game:
                         say = 1
                     if event.key == pygame.K_a:
                         itm = items[x]
-                        if itm.ai: 
+                        if itm.ai:
                             itm.ai = 0
                             sp.speak(f"Human Controlled.")
-                        else: 
+                        else:
                             itm.ai = 1
                             sp.speak(f"AI Controlled.")
                     if event.key == pygame.K_SPACE:
@@ -4910,10 +4919,9 @@ def warning_enemy(nation, scenary):
         if ti.threat:
             warn = 1
     if warn: sp.speak(f"enemigos. {warn}.")
-
     if warn and nation.ai == 0: sleep(loadsound("warn1", channel=CHTE2) / 2)
-    return warn
 
+    return warn
 
 
 # 0 = juego, 1 = editor de mapa, 3 = crear y editar.

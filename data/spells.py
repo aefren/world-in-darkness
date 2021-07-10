@@ -56,7 +56,7 @@ class Spell:
         else:
             msg = f"{self} {failed_t}."
             if itm.show_info:
-                sp.speak(msg, 1)
+                # sp.speak(msg, 1)
                 sleep(loadsound("spell11", channel=CHTE3) // 2)
             return msg
 

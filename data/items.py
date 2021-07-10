@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import copy
 
 from data import weapons
@@ -8,7 +9,6 @@ from data.names import *
 from data.skills import *
 
 import basics
-#import numpy as np
 
 
 # from math import ceil, floor
@@ -354,7 +354,7 @@ class City:
         msg = f"{self} crecerá {number}. grouth {grouth}."
         self.nation.devlog[-1] += [msg]
         if info: logging.info(
-            f"crecerá {number}. grouth_total {grouth_total}.")
+            f"crecerá {number}. grouth_total {grouth}.")
         for t in tiles: t.last_grouth = []
         tries = 10000
         while number > 1:
@@ -881,14 +881,14 @@ class City:
     def status(self, info=0):
         logging.info(f"city status {self}.")
         # to delete.
-        #=======================================================================
+        # =======================================================================
         # self.for_food_tiles = self.get_tiles_food(self.tiles)
         # self.for_food_tiles = [i for i in self.for_food_tiles if i.size >= 4]
         # self.for_food_tiles.sort(key=lambda x: x.food, reverse=True)
         # self.for_res_tiles = self.get_tiles_res(self.tiles)
         # self.for_res_tiles = [i for i in self.for_res_tiles if i.size >= 4]
         # self.for_res_tiles.sort(key=lambda x: x.resource, reverse=True)
-        #=======================================================================
+        # =======================================================================
 
         self.buildings_food = [i for i in self.buildings if food_t in i.tags]
         self.buildings_food_complete = [
@@ -910,14 +910,14 @@ class City:
             i for i in self.buildings_unrest if i.is_complete]
 
         # To delete.
-        #=======================================================================
+        # =======================================================================
         # self.food_val = round(self.food_total - self.food_need)
         # self.food_probable = self.food_val
         # for b in self.buildings:
         #   if b.is_complete == 0:
         #     self.food_probable += b.food * b.pos.food / 100
         # self.food_probable = round(self.food_probable)
-        #=======================================================================
+        # =======================================================================
 
         if info:
             logging.debug(f"información de {self}.")
@@ -1152,7 +1152,7 @@ class Nation:
         itm.belongs += [self]
 
     def add_city(self, itm, unit):
-        logging.info: (f"add_city for {self}.")
+        logging.info(f"add_city for {self}.")
         unit.update()
         itm = itm(unit.nation, unit.pos)
         scenary = unit.pos.scenary
@@ -1181,7 +1181,7 @@ class Nation:
         itm.status()
         for t in itm.tiles: t.unrest += itm.initial_unrest * uniform(0.5, 1.5)
         self.update(scenary)
-        if self.show_info: sp.speak(msg,1)
+        if self.show_info: sp.speak(msg, 1)
         sleep(2)
         logging.debug(
             f"{itm.nation} ahora tiene {len(itm.nation.cities)} ciudades.")
@@ -2729,9 +2729,9 @@ class Unit:
         _units = [it for it in pos.units if it.hidden == 0
                   and self.nation not in it.belongs]
         _commanded_units = [it for it in _units
-                            if it.leadership 
+                            if it.leadership
                             or it.leader and it.leader.pos == it.pos]
-        
+
         _local_units = [it for it in _units
                         if it not in _commanded_units]
         [it.update() for it in _units]
@@ -2986,7 +2986,7 @@ class Unit:
                         pass
                     if event.key == pygame.K_RETURN:
                         if self.spells: return self.spells[x](self)
-                    if event.key == pygame.K_F12 and ctrl and shift:
+                    if event.key == pygame.K_F12:
                         if dev_mode == 0: return
                         sp.speak(f"on", 1)
                         Pdb().set_trace()
@@ -3066,7 +3066,7 @@ class Unit:
                             self.set_hire(units[x])
                         else: sleep(loadsound("errn1") / 2)
                         say = 1
-                    if event.key == pygame.K_F12 and ctrl and shift:
+                    if event.key == pygame.K_F12:
                         if dev_mode == 0: return
                         sp.speak(f"on.", 1)
                         Pdb().set_trace()
@@ -4886,7 +4886,7 @@ class FalconRefuge(Building):
     level = 1
     city_unique = 1
     size = 4
-    gold = 5000
+    gold = 3500
     own_terrain = 1
     tags = [military_t]
 
@@ -4904,7 +4904,7 @@ class ForestLookout(FalconRefuge, Building):
     name = forest_lookout_t
     level = 2
     base = FalconRefuge
-    gold = 10000
+    gold = 7000
 
     own_terrain = 1
     tags = [military_t]
@@ -4925,7 +4925,7 @@ class Sanctuary(Building):
     level = 1
     city_unique = 1
     size = 6
-    gold = 7000
+    gold = 6000
     food = 100
     grouth = 50
     income = 100
@@ -4946,7 +4946,7 @@ class HauntedForest(Sanctuary, Building):
     name = haunted_forest_t
     level = 2
     base = Sanctuary
-    gold = 10000
+    gold = 8000
     own_terrain = 1
     tags = [military_t]
 
@@ -4964,7 +4964,7 @@ class WailingWoods(HauntedForest, Building):
     name = "wailing woods"
     level = 3
     base = HauntedForest
-    gold = 15000
+    gold = 12000
     tags = [military_t]
 
     def __init__(self, nation, pos):
@@ -5014,7 +5014,7 @@ class GrapeVines(Grove, Building):
     name = "grape vines"
     level = 2
     base = Grove
-    gold = 2500
+    gold = 2000
     food = 100
     grouth = 30
     income = 20
@@ -5034,7 +5034,7 @@ class Vineyard(GrapeVines, Building):
     name = "vineyard"
     level = 3
     base = GrapeVines
-    gold = 8000
+    gold = 4000
     food = 200
     grouth = 50
     income = 60
@@ -5079,7 +5079,7 @@ class CraftmensTree2(CraftmensTree, Building):
     local_unique = 1
     size = 4
     local_unique = 1
-    gold = 3500
+    gold = 200
     grouth = 20
     income = 24
     resource = 100
@@ -5100,7 +5100,7 @@ class StoneCarvers(Building):
     level = 1
     size = 5
     local_unique = 1
-    gold = 3000
+    gold = 2000
     grouth = 10
     income = 30
     resource = 75
@@ -5123,7 +5123,7 @@ class StoneCarvers2(StoneCarvers, Building):
     level = 2
     size = 5
     local_unique = 1
-    gold = 5000
+    gold = 4000
     grouth = 20
     income = 50
     resource = 150
@@ -5254,9 +5254,9 @@ class KeeperOfTheGrove (Elf):
         self.spells = []  # [Entangling Roots ]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class PathFinder(Elf):
@@ -5371,9 +5371,9 @@ class PriestessOfTheMoon(Elf):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class AwakenTree(Elf):
@@ -6242,7 +6242,7 @@ class TrainingCamp(Building):
     level = 1
     city_unique = 1
     size = 4
-    gold = 5000
+    gold = 3000
     own_terrain = 1
     tags = [military_t]
 
@@ -6260,7 +6260,7 @@ class ImprovedTrainingCamp(TrainingCamp, Building):
     name = improved_training_camp_t
     level = 2
     base = TrainingCamp
-    gold = 8000
+    gold = 5000
     public_order = 10
     tags = [military_t]
 
@@ -6276,7 +6276,7 @@ class Barracks(ImprovedTrainingCamp, Building):
     name = barracks_t
     level = 3
     base = TrainingCamp
-    gold = 12000
+    gold = 8000
     public_order = 10
     tags = [military_t, unrest_t]
     upkeep = 500
@@ -6293,7 +6293,7 @@ class ImprovedBarracks(Barracks, Building):
     name = improved_barracks_t
     level = 4
     base = TrainingCamp
-    gold = 16000
+    gold = 14000
     public_order = 20
     tags = [military_t, unrest_t]
     upkeep = 1500
@@ -6349,7 +6349,7 @@ class PlaceOfProphecy(Building):
     level = 1
     city_unique = 1
     size = 4
-    gold = 4000
+    gold = 3000
     own_terrain = 1
     public_order = 10
     tags = [military_t]
@@ -6368,7 +6368,7 @@ class HolyFountains(PlaceOfProphecy, Building):
     name = holy_fountains_t
     level = 2
     base = PlaceOfProphecy
-    gold = 8000
+    gold = 6000
     public_order = 15
 
     def __init__(self, nation, pos):
@@ -6383,7 +6383,7 @@ class TheMarbleTemple(PlaceOfProphecy, Building):
     name = the_marble_temple_t
     level = 3
     base = PlaceOfProphecy
-    gold = 13500
+    gold = 12000
     public_order = 30
     upkeep = 1000
 
@@ -6523,9 +6523,9 @@ class Aquilifer(Human):
         self.spells = [RecruitLevy]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Ballistarius(Human):
@@ -6642,9 +6642,9 @@ class Centurion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Decarion(Human):
@@ -6704,9 +6704,12 @@ class Decarion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
 
 
 class Decurion(Human):
@@ -6766,9 +6769,9 @@ class Decurion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Flamen(Human):
@@ -6880,9 +6883,9 @@ class Legatus(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class PontifexMaximus(Unit):
@@ -7875,7 +7878,7 @@ class HallsOfTheDeads (Building):
     level = 1
     city_unique = 1
     size = 4
-    gold = 7000
+    gold = 5000
     own_terrain = 1
     tags = [military_t]
 
@@ -8083,9 +8086,9 @@ class BoierLord(Unit):
         self.spells = [RecruitLevy]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Paznic(Unit):
@@ -8142,8 +8145,11 @@ class Paznic(Unit):
         self.corpses = [BloodSkeleton]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
             self.leadership += 5
 
 
@@ -8200,9 +8206,9 @@ class ForgeMaster(Unit):
         self.spells = [RaiseBloodSkeleton, RaiseFellBat]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Necromancer(Human):
@@ -8318,9 +8324,12 @@ class VampireCount(Undead):
         self.favsurf = [forest_t, none_t, swamp_t]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
 
 
 class VarGhul(Undead):
@@ -8448,7 +8457,7 @@ class Adjule(Unit):
     name = "adjule"
     units = 10
     min_units = 5
-    ln = 20
+    ln = 15
     max_squads = 5
     type = beast_t
     traits = [death_t]
@@ -9509,7 +9518,7 @@ class HolyEmpire(Nation):
     main_pop_surf = [none_t]
     military_limit_upgrades = 3000
     public_order = 0
-    tile_cost = 600
+    tile_cost = 200
     upkeep_base = 70
     upkeep_change = 200
 
@@ -10325,6 +10334,11 @@ class AncientWitch(Unit):
         self.favsoil = [grassland_t, plains_t, tundra_t]
         self.favsurf = [forest_t, none_t]
 
+    def levelup(self):
+        if self.xp >= 15 and self.level == 1:
+            self.level = 2
+            self.leadership += 5
+
 
 class CannibalWarlord(Human):
     name = "canibal warlord"
@@ -10381,9 +10395,9 @@ class CannibalWarlord(Human):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class GoblinShaman(Human):
@@ -10395,7 +10409,7 @@ class GoblinShaman(Human):
     ln = 10
     max_squads = 1
     can_hire = 1
-    leadership = 40
+    leadership = 60
     type = "infantry"
     traits = [goblin_t]
     aligment = orcs_t
@@ -10436,9 +10450,9 @@ class GoblinShaman(Human):
         self.corpses = [Skeleton]
 
     def levelup(self):
-        if self.xp >= 40 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 15
 
 
 class Inquisitor(Human):
@@ -10489,9 +10503,9 @@ class Inquisitor(Human):
         self.corpses = [Skeleton]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class OrcCaptain(Human):
@@ -10506,7 +10520,7 @@ class OrcCaptain(Human):
     leadership = 90
     type = "infantry"
     traits = [orc_t]
-    aligment = malignant_t
+    aligment = [malignant_t]
     size = 2
     train_rate = 2
     upkeep = 14
@@ -10524,7 +10538,7 @@ class OrcCaptain(Human):
     resolve = 8
     global_skills = [Organization]
 
-    dfs = 9
+    dfs = 8
     res = 10
     hres = 6
     arm = 0
@@ -10549,9 +10563,9 @@ class OrcCaptain(Human):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class ShamanOfTheLostTribe(Human):
@@ -10609,7 +10623,7 @@ class ShamanOfTheLostTribe(Human):
         self.spells += [CastStorm, SummonGiantBears]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
             self.leadership += 5
 
@@ -10670,7 +10684,7 @@ class ShamanOfTheWind(Human):
         self.spells += [CastStorm, SummonGiantBears]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
             self.leadership += 5
 
@@ -10731,9 +10745,9 @@ class VampireLord(Undead):
         self.favsurf = [forest_t, none_t]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class WarlockApprentice(Unit):
@@ -10790,9 +10804,9 @@ class WarlockApprentice(Unit):
         self.spells += [Curse]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Warlock(Unit):
@@ -10852,7 +10866,7 @@ class Warlock(Unit):
         self.spells = [Curse, SummonClayGolem, SummonWoodlandSpirit]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
             self.leadership += 5
 
@@ -10914,9 +10928,9 @@ class Warlord(Human):
         self.spells = [RecruitPeasants]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class WarMonger(Human):
@@ -10927,7 +10941,7 @@ class WarMonger(Human):
     ln = 10
     max_squads = 1
     can_hire = 1
-    leadership = 120
+    leadership = 100
     type = "infantry"
     traits = [human_t]
     aligment = order_t
@@ -10963,9 +10977,9 @@ class WarMonger(Human):
         self.corpses = [Skeleton]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
 
 
 class Witch(Unit):
@@ -11022,7 +11036,7 @@ class Witch(Unit):
         self.favsurf = [forest_t, none_t]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 20 and self.level == 1:
             self.level = 2
             self.leadership += 5
 
@@ -11173,7 +11187,7 @@ class BlackOrc(Unit):
     name = "black orc"
     units = 10
     min_units = 10
-    ln = 7
+    ln = 10
     max_squads = 16
     type = "infantry"
     traits = [orc_t]
@@ -11875,7 +11889,7 @@ class Goblin(Unit):
     name = goblin_t
     units = 20
     sts = 4
-    min_units = 20
+    min_units = 10
     ln = 20
     max_squads = 10
     type = "infantry"
@@ -12180,7 +12194,7 @@ class KillerMantis(Human):
     name = "killer mantis"
     units = 5
     min_units = 5
-    ln = 7
+    ln = 15
     max_squads = 4
     type = "Beast"
     will_less = 1
@@ -12229,7 +12243,7 @@ class NomadsRider(Human):
     name = nomads_rider_t
     units = 20
     min_units = 10
-    ln = 7
+    ln = 15
     max_squads = 6
     mounted = 1
     type = "cavalry"
@@ -12332,7 +12346,7 @@ class OrcWarrior(Unit):
     units = 20
     sts = 4
     min_units = 10
-    ln = 15
+    ln = 20
     max_squads = 10
     type = "infantry"
     traits = [orc_t]
@@ -12571,7 +12585,7 @@ class Mammot(Unit):
     name = "mammot"
     units = 2
     min_units = 2
-    ln = 5
+    ln = 4
     max_squads = 10
     type = "beast"
     traits = [mammot_t]
@@ -12620,7 +12634,7 @@ class DeadMammot(Unit):
     name = "dead mammot"
     units = 1
     min_units = 1
-    ln = 5
+    ln = 4
     max_squads = 10
     type = "beast"
     traits = [death_t, mammot_t]
@@ -13818,4 +13832,5 @@ for it in nations_buildings: nations_units += it(None, None).av_units
 
 random_units = []
 for it in random_buildings: random_units += it(it.nation, None).av_units
+
 from data.spells import *

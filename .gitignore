@@ -4,10 +4,13 @@ log.log
 .project
 .pydevproject
 .settings/
+extensions.json
+settings.json
 build/
 dist/
 __pycache__/
 setup.py
+setup.cfg
 TelosysTools/
 testing/
 test.py
