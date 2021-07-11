@@ -982,8 +982,9 @@ class World:
             count -= 1
             tries -= 1
             shuffle(self.buildings)
+            self.buildings.sort(key=lambda x: x.pos.threat,reverse=True)
             self.buildings.sort(key=lambda x: len(x.units))
-            self.buildings.sort(key=lambda x: x.nations,reverse=True)
+            Pdb().set_trace()
             building = self.buildings[0]
             shuffle(building.av_units)
             if basics.roll_dice(1) >= 5:
@@ -1005,7 +1006,7 @@ class World:
                 except Exception: Pdb().set_trace()
                 if uni.units > 1 and uni.leadership == 0:
                     if info: logging.debug(f"randomly set units number")
-                    uni.hp_total = randint(30, 60) * uni.hp_total / 100
+                    uni.hp_total = randint(40, 60) * uni.hp_total / 100
                     uni.update()
                 uni.pos = building.pos
                 uni.nation.update(uni.nation.map)
@@ -1015,9 +1016,9 @@ class World:
                 if uni.leadership:
                     av_units = [
                         it for it in building.av_units if it.leadership == 0]
-                    for r in range(randint(1, 3)):
+                    for r in range(randint(2, 5)):
                         if av_units == []: break
-                        if uni.leading > uni.leadership * 0.75: break
+                        if uni.leading > uni.leadership * 0.8: break
                         if info: logging.debug(f"adding squads to {uni}.")
                         squad = choice(av_units)(uni.nation)
                         squad.hp_total = randint(40, 60) * squad.hp_total / 100
