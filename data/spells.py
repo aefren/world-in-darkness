@@ -955,7 +955,7 @@ class SightFromFuture(Spell):
 
     def run(self, itm):
         self.set_msg0(itm)
-        logging.debug(msg)
+        #logging.debug(msg)
         if itm.nation.show_info: sleep(
             loadsound("spell41", channel=CHTE3) * 0.5)
         tiles = itm.pos.get_near_tiles(1)

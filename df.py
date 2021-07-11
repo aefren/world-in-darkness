@@ -179,7 +179,7 @@ class Terrain:
         sk = Miasma(self)
         if roll + \
                 corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
-            sk.turns = randint(2, 5)
+            sk.turns = 2 + corpses
             self.events += [sk]
         elif sk.name in [ev.name for ev in self.events] and roll >= 10:
             for ev in self.events:
@@ -983,6 +983,7 @@ class World:
             tries -= 1
             shuffle(self.buildings)
             self.buildings.sort(key=lambda x: len(x.units))
+            self.buildings.sort(key=lambda x: x.nations,reverse=True)
             building = self.buildings[0]
             shuffle(building.av_units)
             if basics.roll_dice(1) >= 5:
@@ -1518,11 +1519,11 @@ class Ai:
         if city.buildings_military_complete == []: return "not military buildings."
         if city.defense_total_percent < 150:
             return "not enough defense"
-        if len(city.tiles) >= 12 and len(city.buildings_military_complete) < 2: 
+        if len(city.tiles) >= 12 and len(city.buildings_military_complete) < 2:
             return "lack of military buildings."
         if (len(city.tiles) >= 15
-                and len([b for b in city.buildings_military_complete 
-                    if b.level == 2]) < 2):
+                and len([b for b in city.buildings_military_complete
+                         if b.level == 2]) < 2):
             return "lack of improved military buildings."
         if city.seen_threat > 50 * city.defense_total / 100:
             msg = f"seen threat {city.seen_threat}. total defense {city.defense_total} hight threatss. to expand"

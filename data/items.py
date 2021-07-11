@@ -2072,7 +2072,6 @@ class Unit:
                     if i.nation not in self.belongs]:
                 return
             self.pos.update(self.pos.nation)
-
             self.update()
             building = choice(buildings)
             damage = self.damage
@@ -2105,6 +2104,7 @@ class Unit:
                 if self.pos.nation and self.nation != self.pos.nation:
                     self.pos.nation.log[-1].append(msg)
                 logging.debug(msg)
+        if self.pos.burned:
             if self.pos.nation and any(
                 i for i in [
                     self.nation.show_info,
@@ -4091,6 +4091,7 @@ class Unit:
         logging.info(f"set_leads for {self}")
         self.update()
         av_units = self.set_lead_traits(self.pos.units)
+        av_units = [it for it in av_units if it.goto == []]
         say = 1
         t = 0
         units = []
@@ -9510,7 +9511,7 @@ class HolyEmpire(Nation):
     traits = [human_t, sacred_t]
     capital_pop_bonus = 100
     expansion = 1000
-    gold = 10000
+    gold = 8000
     grouth_base = 4
     grouth_rate = 1
     main_pop_hill = [0]
@@ -9601,7 +9602,7 @@ class WoodElves(Nation):
     traits = [elf_t, wild_t]
     capital_pop_bonus = 140
     expansion = 2500
-    gold = 10000
+    gold = 8000
     food_limit_builds = 3000
     food_limit_upgrades = 5000
     grouth_base = 2
@@ -9688,7 +9689,7 @@ class Valahia(Nation):
     traits = [blood_drinker_t, death_t, vampire_t]
     capital_pop_bonus = 120
     expansion = 1500
-    gold = 10000
+    gold = 8000
     food_limit_builds = 3000
     food_limit_upgrades = 4000
     grouth_base = 4

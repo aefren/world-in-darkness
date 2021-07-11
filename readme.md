@@ -4,7 +4,7 @@ This is an unfinished turn based strategy game.
 <br>
 [Here is a quick guide to play the game.](Quick_Guide.md)
 
-[Aquí la guía rápida para jugar.](Guía_rápida.md)
+[Aquí la guía rápida para jugar.](Como_jugar.md)
 <br>
 <br>
 
