@@ -14,7 +14,7 @@ import natsort
 import pygame
 
 from language import *
-#import numpy as np
+# import numpy as np
 
 
 dev_mode = 0
@@ -168,7 +168,7 @@ class Terrain:
         if roll >= 10:
             unit = self.add_unit(Ghoul, hell_t)
             unit.hp_total = unit.hp * randint(5, 10)
-            unit.update()
+            # unit.update()
 
     def add_miasma(self):
         roll = basics.roll_dice(2)
@@ -538,11 +538,13 @@ class Terrain:
 
     def set_grouth(self):
         self.grouth_base = self.city.grouth_base
-        #self.grouth_food = (self.food - self.pop) / self.city.grouth_factor
+        # self.grouth_food = (self.food - self.pop) / self.city.grouth_factor
         self.grouth_food = self.pop * 100 / self.food
         self.grouth_food = 100 - self.grouth_food
         self.grouth = self.grouth_food * 0.1
-        if self.grouth_food > 80: self.grouth *= 1.3
+        if self.grouth_food >= 95: self.grouth *= 2
+        elif self.grouth_food > 90: self.grouth *= 1.5
+        elif self.grouth_food > 80: self.grouth *= 1.3
         elif self.grouth_food > 60: self.grouth *= 1.2
         elif self.grouth_food <= 50: self.grouth *= 0.8
         elif self.grouth_food <= 25: self.grouth *= 0.8
@@ -971,20 +973,15 @@ class World:
 
     def add_random_unit(self, value, info=1):
         logging.info(f"add_frandom_unit {value=:}.")
-        count = randint(1, 3)
-        if basics.roll_dice(1) == 6: count += 1
         tries = 20
-        if info:
-            msg = f"{count=:}."
-            self.log[-1] += [msg]
-            logging.debug(msg)
-        while tries > 0 and value > 0 and count > 0:
-            count -= 1
+        while tries > 0 and value > 0:
             tries -= 1
             shuffle(self.buildings)
-            self.buildings.sort(key=lambda x: x.pos.threat,reverse=True)
-            self.buildings.sort(key=lambda x: len(x.units))
-            Pdb().set_trace()
+            self.buildings.sort(key=lambda x: x.pos.threat +
+                                x.pos.around_threat, reverse=True)
+            self.buildings.sort(key=lambda x: x.pos.threat +
+                                x.pos.around_threat and len(x.units) < 1, reverse=True)
+            self.buildings.sort(key=lambda x: len(x.units) <= 5, reverse=True)
             building = self.buildings[0]
             shuffle(building.av_units)
             if basics.roll_dice(1) >= 5:
@@ -1000,7 +997,10 @@ class World:
                 uni = uni(building.nation)
                 uni.city = building
                 building.units += [uni]
-                if info: logging.debug(f"agregará {uni}.")
+                msg = str(
+                    f"adding {uni} from {building} {building.pos.cords} ({building.units}).")
+                if info: logging.debug(msg)
+                self.log[-1] += [msg]
                 try:
                     uni.update()
                 except Exception: Pdb().set_trace()
@@ -1518,15 +1518,18 @@ class Ai:
             if info: logging.debug(f"skipping by build military path.")
             return
         if city.buildings_military_complete == []: return "not military buildings."
-        if city.defense_total_percent < 150:
-            return "not enough defense"
+        if len(city.tiles) <= 12 and city.defense_total_percent < 150:
+            return "less than 12 tiles. not enough defense"
+        elif len(city.tiles) <= 15 and city.defense_total_percent < 250:
+            return "less than 15 tiles. not enough defense"
+
         if len(city.tiles) >= 12 and len(city.buildings_military_complete) < 2:
             return "lack of military buildings."
         if (len(city.tiles) >= 15
                 and len([b for b in city.buildings_military_complete
                          if b.level == 2]) < 2):
             return "lack of improved military buildings."
-        if city.seen_threat > 50 * city.defense_total / 100:
+
             msg = f"seen threat {city.seen_threat}. total defense {city.defense_total} hight threatss. to expand"
             city.nation.devlog[-1] += [msg]
             return msg
@@ -3125,13 +3128,14 @@ def menu_building(pos, nation, sound="in1"):
                 else:
                     sp.speak(f"{items[x]} ({items[x].type}).")
                     itm = items[x]
-                    time_cost = (
-                        itm.resource_cost[1] - itm.resource_cost[0]) / pos.city.resource_total
-                    time_cost = ceil(time_cost)
                     sp.speak(
                         f"{int(items[x].resource_cost[0]/items[x].resource_cost[1]*100)}%.")
-                    if items[x].nation == nation: sp.speak(
-                        f"{in_t} {time_cost} {turns_t}.")
+                    if items[x].nation == nation:
+                        time_cost = (
+                            itm.resource_cost[1] - itm.resource_cost[0]) / pos.city.resource_total
+                        time_cost = ceil(time_cost)
+                        sp.speak(
+                            f"{in_t} {time_cost} {turns_t}.")
             say = 0
 
         for event in pygame.event.get():
@@ -3575,7 +3579,7 @@ def nation_set_start_position(nation):
     for uni in nation.start_units:
         uni = uni(nation)
         uni.ai = nation.ai
-        #uni.belongs += [nation]
+        # uni.belongs += [nation]
         uni.pos = pos
         uni.show_info = nation.show_info
         nation.units.append(uni)
@@ -4105,8 +4109,8 @@ class Game:
                         # if itm(nation, local_units[x].pos).can_build() == 0:
                         # error()
                         # return
-                        #local_units[x].nation.add_city(itm, local_units[x])
-                    #pos.pos_sight(nation, nation.map)
+                        # local_units[x].nation.add_city(itm, local_units[x])
+                    # pos.pos_sight(nation, nation.map)
                     sayland = 1
                     x = -1
                 if event.key == pygame.K_c:
@@ -4359,7 +4363,7 @@ class Game:
                         pos.get_around_tiles(nation)
                 if event.key == pygame.K_v:
                     pass
-                    #sp.speak(f"valor {pos.food_value}, {pos.res_value}.", 1)
+                    # sp.speak(f"valor {pos.food_value}, {pos.res_value}.", 1)
                     # sp.speak(f"{pos.mean}.")
             if event.key == pygame.K_z:
                 pos.update(nation)
@@ -4908,11 +4912,11 @@ def train_unit(city, items, msg, sound="in1"):
                     return
 
 
-#day_limit = 30
-#day_timer = [0, 20]
-#global_timer = [2, 2]
-#timer1 = [ticks(), 500]
-#timer2 = ticks()
+# day_limit = 30
+# day_timer = [0, 20]
+# global_timer = [2, 2]
+# timer1 = [ticks(), 500]
+# timer2 = ticks()
 
 
 def warning_enemy(nation, scenary):

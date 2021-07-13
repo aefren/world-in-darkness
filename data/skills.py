@@ -408,6 +408,7 @@ class FeedingFrenzy(Skill):
     type = "generic"
 
     def run(self, itm):
+        itm.can_join_mod -= 1
         itm.moves_mod += 1
         itm.res_mod += 1
         itm.resolve_mod += 1

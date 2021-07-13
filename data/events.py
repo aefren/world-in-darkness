@@ -39,7 +39,7 @@ class Looting(Event):
             if roll >= 10 and t.unrest >= 20:
                 raided = randint(math.ceil(t.income * 0.2),
                                  math.ceil(t.income * 0.4))
-                kills = randint(1, 10) * t.pop / 100
+                kills = round(randint(1, 10) * t.pop / 100)
                 if t.unrest >= 50: raided *= 2
                 kills *= 2
                 t.raided = raided
@@ -48,7 +48,7 @@ class Looting(Event):
                 self.itm.nation.log[-1] += [msg]
                 if kills >= 1:
                     t.add_corpses(choice(t.nation.population_type), kills)
-                    msg = f'loss {kills} population.'
+                    msg = f"loss {kills} population."
                     self.itm.nation.log[-1] += [msg]
                 if t.is_city and t.city.capital and t.city.nation.gold >= 500:
                     try:

@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+
+
 import copy
 
 from data import weapons
@@ -118,7 +120,7 @@ class Building:
         return name
 
     def can_build(self):
-        logging.debug(f"requicitos de {self}.")
+        logging.debug(f" requicitos de {self}.")
         if self.check_tile_req(self.pos) == 0:
             return 0
         if self.gold and self.nation.gold < self.gold:
@@ -135,15 +137,31 @@ class Building:
             return 0
         return 1
 
-    def check_tile_req(self, pos):
+    def check_tile_req(self, pos, info=1):
         go = 1
-        if self.citylevel and self.pos.city.name != self.citylevel: go = 0
-        if pos.soil.name not in self.soil: go = 0
-        if pos.surf.name not in self.surf: go = 0
-        if pos.hill not in self.hill: go = 0
-        if self.around_coast > 0 and pos.around_coast < self.around_coast: go = 0
-        if self.free_terrain and pos.nation: go = 0
-        if self.own_terrain and pos.nation != self.nation: go = 0
+        msg = str()
+        if self.citylevel and self.pos.city.name != self.citylevel:
+            msg += f"level error."
+            go = 0
+        if pos.soil.name not in self.soil:
+            msg += f"soil type error."
+            go = 0
+        if pos.surf.name not in self.surf:
+            msg += f"surf type error."
+            go = 0
+        if pos.hill not in self.hill:
+            msg += f"hill type error."
+            go = 0
+        if self.around_coast > 0 and pos.around_coast < self.around_coast:
+            msg += f"coast requirement error"
+            go = 0
+        if self.free_terrain and pos.nation:
+            msg += f"free terrain requirement error."
+            go = 0
+        if self.own_terrain and pos.nation != self.nation:
+            msg += f"own terrain error."
+            go = 0
+        if info: logging.debug(msg)
         return go
 
     def improve(self, upgrade):
@@ -416,14 +434,28 @@ class City:
             if info: logging.debug(f"{str(ev)}.")
             ev.run()
 
-    def check_tile_req(self, pos):
+    def check_tile_req(self, pos, info=1):
         go = 1
-        if pos.soil.name not in self.soil: go = 0
-        if pos.surf.name not in self.surf: go = 0
-        if pos.hill not in self.hill: go = 0
-        if pos.around_coast < self.around_coast: go = 0
-        if pos.nation and self.free_terrain: go = 0
-        if pos.nation != self.nation and self.own_terrain: go = 0
+        msg = str()
+        if pos.soil.name not in self.soil:
+            msg += f"soil type error."
+            go = 0
+        if pos.surf.name not in self.surf:
+            msg += f"surf type eror."
+            go = 0
+        if pos.hill not in self.hill:
+            msg += f"hill type error."
+            go = 0
+        if pos.around_coast < self.around_coast:
+            msg += f"coast type error."
+            go = 0
+        if pos.nation and self.free_terrain:
+            msg += f"free terrain type error."
+            go = 0
+        if pos.nation != self.nation and self.own_terrain:
+            msg += f"own terrain error."
+            go = 0
+        if info: logging.debug(msg)
         return go
 
     def check_training(self):
@@ -880,15 +912,8 @@ class City:
 
     def status(self, info=0):
         logging.info(f"city status {self}.")
-        # to delete.
-        # =======================================================================
-        # self.for_food_tiles = self.get_tiles_food(self.tiles)
-        # self.for_food_tiles = [i for i in self.for_food_tiles if i.size >= 4]
-        # self.for_food_tiles.sort(key=lambda x: x.food, reverse=True)
-        # self.for_res_tiles = self.get_tiles_res(self.tiles)
-        # self.for_res_tiles = [i for i in self.for_res_tiles if i.size >= 4]
-        # self.for_res_tiles.sort(key=lambda x: x.resource, reverse=True)
-        # =======================================================================
+        self.for_food_tiles = self.get_tiles_food(self.tiles)
+        self.for_res_tiles = self.get_tiles_res(self.tiles)
 
         self.buildings_food = [i for i in self.buildings if food_t in i.tags]
         self.buildings_food_complete = [
@@ -1217,6 +1242,9 @@ class Nation:
                 logging.debug(f"{rate=:} higher than {city.grouth_min_bu=:}.")
                 continue
             for bu in buildings:
+                if len(city.buildings_food) >= 3 and city.defense_total_percent < 250:
+                    if info: logging.debug(f"need more defense_total")
+                    return
                 building = bu(self, it)
                 if building.can_build():
                     city.add_building(building, it)
@@ -1348,6 +1376,8 @@ class Nation:
 
     def improve_food(self, city, info=1):
         logging.info(f"build_food_upgrade.")
+        if city.defense_total_percent < 250:
+            if info: logging.debug(f"not enough defensive.")
         # food upgrades.
         buildings = [b for b in city.buildings_food_complete if b.upgrade]
         if info: logging.debug(f"upgradables {len(buildings)=:}.")
@@ -1392,6 +1422,9 @@ class Nation:
         if self.path.build_military == "improve" and basics.roll_dice(1) >= 2:
             if info: logging.debug(
                 f"skipping by upgrade military building path.")
+            return
+        if city.defense_total_percent < 250:
+            if info: logging.debug(f"not enough debug.")
             return
         buildings = [bu for bu in city.buildings_res_complete if bu.upgrade]
         logging.debug(f"upgradables {len(buildings)=:}.")
@@ -3295,8 +3328,7 @@ class Unit:
         units.sort(key=lambda x: x.history.turns, reverse=True)
         name = units[0].name
         for i in units:
-            if i.name != name or i.can_join == 0: return
-            if FeedingFrenzy.name in [s.name for s in i.skills]: return
+            if i.name != name or i.can_join + i.can_join_mod == 0: return
         unit = units[0]
         if unit.squads == unit.max_squads: return
         for i in units[1:]:
@@ -4191,7 +4223,8 @@ class Unit:
                             unit.leader = None
                             av_units += [unit]
                             self.leads.remove(unit)
-                            self.squads_position.remove(unit)
+                            if unit in self.squads_position:
+                                self.squads_position.remove(unit)
                         if x >= len(items[t]): x -= 1
                         self.update()
                     if event.key == pygame.K_TAB:
@@ -4366,7 +4399,7 @@ class Unit:
             placemment = itm = basics.get_item2(
                 items1=self.buildings, msg="crear", simple=1)
         if placemment is None: return
-        if placemment(self.nation, self.pos).check_tile_req(self.pos):
+        if placemment(self.nation, self.pos).check_tile_req(self.pos,info=1):
             self.nation.add_city(placemment, self)
             return 1
         else:
@@ -4379,6 +4412,7 @@ class Unit:
         self.att1_mod = 0
         self.att2_mod = 0
         self.att3_mod = 0
+        self.can_join_mod = 0
         self.dfs_mod = 0
         self.hit_rolls_mod = 0
         self.hp_res_mod = 0
@@ -4770,7 +4804,7 @@ class Hall(City):
         self.pos = pos
         self.resource_cost = [100, 100]
         self.soil = [grassland_t, plains_t, tundra_t]
-        self.surf = [forest_t]
+        self.surf = [forest_t, none_t]
 
     def set_capital_bonus(self):
         self.food += 50
@@ -7171,7 +7205,7 @@ class Hastati(Human):
     upkeep = 25
     resource_cost = 15
     food = 3
-    pop = 2
+    pop = 3
     terrain_skills = [Burn, Raid]
 
     hp = 10
@@ -7214,7 +7248,7 @@ class Principes(Human):
     upkeep = 40
     resource_cost = 24
     food = 3
-    pop = 2.5
+    pop = 3.5
     terrain_skills = [Burn, Raid]
 
     hp = 10
@@ -7588,11 +7622,11 @@ class Equites2(Human):
     traits = [human_t]
     aligment = order_t
     size = 3
-    train_rate = 2.5
+    train_rate = 3
     upkeep = 40
     resource_cost = 22
     food = 6
-    pop = 4
+    pop = 5
     terrain_skills = [Burn, Raid]
 
     hp = 16
@@ -7632,7 +7666,7 @@ class Gryphon(Unit):
     traits = [gryphon_t]
     aligment = wild_t
     size = 4
-    train_rate = 2.5
+    train_rate = 3
     upkeep = 50
     resource_cost = 20
     food = 4
@@ -7675,11 +7709,11 @@ class GryphonRiders(Unit):
     traits = [human_t]
     aligment = sacred_t
     size = 4
-    train_rate = 3
-    upkeep = 80
+    train_rate = 4.5
+    upkeep = 70
     resource_cost = 22
     food = 6
-    pop = 6
+    pop = 8
     terrain_skills = [Burn, DarkVision, Fly, Raid]
 
     hp = 24
@@ -9612,6 +9646,7 @@ class WoodElves(Nation):
     main_pop_surf = [forest_t]
     military_limit_upgrades = 1000
     public_order = 0
+    tile_cost = 400
     upkeep_base = 70
     upkeep_change = 500
 
@@ -9699,6 +9734,7 @@ class Valahia(Nation):
     main_pop_surf = [none_t, forest_t]
     military_limit_upgrades = 3000
     public_order = 0
+    tile_cost = 200
     upkeep_base = 70
     upkeep_change = 200
 
@@ -13833,5 +13869,4 @@ for it in nations_buildings: nations_units += it(None, None).av_units
 
 random_units = []
 for it in random_buildings: random_units += it(it.nation, None).av_units
-
 from data.spells import *
