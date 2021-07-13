@@ -1243,7 +1243,10 @@ class Nation:
                 continue
             for bu in buildings:
                 if len(city.buildings_food) >= 3 and city.defense_total_percent < 250:
-                    if info: logging.debug(f"need more defense_total")
+                    if info: logging.debug(f"3 buildings. need more defense_total")
+                    return
+                elif len(city.buildings_food) >= 5 and city.defense_total_percent < 300:
+                    if info: logging.debug(f"5 buildings. need more defense_total")
                     return
                 building = bu(self, it)
                 if building.can_build():
