@@ -105,6 +105,7 @@ class Building:
         self.hill = [0, 1]
         self.upgrade = []
         self.units = []
+        self.units_ranking = 0
         if self.base:
             base = self.base(self.nation, self.pos)
             self.food_pre = base.food
@@ -1243,10 +1244,12 @@ class Nation:
                 continue
             for bu in buildings:
                 if len(city.buildings_food) >= 3 and city.defense_total_percent < 250:
-                    if info: logging.debug(f"3 buildings. need more defense_total")
+                    if info: logging.debug(
+                        f"3 buildings. need more defense_total")
                     return
                 elif len(city.buildings_food) >= 5 and city.defense_total_percent < 300:
-                    if info: logging.debug(f"5 buildings. need more defense_total")
+                    if info: logging.debug(
+                        f"5 buildings. need more defense_total")
                     return
                 building = bu(self, it)
                 if building.can_build():
@@ -2014,7 +2017,8 @@ class Unit:
             return 1
 
     def autokill(self):
-        if self.pos.get_nearest_nation() >= 6 and self in self.pos.world.units:
+        if (self.pos.get_nearest_nation() >= 6 
+            and self in self.pos.world.units and self.leadership == 0):
             self.hp_total = 0
             loadsound("set9")
 
@@ -2054,10 +2058,10 @@ class Unit:
         sp.speak(f"{self}", 1)
         if self.leads and nation in self.belongs:
             sp.speak(f" leads {self.leading} ({len(self.leads)}) ")
-        if self.extra_leading >= 1:
-            loadsound("set7", vol=0.5)
-            sp.speak(
-                f"leadership exceeded {self.leading} {of_t} {self.leadership}.")
+        # if self.extra_leading >= 1:
+            #loadsound("set7", vol=0.5)
+            # sp.speak(
+            # f"leadership exceeded {self.leading} {of_t} {self.leadership}.")
         if self.hidden:
             loadsound("hidden1", vol=0.25)
             sp.speak(f"{hidden_t}.")
@@ -2750,6 +2754,8 @@ class Unit:
                 unit.other_skills = i.other_skills
                 unit.level = i.level
                 unit.update()
+                unit.xp = i.xp
+                unit.history = i.history
                 if info: logging.debug(f"{unit} huyen {sum(i.fled)}.")
                 if unit.leadership == 0 and unit.units < unit.min_units / 4: continue
                 unit.pos.units.append(unit)
@@ -4402,7 +4408,7 @@ class Unit:
             placemment = itm = basics.get_item2(
                 items1=self.buildings, msg="crear", simple=1)
         if placemment is None: return
-        if placemment(self.nation, self.pos).check_tile_req(self.pos,info=1):
+        if placemment(self.nation, self.pos).check_tile_req(self.pos, info=1):
             self.nation.add_city(placemment, self)
             return 1
         else:
@@ -9829,7 +9835,7 @@ class BrigandLair(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Raider, WarlockApprentice]
-        self.resource_cost = [0, 20]
+        self.resource_cost = [0, 40]
         self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
         self.surf = [forest_t, none_t, swamp_t]
         self.hill = [0, 1]
@@ -9875,7 +9881,7 @@ class CaveOfDarkRites(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Harpy, Satyr, Witch]
-        self.resource_cost = [0, 40]
+        self.resource_cost = [0, 60]
         self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
         self.surf = [forest_t]
         self.hill = [1]
@@ -9990,7 +9996,7 @@ class HiddenForest(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Akhlut, Warlock]
-        self.resource_cost = [0, 60]
+        self.resource_cost = [0, 68]
         self.soil = [grassland_t, plains_t, tundra_t]
         self.surf = [forest_t]
         self.hill = [0, 1]
@@ -10083,7 +10089,7 @@ class MammotsCave(Building):
         super().__init__(nation, pos)
         self.av_units = [BlizzardWarrior,
                          GiantOfTheLostTribe, Mammot, ShamanOfTheWind]
-        self.resource_cost = [0, 50]
+        self.resource_cost = [0, 80]
         self.soil = [tundra_t]
         self.surf = [forest_t, none_t]
         self.hill = [0, 1]
@@ -10106,7 +10112,7 @@ class NecromancersLair(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Abomination, Necromancer, Skeleton]
-        self.resource_cost = [0, 40]
+        self.resource_cost = [0, 50]
         self.soil = [plains_t, tundra_t, waste_t, ]
         self.surf = [forest_t, swamp_t]
         self.hill = [0, 1]
@@ -10129,7 +10135,7 @@ class OathStone(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [CannibalWarlord, Ogre, Troglodyte]
-        self.resource_cost = [0, 35]
+        self.resource_cost = [0, 50]
         self.soil = [grassland_t, plains_t, tundra_t, waste_t, ]
         self.surf = [none_t]
         self.hill = [1]
@@ -10152,7 +10158,7 @@ class OpulentCrypt(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Vampire, VampireLord]
-        self.resource_cost = [0, 50]
+        self.resource_cost = [0, 90]
         self.soil = [plains_t, tundra_t, waste_t, ]
         self.surf = [forest_t, none_t]
         self.hill = [0, 1]
@@ -10175,7 +10181,7 @@ class StalagmiteCavern(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [PaleOne, WetOne]
-        self.resource_cost = [0, 50]
+        self.resource_cost = [0, 40]
         self.soil = [grassland_t, plains_t, tundra_t]
         self.surf = [forest_t, none_t]
         self.hill = [0]
@@ -10198,7 +10204,7 @@ class TroglodyteCave(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Satyr, Witch]
-        self.resource_cost = [0, 50]
+        self.resource_cost = [0, 40]
         self.soil = [grassland_t, plains_t, tundra_t, waste_t]
         self.surf = [forest_t, none_t]
         self.hill = [0]
@@ -10244,7 +10250,7 @@ class UnderworldEntrance(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Ghost, HellHound, DevoutOfChaos, AncientWitch]
-        self.resource_cost = [0, 80]
+        self.resource_cost = [0, 120]
         self.soil = [waste_t, grassland_t, plains_t, tundra_t]
         self.surf = [forest_t, swamp_t, none_t]
         self.hill = [0, 1]
@@ -10267,7 +10273,7 @@ class WisperingWoods(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Driad, Druid, ForestBear, ForestGiant]
-        self.resource_cost = [0, 60]
+        self.resource_cost = [0, 612]
         self.soil = [grassland_t, plains_t, tundra_t]
         self.surf = [forest_t]
         self.hill = [0]
@@ -10290,7 +10296,7 @@ class WargsCave(Building):
     def __init__(self, nation, pos):
         super().__init__(nation, pos)
         self.av_units = [Warg]
-        self.resource_cost = [0, 70]
+        self.resource_cost = [0, 40]
         self.soil = [tundra_t]
         self.surf = [forest_t, none_t, swamp_t]
         self.hill = [0, 1]

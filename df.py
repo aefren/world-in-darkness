@@ -69,7 +69,7 @@ class Ambient:
         self.year = 1
         self.update()
 
-    def update(self):
+    def update(self): 
         self.sseason = f"{self.season[1][self.season[0]]}"
         self.stime = f"{self.time[1][self.time[0]]}"
         self.smonth = f" {self.month[1][self.month[0]]}"
@@ -977,11 +977,12 @@ class World:
         while tries > 0 and value > 0:
             tries -= 1
             shuffle(self.buildings)
-            self.buildings.sort(key=lambda x: x.pos.threat +
-                                x.pos.around_threat, reverse=True)
-            self.buildings.sort(key=lambda x: x.pos.threat +
-                                x.pos.around_threat and len(x.units) < 1, reverse=True)
-            self.buildings.sort(key=lambda x: len(x.units) <= 5, reverse=True)
+            #self.buildings.sort(key=lambda x: x.pos.threat +
+                                #x.pos.around_threat, reverse=True)
+            #self.buildings.sort(key=lambda x: x.pos.threat +
+                                #x.pos.around_threat and len(x.units) < 1, reverse=True)
+            #self.buildings.sort(key=lambda x: len(x.units) <= 5, reverse=True)
+            self.buildings.sort(key=lambda x: x.units_ranking < x.pos.threat+x.pos.around_threat,reverse=True)
             building = self.buildings[0]
             shuffle(building.av_units)
             if basics.roll_dice(1) >= 5:
@@ -1069,13 +1070,14 @@ class World:
             PLAYING = False
 
     def building_restoration(self):
-        for b in self.buildings:
-            units = [uni for uni in b.pos.units if b.nation not in uni.belongs]
+        for bu in self.buildings:
+            # Getting enemies units.
+            units = [uni for uni in bu.pos.units if bu.nation not in uni.belongs]
             if units: continue
-            if b.resource_cost[0] < b.resource_cost[1]:
-                b.resource_cost[0] += b.resource_cost[1] * 0.2
-                if b.resource_cost[0] > b.resource_cost[1]:
-                    b.resource_cost[0] = b.resource_cost[1]
+            if bu.resource_cost[0] < bu.resource_cost[1]:
+                bu.resource_cost[0] += 25
+                if bu.resource_cost[0] > bu.resource_cost[1]:
+                    bu.resource_cost[0] = bu.resource_cost[1]
 
     def generic_events(self):
         pass
@@ -1102,8 +1104,12 @@ class World:
         while True:
             sleep(0.001)
             if say:
-                if items: sp.speak(
-                    f"{items[x]}. on {items[x].pos} {items[x].pos.cords}")
+                if items:
+                    sp.speak(
+                        f"{items[x]}. on {items[x].pos} {items[x].pos.cords}")
+                    sp.speak(f"units: {len(items[x].units)}.")
+                    sp.speak(
+                        f"threat {items[x].pos.threat + items[x].pos.around_threat}.")
                 else: sp.speak(f"{empty_t}.")
                 if items[x].pos.city: sp.speak(f"{items[x].pos.city}.")
                 say = 0
@@ -1124,8 +1130,10 @@ class World:
                         say = 1
                     if event.key == pygame.K_i:
                         items[x].info()
-                    if event.key == pygame.K_RETURN:
-                        pass
+                    if event.key == pygame.K_F12:
+                        sp.speak(f"on.")
+                        Pdb().set_trace()
+                        sp.speak(f"off.")
                     if event.key == pygame.K_ESCAPE:
                         sleep(loadsound("back1") / 2)
                         return
@@ -1240,12 +1248,15 @@ class World:
                 self.super_unit.pos = pos
                 ev(self.super_unit).init(self.super_unit)
 
-    def update(self, scenary):
+    def start_turn(self):
         self.clean_nations()
-        # self.end_game()
+        self.end_game()
         self.cnation = self.nations[self.player_num]
         [it.autokill() for it in self.units]
         self.season_events()
+
+    def update(self, scenary):
+        self.start_turn()
 
         self.buildings = []
         self.units = []
@@ -1256,11 +1267,14 @@ class World:
                 if uni.nation in self.random_nations: self.units += [uni]
         for bu in self.buildings:
             bu.units = [uni for uni in bu.units if uni.hp_total >= 1]
+            bu.units_ranking = sum([it.ranking for it in bu.units])
         self.nations_score = sum(n.score for n in self.nations)
         self.units = [i for i in self.units if i.hp_total >= 1]
 
         self.random_score = sum(u.ranking for u in self.units)
         [nt.update(scenary) for nt in self.random_nations]
+
+
 
 
 class Ai:
@@ -3841,6 +3855,7 @@ class Game:
         logging.debug("ai_random")
         sp.speak(f"randoms.")
         world.update(scenary)
+        world.start_turn()
         world.add_random_buildings(world.buildings_value - len(world.buildings))
         world.building_restoration()
 
@@ -3882,10 +3897,9 @@ class Game:
             if ctrl == 0:
                 if event.key == pygame.K_F1:
                     sp.speak(
-                        f"{world.ambient.stime} ({world.ambient.sday_night}).", 1)
+                        f"{ambient.stime} ({ambient.sday_night}).", 1)
                 if event.key == pygame.K_F2:
-                    msg = f"{world.ambient.sseason}, {world.ambient.smonth}, \
-            {world.ambient.syear}."
+                    msg = f"{ambient.sseason}, {ambient.syear}."
                     sp.speak(msg, 1)
                 if event.key == pygame.K_F3:
                     sp.speak(f"{turn_t} {world.turn}.", 1)
@@ -4458,30 +4472,21 @@ class Game:
 
     def new_turn(self):
         global turns, sayland, ambient
+        world.ambient.update()
         ambient = world.ambient
-        ambient.update()
         last_day_night = ambient.day_night[0]
-        [i.update(scenary) for i in world.nations]
+        [it.update(scenary) for it in world.nations]
         logging.debug(f"nuevo turno.")
         if world.turn > 0:
             if ambient.time[0] >= 6:
                 ambient.time[0] = -1
-                if ambient.week >= 1:
-                    ambient.week = 0
-                    if ambient.month[0] >= 11:
-                        ambient.month[0] = -1
-                        ambient.year += 1
-                    ambient.month[0] += 1
                 ambient.week += 1
-
-            if ambient.month[0] in [11, 0, 1]:
-                ambient.season[0] = 0
-            elif ambient.month[0] in [2, 3, 4]:
-                ambient.season[0] = 1
-            elif ambient.month[0] in [5, 6, 7]:
-                ambient.season[0] = 2
-            elif ambient.month[0] in [8, 9, 10]:
-                ambient.season[0] = 3
+                if ambient.week > 1:
+                    ambient.week = 1
+                    ambient.season[0] += 1
+                    if ambient.season[0] > 3:
+                        ambient.year += 1
+                
 
             ambient.time[0] += 1
 
@@ -4496,9 +4501,9 @@ class Game:
         world.ambient.update()
         ambient = world.ambient
 
-        [i.start_turn() for i in world.map]
-        for n in world.nations:
-            n.start_turn()
+        [it.start_turn() for it in world.map]
+        for nt in world.nations:
+            nt.start_turn()
 
         msg = f"{turn_t} {world.turn}."
         logging.info(msg)
@@ -4507,10 +4512,9 @@ class Game:
         sleep(loadsound("notify14") * 0.1)
         if ambient.day_night[0] != last_day_night:
             if ambient.day_night[0] == 0: sleep(
-                loadsound("dawn01", channel=CHTE2) / 3)
+                loadsound("dawn01", channel=CHTE2) / 2)
             if ambient.day_night[0]: sleep(
-                loadsound("night01", channel=CHTE2) / 5)
-        # gc.collect()
+                loadsound("night01", channel=CHTE2) / 4)
 
     def start(self):
         global mapeditor, new_game
