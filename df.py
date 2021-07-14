@@ -77,7 +77,7 @@ class Ambient:
         self.sday_night = f"{self.day_night[1][self.day_night[0]]}"
 
 
-ambient = Ambient()
+#ambient = Ambient()
 
 
 class Empty:
@@ -85,7 +85,7 @@ class Empty:
 
 
 class Terrain:
-    ambient = ambient
+    ambient = Ambient()
     around_defense = 0
     around_threat = 0
     bu = 0
@@ -982,6 +982,7 @@ class World:
             #self.buildings.sort(key=lambda x: x.pos.threat +
                                 #x.pos.around_threat and len(x.units) < 1, reverse=True)
             #self.buildings.sort(key=lambda x: len(x.units) <= 5, reverse=True)
+            self.buildings.sort(key=lambda x: len(x.units))
             self.buildings.sort(key=lambda x: x.units_ranking < x.pos.threat+x.pos.around_threat,reverse=True)
             building = self.buildings[0]
             shuffle(building.av_units)
@@ -1256,8 +1257,6 @@ class World:
         self.season_events()
 
     def update(self, scenary):
-        self.start_turn()
-
         self.buildings = []
         self.units = []
         for t in scenary:
@@ -3854,6 +3853,7 @@ class Game:
         global world
         logging.debug("ai_random")
         sp.speak(f"randoms.")
+        world.start_turn()
         world.update(scenary)
         world.start_turn()
         world.add_random_buildings(world.buildings_value - len(world.buildings))
@@ -4326,6 +4326,7 @@ class Game:
                     sp.speak(f"{itm.get_total_food()}")
                 if event.key == pygame.K_5:
                     sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
+                    if itm.age: sp.speak(f"{age_t}: {itm.age}.",1)
                 if event.key == pygame.K_6:
                     sp.speak(
                         f"power {itm.power} {of_t} {itm.power_max+itm.power_max_mod}.")
@@ -4546,13 +4547,17 @@ class Game:
                         x = len(items) - 1
                         say = 1
                     if event.key == pygame.K_RETURN:
+                        say = 1
                         if items[x] == new_t:
                             new_game = 1
+                            mapeditor = 0
                             loading_map("maps//", "/*.map")
                         if items[x] == load_t:
                             new_game = 0
+                            mapeditor = 0
                             loading_map("saves//", "/*.game")
                         if items[x] == world_editor_t:
+                            world = None
                             mapeditor = 1
                             loading_map("maps//", "/*.map")
                             if world: Game().run()
@@ -4776,6 +4781,7 @@ class Game:
         global filter_expand
         global PLAYING
         global alt, ctrl, shift
+        global ambient
 
         # change()
         if startpos: pos = scenary[startpos]
@@ -4829,6 +4835,7 @@ class Game:
             if nation.cities: pos = nation.cities[0].pos
             else: pos = nation.units[0].pos
             Unit.ambient = world.ambient
+            ambient = world.ambient
             Unit.ai = Ai
             scenary = world.map
         elif mapeditor:

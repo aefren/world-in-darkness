@@ -1800,6 +1800,8 @@ class Unit:
     name = str()
     namelist = None
     nick = str()
+    age = None
+    age_range = None
     units = 0
     min_units = 0
     ln = 0
@@ -1930,6 +1932,8 @@ class Unit:
     to_avoid = 0
 
     def __init__(self, nation, dead=0, units=None):
+        if self.age_range:
+            self.age = randint(age)
         if units: self.units = units
         self.hp_total = self.hp * self.units
         if dead: self.hp_total = 0
@@ -4637,10 +4641,10 @@ class Unit:
 
     def update(self):
         if self.pos: self.day_night = self.pos.day_night
-        self.month = self.ambient.smonth
-        self.season = self.ambient.sseason[0]
-        self.time = self.ambient.stime[0]
-        self.week = self.ambient.week
+        #self.month = self.ambient.smonth
+        self.season = self.ambient.sseason
+        self.time = self.ambient.stime
+        #self.week = self.ambient.week
         self.year = self.ambient.year
 
         self.goto_pos = []

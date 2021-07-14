@@ -4,6 +4,7 @@ print("es")
 about_t = "información"
 added_t = "se agregó"
 afternoon_t = "tarde"
+age_t = "edad"
 aligment_t = "alineamiento"
 animal_t = "animal"
 april_t = "abril"
