@@ -1933,7 +1933,7 @@ class Unit:
 
     def __init__(self, nation, dead=0, units=None):
         if self.age_range:
-            self.age = randint(age)
+            self.age = randint(self.age_range[0], self.age_range[1])
         if units: self.units = units
         self.hp_total = self.hp * self.units
         if dead: self.hp_total = 0
@@ -4765,6 +4765,7 @@ class Human(Unit):
     def __init__(self, nation):
         super().__init__(nation)
         Ground.__init__(self)
+        self.old_factor = 50
 
 
 class Ship(Unit):
@@ -5192,6 +5193,7 @@ class StoneCarvers2(StoneCarvers, Building):
 class Druid(Elf):
     name = "druid"
     namelist = [elves_name1, elves_name2]
+    age_range = 50, 80
     units = 5
     ln = 5
     min_units = 5
@@ -5252,6 +5254,7 @@ class Druid(Elf):
 
 class KeeperOfTheGrove (Elf):
     name = "keeper of the grove "
+    age_range = 30, 40
     namelist = [elves_name1, elves_name2]
     units = 10
     sts = 4
@@ -5310,12 +5313,12 @@ class KeeperOfTheGrove (Elf):
 class PathFinder(Elf):
     name = "Path finder"
     namelist = [elves_name1, elves_name2]
+    age_range = 20, 40
     units = 5
     sts = 2
     min_units = 5
     ln = 10
     max_squads = 1
-    can_hire = 1
     leadership = 60
     type = "infantry"
     wizard = 1
@@ -5368,6 +5371,7 @@ class PathFinder(Elf):
 class PriestessOfTheMoon(Elf):
     name = "priestess of the moon"
     namelist = [elves_name1, elves_name2]
+    age_range = 40, 90
     units = 1
     min_units = 1
     ln = 1
@@ -6460,9 +6464,11 @@ class FieldsOfJupiter(TheMarbleTemple, Building):
 
 
 # Commanders
-class Augur(Unit):
+class Augur(Human):
     name = "augur"
     namelist = [praenomen, nomen, cognomen]
+    age_range = 50, 70
+    old_factor = 200
     units = 10
     sts = 2
     min_units = 5
@@ -6519,6 +6525,7 @@ class Augur(Unit):
 class Aquilifer(Human):
     name = "aquilifer"
     namelist = [praenomen, nomen, cognomen]
+    age_range = 30, 50
     units = 20
     sts = 5
     ln = 10
@@ -6579,6 +6586,7 @@ class Aquilifer(Human):
 class Ballistarius(Human):
     name = "Ballistarius"
     namelist = [praenomen, nomen]
+    age_range = 25, 50
     units = 10
     sts = 2
     ln = 10
@@ -6636,6 +6644,7 @@ class Ballistarius(Human):
 class Centurion(Human):
     name = "centurion"
     namelist = [praenomen, nomen]
+    age_range = 30, 50
     units = 20
     sts = 4
     ln = 10
@@ -6698,6 +6707,7 @@ class Centurion(Human):
 class Decarion(Human):
     name = "decarion"
     namelist = [praenomen, nomen]
+    age_range = 20, 30
     units = 10
     sts = 2
     min_units = 10
@@ -6763,6 +6773,7 @@ class Decarion(Human):
 class Decurion(Human):
     name = "Decurion"
     namelist = [praenomen, nomen]
+    age_range = 25, 40
     units = 10
     sts = 2
     min_units = 10
@@ -6825,6 +6836,7 @@ class Decurion(Human):
 class Flamen(Human):
     name = "flamen"
     namelist = [praenomen, nomen, cognomen]
+    age_range = 30, 50
     units = 10
     sts = 2
     min_units = 10
@@ -6878,6 +6890,7 @@ class Flamen(Human):
 class Legatus(Human):
     name = "legatus"
     namelist = [praenomen, nomen, cognomen]
+    age_range = 30, 50
     units = 10
     sts = 2
     ln = 10
@@ -6936,9 +6949,10 @@ class Legatus(Human):
             self.leadership += 10
 
 
-class PontifexMaximus(Unit):
+class PontifexMaximus(Human):
     name = "pontifex maximus"
     namelist = [praenomen, nomen, cognomen]
+    age_range = 45, 60
     units = 5
     sts = 5
     min_units = 5
@@ -8080,9 +8094,10 @@ class FuneraryDungeon(Pit, Building):
 
 
 # Commanders.
-class BoierLord(Unit):
+class BoierLord(Human):
     name = boyar_lord_t
     namelist = [romanian_name1, romanian_name2]
+    age_range = 20, 40
     units = 10
     sts = 2
     min_units = 10
@@ -8139,9 +8154,10 @@ class BoierLord(Unit):
             self.leadership += 10
 
 
-class Paznic(Unit):
+class Paznic(Human):
     name = "paznic"
     namelist = [romanian_name1, romanian_name2]
+    age_range = 30, 40
     units = 10
     sts = 2
     min_units = 10
@@ -8201,9 +8217,10 @@ class Paznic(Unit):
             self.leadership += 5
 
 
-class ForgeMaster(Unit):
+class ForgeMaster(Human):
     name = "forge master"
     units = 10
+    age_range = 40, 60
     min_units = 1
     max_squads = 1
     can_hire = 1
@@ -8262,6 +8279,8 @@ class ForgeMaster(Unit):
 class Necromancer(Human):
     name = necromancer_t
     namelist = [necromancer_name1]
+    age_range = 40, 50
+    old_factor = 200
     units = 10
     ln = 10
     min_units = 1
@@ -8319,6 +8338,8 @@ class Necromancer(Human):
 class VampireCount(Undead):
     name = vampire_count_t
     namelist = [romanian_name1, romanian_name2]
+    age_range = 60, 120
+    old_factor = 200
     units = 1
     min_units = 1
     max_squads = 1
@@ -8383,6 +8404,8 @@ class VampireCount(Undead):
 class VarGhul(Undead):
     name = varghul_t
     namelist = [ghoul_name1]
+    age_range = 30, 50
+    old_factor = 40
     units = 1
     min_units = 1
     max_squads = 1
@@ -8438,6 +8461,8 @@ class VarGhul(Undead):
 class VladDracul(Undead):
     name = "Vlad Dracul"
     units = 1
+    age_range = 200, 400
+    old_factor = 200
     min_units = 1
     max_squads = 1
     can_hire = 1
@@ -8519,21 +8544,21 @@ class Adjule(Unit):
     terrain_skills = [DarkVision, DesertSurvival, NightSurvival]
 
     hp = 16
-    mp = [2, 2]
+    mp = [4, 4]
     moves = 5
     resolve = 10
     global_skills = [NightFerocity, Furtive, Regroup]
 
     dfs = 7
-    res = 8
+    res = 7
     hres = 5
     arm = 0
     armor = None
 
     weapon1 = weapons.Bite
     att1 = 1
-    off = 8
-    strn = 8
+    off = 6
+    strn = 6
 
     fear = 0
 
@@ -10331,9 +10356,10 @@ class WolfLair(Building):
 
 
 # Commanders.
-class AncientWitch(Unit):
+class AncientWitch(Human):
     name = "ancient witch"
     namelist = [female_name1, surfname1]
+    age_range = 70, 100
     units = 5
     min_units = 5
     ln = 5
@@ -10393,6 +10419,7 @@ class AncientWitch(Unit):
 class CannibalWarlord(Human):
     name = "canibal warlord"
     namelist = [male_name1 + romanian_name1, ]
+    age_range = 20, 40
     units = 10
     sts = 2
     min_units = 1
@@ -10450,9 +10477,11 @@ class CannibalWarlord(Human):
             self.leadership += 10
 
 
-class GoblinShaman(Human):
+class GoblinShaman(Unit):
     name = "goblin shaman"
     namelist = [goblin_name1]
+    age_range = 30, 40
+    old_factor = 40
     units = 10
     sts = 4
     min_units = 10
@@ -10508,6 +10537,7 @@ class GoblinShaman(Human):
 class Inquisitor(Human):
     name = inquisitors_t
     namelist = [praenomen, nomen]
+    age_range = 30, 60
     units = 10
     sts = 2
     min_units = 10
@@ -10558,9 +10588,11 @@ class Inquisitor(Human):
             self.leadership += 10
 
 
-class OrcCaptain(Human):
+class OrcCaptain(Unit):
     name = "orc captain"
     namelist = [orc_name1, orc_name2]
+    age_range = 20, 40
+    old_factor = 50
     units = 10
     sts = 2
     min_units = 10
@@ -10621,6 +10653,8 @@ class OrcCaptain(Human):
 class ShamanOfTheLostTribe(Human):
     name = "shaman of the lost tribe"
     namelist = [aztec_name1]
+    age_range = 40, 60
+    old_factor = 50
     units = 10
     sts = 4
     min_units = 1
@@ -10681,6 +10715,8 @@ class ShamanOfTheLostTribe(Human):
 class ShamanOfTheWind(Human):
     name = "shaman of the wind"
     namelist = [cold_name1]
+    age_range = 50, 70
+    old_factor = 50
     units = 10
     sts = 4
     min_units = 1
@@ -10742,6 +10778,8 @@ class ShamanOfTheWind(Human):
 class VampireLord(Undead):
     name = "vampire lord"
     namelist = [male_name1 + romanian_name1, surfname1 + romanian_name2]
+    age_range = 40, 70
+    old_factor = 200
     units = 1
     min_units = 1
     max_squads = 1
@@ -10800,9 +10838,10 @@ class VampireLord(Undead):
             self.leadership += 10
 
 
-class WarlockApprentice(Unit):
+class WarlockApprentice(Human):
     name = "warlock aprentice"
     namelist = [male_name1, surfname1]
+    age_range = 20, 30
     units = 5
     min_units = 10
     ln = 5
@@ -10859,9 +10898,11 @@ class WarlockApprentice(Unit):
             self.leadership += 10
 
 
-class Warlock(Unit):
+class Warlock(Human):
     name = "warlock"
     namelist = [barbarian_name1, surfname1]
+    age_range = 40, 70
+    old_factor = 50
     units = 5
     sts = 2
     min_units = 1
@@ -10924,6 +10965,7 @@ class Warlock(Unit):
 class Warlord(Human):
     name = "warlord"
     namelist = [barbarian_name1, barbarian_name1 + surfname1]
+    age_range = 20, 40
     units = 10
     sts = 2
     min_units = 10
@@ -10985,6 +11027,8 @@ class Warlord(Human):
 
 class WarMonger(Human):
     name = "warmonger"
+    namelist = [male_name1, surfname1]
+    age_range = 40, 60
     units = 10
     sts = 2
     min_units = 1
@@ -11032,9 +11076,10 @@ class WarMonger(Human):
             self.leadership += 10
 
 
-class Witch(Unit):
+class Witch(Human):
     name = "witch"
     namelist = [female_name1, surfname1]
+    age_range = 20, 50
     units = 5
     min_units = 5
     ln = 5
@@ -13307,8 +13352,8 @@ class SlaveWarrior(Human):
         self.favsurf = [forest_t, none_t]
 
 
-class SonOfWind(Human):
-    name = "hijo del viento"
+class StormWalkers(Human):
+    name = "Stormwalkers"
     units = 10
     min_units = 10
     ln = 10

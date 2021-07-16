@@ -42,7 +42,7 @@ pygame.init()
 # Set the width and height of the screen [width, height]
 size = (700, 500)
 screen = pygame.display.set_mode(size)
-pygame.display.set_caption("Dark Fantasy")
+pygame.display.set_caption("World in darkness")
 
 
 class Ambient:
@@ -67,6 +67,7 @@ class Ambient:
                          evening_t, night_t, midnight_t, dawn_t]]
         self.week = 1
         self.year = 1
+        self.year_change = 3
         self.update()
 
     def update(self): 
@@ -1083,6 +1084,12 @@ class World:
     def generic_events(self):
         pass
 
+    def set_new_year(self):
+        for nt in world.nations:
+            for it in nt.units:
+                if it.age: it.age += self.ambient.year_change
+        for it in world.units:
+            if it.age: it.age += self.ambient.year_change
     def season_events(self):
         self.set_master()
         self.events_num = int((self.height + self.width) * 0.1)
@@ -4311,26 +4318,30 @@ class Game:
             if x > -1 and mapeditor == 0:
                 itm = local_units[x]
                 if event.key == pygame.K_1:
-                    sp.speak(
-                        f"{itm}. leading {itm.leading} {of_t} {itm.leadership}.")
+                    sp.speak(f"{itm}.",1)
+                    if nation in itm.belongs and itm.leadership:
+                        sp.speak(f"leading {itm.leading} {of_t} {itm.leadership}.")
                     sp.speak(f"{itm.nation}.")
                 if event.key == pygame.K_2:
                     sp.speak(f"hp: {itm.hp_total}")
                     if itm.hp_res: sp.speak(
                         f"hp res: {itm.hp_res+itm.hp_res_mod}.")
-                    sp.speak(f"mp {itm.mp[0]} {of_t} {itm.mp[1]}.")
+                    if nation in itm.belongs:
+                        sp.speak(f"mp {itm.mp[0]} {of_t} {itm.mp[1]}.")
                 if event.key == pygame.K_3:
                     for sk in itm.other_skills:
                         sp.speak(f"{sk.name}")
                 if event.key == pygame.K_4:
-                    sp.speak(f"{itm.get_total_food()}")
+                    if nation in itm.belongs:
+                        sp.speak(f"{itm.get_total_food()}")
                 if event.key == pygame.K_5:
                     sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
-                    if itm.age: sp.speak(f"{age_t}: {itm.age}.",1)
+                    if itm.age: sp.speak(f"{age_t}: {itm.age}.")
                 if event.key == pygame.K_6:
-                    sp.speak(
-                        f"power {itm.power} {of_t} {itm.power_max+itm.power_max_mod}.")
-                    sp.speak(f"power res {itm.power_res}.")
+                    if nation in itm.belongs:
+                        sp.speak(
+                            f"power {itm.power} {of_t} {itm.power_max+itm.power_max_mod}.")
+                        sp.speak(f"power res {itm.power_res}.")
                 if event.key == pygame.K_0:
                     sp.speak(f" garrison {local_units[x].garrison}.", 1)
                     sp.speak(f"scout {local_units[x].scout}.")
@@ -4479,15 +4490,16 @@ class Game:
         [it.update(scenary) for it in world.nations]
         logging.debug(f"nuevo turno.")
         if world.turn > 0:
-            if ambient.time[0] >= 6:
+            if ambient.time[0] > 5:
                 ambient.time[0] = -1
                 ambient.week += 1
                 if ambient.week > 1:
                     ambient.week = 1
                     ambient.season[0] += 1
-                    if ambient.season[0] > 3:
-                        ambient.year += 1
-                
+                    if ambient.season[0] >= 3:
+                        ambient.year += ambient.year_change
+                        world.set_new_year()
+                    
 
             ambient.time[0] += 1
 
@@ -4806,7 +4818,7 @@ class Game:
         if mapeditor == 0 and new_game == 1:
             world.log = [[f"{turn_t} {world.turn}."]]
             # dificultad.
-            world.ambient = ambient
+            world.ambient = Ambient()
             world.difficulty = DIFFICULTY
             world.difficulty_type = "dynamic"
             # Random Nations.
