@@ -1,10 +1,8 @@
 #!/usr/bin/env python
-
-
-
 import copy
 
 from data import weapons
+from data.traits import trait_list
 from data.events import *
 from language import *
 from data.names import *
@@ -330,7 +328,7 @@ class City:
         self.seen_units = []
         self.hill = [0, 1]
         self.tiles = []
-        self.traits = []
+        self.physical_traits = []
         self.units = []
         self.upgrade = []
 
@@ -688,12 +686,12 @@ class City:
             self.seen_threat += uni.ranking
             if uni.aligment == wild_t: self.seen_wild += [uni]
             if uni.can_fly: self.seen_fly += [uni]
-            if human_t in uni.traits: self.seen_human += [uni]
+            if human_t in uni.physical_traits: self.seen_human += [uni]
             if uni.mounted: self.seen_mounted += [uni]
             if uni.pn: self.seen_pn += [uni]
             if uni.ranged >= 6: self.seen_ranged += [uni]
             if uni.aligment == sacred_t: self.seen_sacred += [uni]
-            if death_t in uni.traits: self.seen_undead += [uni]
+            if death_t in uni.physical_traits: self.seen_undead += [uni]
 
         self.seen_fly_rnk = sum(i.ranking for i in self.seen_fly)
         self.seen_human_rnk = sum(i.ranking for i in self.seen_human)
@@ -723,18 +721,20 @@ class City:
         self.set_units_types()
         shuffle(units)
         if basics.roll_dice(1) >= 3:
-            if info: logging.debug(f"sort by nation traits.")
-            units.sort(key=lambda x: any(
-                i in x.traits for i in self.nation.traits), reverse=True)
+            if info: logging.debug(f"sort by nation physical_traits.")
+            units.sort(
+                key=lambda x: any(
+                    i in x.physical_traits for i in self.nation.physical_traits),
+                reverse=True)
         [i.update() for i in units]
         if info: logging.debug(f"recividos {len(units)}.")
-        _wild = [i for i in units if wild_t in i.traits]
+        _wild = [i for i in units if wild_t in i.physical_traits]
         _anticav = [i for i in units if i.anticav]
         _archers = [i for i in units if i.range[1] > 5]
         _fly = [i for i in units if i.can_fly]
         _mounted = [i for i in units if i.mounted]
         _sacred = [i for i in units if i.aligment == sacred_t]
-        _death = [i for i in units if death_t in i.traits]
+        _death = [i for i in units if death_t in i.physical_traits]
         if self.defense_total_percent < 100 and self.nation.defense_total_percent < 300 or self.defense_total == 0:
             logging.debug(f"defensivo.")
             if basics.roll_dice(1) >= 3:
@@ -855,7 +855,7 @@ class City:
             logging.debug(f"set priority to units for commanders.")
             for uni in units: uni._go = 1
             for uni in units:
-                for tr in uni.traits:
+                for tr in uni.physical_traits:
                     if tr not in self.comm_lead_traits: uni._go = 0
                 if uni.aligment not in self.comm_lead_aligments: uni._go = 0
             units = [it for it in units if it._go]
@@ -878,14 +878,14 @@ class City:
         self.units_wild = []
         for i in units:
             if i.can_fly: self.units_fly += [i]
-            if human_t in i.traits: self.units_human += [i]
+            if human_t in i.physical_traits: self.units_human += [i]
             if i.range[1] < 6: self.units_melee += [i]
             if i.mounted: self.units_mounted += [i]
-            if orc_t in i.traits: self.units_orc += [i]
+            if orc_t in i.physical_traits: self.units_orc += [i]
             if i.pn: self.units_piercing += [i]
             if i.range[1] >= 6: self.units_ranged += [i]
             if i.aligment == sacred_t: self.units_sacred += [i]
-            if death_t in i.traits: self.units_death += [i]
+            if death_t in i.physical_traits: self.units_death += [i]
             if i.aligment == wild_t: self.units_wild += [i]
             if i.leadership:
                 for tr in i.lead_traits:
@@ -1243,7 +1243,8 @@ class Nation:
                 logging.debug(f"{rate=:} higher than {city.grouth_min_bu=:}.")
                 continue
             for bu in buildings:
-                if len(city.buildings_food) >= 3 and city.defense_total_percent < 250:
+                if len(
+                        city.buildings_food) >= 3 and city.defense_total_percent < 250:
                     if info: logging.debug(
                         f"3 buildings. need more defense_total")
                     return
@@ -1743,15 +1744,15 @@ class Nation:
                     self.units.append(uni)
         for i in self.units: i.update()
         for uni in self.units:
-            if animal_t in uni.traits: self.units_animal.append(uni)
+            if animal_t in uni.physical_traits: self.units_animal.append(uni)
             if uni.can_fly: self.units_fly.append(uni)
-            if human_t in uni.traits: self.units_human.append(uni)
+            if human_t in uni.physical_traits: self.units_human.append(uni)
             if uni.range[1] < 6: self.units_melee.append(uni)
             if uni.mounted: self.units_mounted.append(uni)
             if uni.pn: self.units_piercing.append(uni)
             if uni.range[1] >= 6: self.units_ranged.append(uni)
-            if sacred_t in uni.traits: self.units_sacred.append(uni)
-            if undead_t in uni.traits: self.units_undead.append(uni)
+            if sacred_t in uni.physical_traits: self.units_sacred.append(uni)
+            if undead_t in uni.physical_traits: self.units_undead.append(uni)
 
         self.production = []
         for c in self.cities:
@@ -1818,7 +1819,7 @@ class Unit:
     wizard = 0
     xp = 0
     unique = 0
-    traits = []
+    physical_traits = []
     train_rate = 1
     gold = 0
     hire_rate = 1
@@ -1951,7 +1952,9 @@ class Unit:
         self.other_skills = []
         self.spells = [i(self) for i in self.spells]
         self.squads_position = [self]
-        self.traits = [i for i in self.traits]
+        self.physical_traits = [i for i in self.physical_traits]
+        self.traits = []
+        if self.leadership: self.add_starting_traits()
         self.terrain_skills = [i(self) for i in self.terrain_skills]
         if self.weapon1: self.weapon1 = self.weapon1(self)
         if self.weapon2: self.weapon2 = self.weapon2(self)
@@ -2011,6 +2014,19 @@ class Unit:
                 return
         pos.units += [unit]
 
+    def add_starting_traits(self):
+        traits = [it for it in trait_list]
+        shuffle(traits)
+        for i in range(randint(1,4)):
+            self.add_trait(traits.pop())
+
+    def add_trait(self, trait):
+        trait = trait()
+        self.traits += [trait]
+        exclude_names = [tr.name for tr in trait.exclude]
+        for tr in self.traits:
+            if tr.name in exclude_names:
+                self.traits = [it for it in self.traits if it != tr]
     def auto_attack(self):
         target = self.set_attack()
         if target:
@@ -2021,8 +2037,8 @@ class Unit:
             return 1
 
     def autokill(self):
-        if (self.pos.get_nearest_nation() >= 6 
-            and self in self.pos.world.units and self.leadership == 0):
+        if (self.pos.get_nearest_nation() >= 6
+                and self in self.pos.world.units and self.leadership == 0):
             self.hp_total = 0
             loadsound("set9")
 
@@ -2653,7 +2669,7 @@ class Unit:
             f"{deads_t} {self.target.deads[-1]}."]
 
     def combat_sacred_damage(self, damage, target, info=0):
-        if self.damage_sacred + self.damage_sacred_mod and undead_t in target.traits:
+        if self.damage_sacred + self.damage_sacred_mod and undead_t in target.physical_traits:
             damage += self.damage_sacred
             if info: logging.debug(f"damage holy {self.damage_sacred}.")
             return damage
@@ -2885,7 +2901,7 @@ class Unit:
         self.update()
         if info: logging.debug(
             f"{self} retreat units {self.units} hp {self.hp_total}.")
-        if death_t in self.traits:
+        if death_t in self.physical_traits:
             logging.debug(f"{death_t}.")
             return
         dead = self.deads[-1]
@@ -2980,6 +2996,8 @@ class Unit:
                 break
 
     def disband(self, hired=0):
+        skill_names = [sk.name for sk in self.skills]
+        if Intoxicated.name in skill_names: return
         if self.hired:
             self.pos.units.remove(self)
             self.nation.update(self.pos.scenary)
@@ -3064,7 +3082,7 @@ class Unit:
                 units += [i for i in bu.av_units]
         for uni in units:
             uni._go = 1
-            for t in uni.traits:
+            for t in uni.physical_traits:
                 if t not in self.lead_traits: uni._go = 0
             if uni.aligment not in self.lead_aligments: uni._go = 0
 
@@ -3237,20 +3255,25 @@ class Unit:
                 ]
                 if self.leadership:
                     lista += [
-                        f"{leadership_t} {self.leadership} {leading_t} {self.leading}.",
+                        f"{leadership_t} {self.leadership}.",
                         f"lead traits {self.lead_traits}.",
                         f"lead_aligments {self.lead_aligments}."]
                 if special_traits: lista += [f"{special_traits}."]
                 lista += [
                     # f"{type_t}: {self.type}.",
                     f"effects {effects}.",
-                    f"{traits_t}: {self.traits}.",
+                    f"physical {traits_t}: {self.physical_traits}.",
+                    ]
+                if self in self.nation.units: lista += [
+                    f"{traits_t} {[tr.name for tr in self.traits]}.",
+                    ]
+                lista += [
                     f"{aligment_t}: {self.aligment}.",
                     f"{size_t} {self.size}.",
                     f"{gold_t} {self.gold}, {upkeep_t} {self.upkeep} ({self.upkeep_total}).",
                     f"{resources_t} {self.resource_cost}.",
                     f"{population_t} {self.pop} ({self.total_pop})>",
-                    f"{food_t} {self.get_total_food()}.",
+                    f"{self.get_total_food()}.",
                     f"terrain skills {terrain_skills}.",
                     f"{health_t} {self.hp}. "
                     f"{restores_t} {self.hp_res+self.hp_res_mod} (+{self.hp_res_mod}).",
@@ -3481,9 +3504,9 @@ class Unit:
         self.pos.update(self.nation)
         ranking = self.ranking
         threat = goto.threat
-        if goto.hill and mountain_survival_t not in self.traits: threat *= 1.2
-        if goto.surf.name == forest_t and forest_survival_t not in self.traits: threat *= 1.2
-        if goto.surf.name == swamp_t and swamp_survival_t not in self.traits: threat *= 1.2
+        if goto.hill and mountain_survival_t not in self.physical_traits: threat *= 1.2
+        if goto.surf.name == forest_t and forest_survival_t not in self.physical_traits: threat *= 1.2
+        if goto.surf.name == swamp_t and swamp_survival_t not in self.physical_traits: threat *= 1.2
         if info: logging.debug(f"ranking {round(ranking)} vs {round(threat)}.")
 
         alt = goto.get_near_tiles(1)
@@ -3969,7 +3992,7 @@ class Unit:
         while True:
             sleep(0.001)
             if say:
-                sp.speak(f"{items[x]}.", 1)
+                sp.speak(f"{items[x].basic_info()}.")
                 say = 0
 
             for event in pygame.event.get():
@@ -4289,7 +4312,7 @@ class Unit:
         for it in units:
             if it.leadership or it.leader: it._go = 0
             if it.nation not in self.belongs: it._go = 0
-            for tr in it.traits:
+            for tr in it.physical_traits:
                 if tr not in self.lead_traits: it._go = 0
             if it.aligment not in self.lead_aligments: it._go = 0
         units = [it for it in units if it._go]
@@ -4654,7 +4677,7 @@ class Unit:
             if self.nation and self.nation.cities: self.city = choice(
                 self.nation.cities)
 
-        # si pos.
+        # If pos.
         if self.pos:
             if self.log == []: self.log.append(
                 [f"{turn_t} {self.pos.world.turn}."])
@@ -4663,6 +4686,8 @@ class Unit:
                 # logging.debug(f"hostiles explorados {len(self.tiles_hostile)}.")
 
         # atributos.
+        self.all_traits = [tr if isinstance(tr, str) else tr.name for tr in self.traits + self.physical_traits]
+
         self.ranged = 0
         try:
             self.units = ceil(self.hp_total / self.hp)
@@ -4673,7 +4698,7 @@ class Unit:
         if self.mp[0] < 0: self.mp[0] = 0
         self.total_pop = self.pop * self.units
         self.upkeep_total = self.upkeep * self.units
-        if death_t in self.traits:
+        if death_t in self.physical_traits:
             self.can_recall = 0
             self.pop = 0
         if self.can_hide: self.hidden = 1
@@ -4787,7 +4812,7 @@ class Undead(Unit):
 # edificios.
 class Hall(City):
     name = hall_t
-    traits = [elf_t]
+    physical_traits = [elf_t]
     events = [Starving, Unrest, Looting, Revolt]
     food = 50
     food_rate = 80
@@ -5199,11 +5224,11 @@ class Druid(Elf):
     min_units = 5
     max_squads = 1
     can_hire = 1
-    leadership = 40
+    leadership = 30
     poisonres = 1
     type = "infantry"
     wizard = 1
-    traits = [elf_t, ]
+    physical_traits = [elf_t, ]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -5224,8 +5249,8 @@ class Druid(Elf):
     global_skills = [ForestWalker, Furtive]
 
     dfs = 8
-    res = 8
-    hres = 4
+    res = 7
+    hres = 2
     arm = 0
     armor = None
 
@@ -5233,7 +5258,7 @@ class Druid(Elf):
     att1 = 1
     weapon2 = weapons.ToxicDagger
     att2 = 1
-    off = 8
+    off = 7
     strn = 5
     offensive_skills = [Ambushment]
 
@@ -5247,8 +5272,14 @@ class Druid(Elf):
         self.spells = [HealingRoots, SummonClayGolem, SummonFalcons]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 5
 
 
@@ -5257,7 +5288,7 @@ class KeeperOfTheGrove (Elf):
     age_range = 30, 40
     namelist = [elves_name1, elves_name2]
     units = 10
-    sts = 4
+    sts = 2
     ln = 10
     min_units = 10
     max_squads = 1
@@ -5265,7 +5296,7 @@ class KeeperOfTheGrove (Elf):
     leadership = 60
     type = "infantry"
     wizard = 1
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -5275,7 +5306,7 @@ class KeeperOfTheGrove (Elf):
     pop = 2
     terrain_skills = [DarkVision, ForestSurvival]
 
-    hp = 10
+    hp = 14
     sight = 5
     mp = [2, 2]
     moves = 7
@@ -5283,16 +5314,16 @@ class KeeperOfTheGrove (Elf):
     power = 0
     power_max = 30
     power_res = 3
-    global_skills = [ForestWalker, Furtive, PyreOfCorpses, Regroup]
+    global_skills = [ForestWalker, Furtive, Organization, PyreOfCorpses, Regroup]
 
     dfs = 11
-    res = 12
+    res = 10
     hres = 4
     arm = 0
     armor = MediumArmor()
 
     weapon1 = weapons.GreatSword
-    att1 = 2
+    att1 = 1
     off = 10
     strn = 10
 
@@ -5305,8 +5336,14 @@ class KeeperOfTheGrove (Elf):
         self.spells = []  # [Entangling Roots ]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -5314,20 +5351,20 @@ class PathFinder(Elf):
     name = "Path finder"
     namelist = [elves_name1, elves_name2]
     age_range = 20, 40
-    units = 5
-    sts = 2
-    min_units = 5
+    units = 3
+    sts = 1
+    min_units = 3
     ln = 10
     max_squads = 1
-    leadership = 60
+    leadership = 50
     type = "infantry"
     wizard = 1
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 3
-    train_rate = 2
-    upkeep = 25
-    resource_cost = 20
+    train_rate = 2.5
+    upkeep = 60
+    resource_cost = 26
     food = 6
     pop = 3
     terrain_skills = [DarkVision, ForestSurvival]
@@ -5340,20 +5377,21 @@ class PathFinder(Elf):
     power = 0
     power_max = 60
     power_res = 5
-    global_skills = [ForestWalker, Furtive, Organization, PyreOfCorpses]
+    global_skills = [ForestWalker, Furtive, PyreOfCorpses]
 
     dfs = 8
-    res = 7
+    res = 8
     hres = 4
     arm = 0
     armor = LightArmor()
+    shield = Shield()
 
     weapon1 = weapons.LongBow
-    att1 = 1
+    att1 = 2
     weapon2 = weapons.ShortSword
     att2 = 1
-    off = 7
-    strn = 7
+    off = 8
+    strn = 8
 
     lead_traits = [elf_t, human_t]
     lead_aligments = [order_t, wild_t]
@@ -5363,9 +5401,16 @@ class PathFinder(Elf):
         self.spells = []  # [Entangling Roots ]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+            self.global_skills += [Organization(self)]
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 10
 
 
 class PriestessOfTheMoon(Elf):
@@ -5381,7 +5426,7 @@ class PriestessOfTheMoon(Elf):
     leadership = 60
     type = "infantry"
     wizard = 1
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 3
     train_rate = 3
@@ -5412,7 +5457,7 @@ class PriestessOfTheMoon(Elf):
     att1 = 1
     weapon2 = weapons.TigerFangs
     att2 = 1
-    off = 18
+    off = 14
     strn = 12
 
     lead_traits = [elf_t, human_t]
@@ -5423,8 +5468,14 @@ class PriestessOfTheMoon(Elf):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -5436,7 +5487,7 @@ class AwakenTree(Elf):
     max_squads = 6
     poisonres = 1
     type = "infantry"
-    traits = [tree_t]
+    physical_traits = [tree_t]
     aligment = wild_t
     size = 6
     train_rate = 3
@@ -5484,7 +5535,7 @@ class BladeDancer(Elf):
     ln = 10
     max_squads = 5
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -5530,7 +5581,7 @@ class DemonHunter(Elf):
     min_units = 1
     max_squads = 1
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -5572,7 +5623,7 @@ class Driad(Elf):
     max_squads = 5
     poisonres = 1
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -5617,7 +5668,7 @@ class EternalGuard(Elf):
     ln = 10
     max_squads = 3
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 2
@@ -5662,7 +5713,7 @@ class Falcon(Elf):
     ln = 20
     max_squads = 10
     type = "beast"
-    traits = [falcon_t]
+    physical_traits = [falcon_t]
     aligment = nature_t
     size = 1
     train_rate = 3
@@ -5704,7 +5755,7 @@ class ForestBear(Unit):
     ln = 7
     max_squads = 10
     type = "beast"
-    traits = [bear_t]
+    physical_traits = [bear_t]
     aligment = nature_t
     size = 3
     train_rate = 2
@@ -5748,7 +5799,7 @@ class ForestEagle(Elf):
     ln = 20
     max_squads = 10
     type = "beast"
-    traits = [eagle_t]
+    physical_traits = [eagle_t]
     aligment = nature_t
     size = 2
     train_rate = 3
@@ -5789,7 +5840,7 @@ class GreatEagle(Elf):
     min_units = 1
     max_squads = 1
     type = "beast"
-    traits = [eagle_t]
+    physical_traits = [eagle_t]
     aligment = nature_t
     size = 3
     train_rate = 4
@@ -5830,7 +5881,7 @@ class ForestGiant(Unit):
     ln = 5
     max_squads = 6
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = wild_t
     size = 4
     train_rate = 2
@@ -5876,7 +5927,7 @@ class ForestGuard(Elf):
     ln = 10
     max_squads = 10
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -5921,7 +5972,7 @@ class ForestRider(Elf):
     max_squads = 6
     type = "cavalry"
     mounted = 1
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 3
     train_rate = 3
@@ -5968,7 +6019,7 @@ class ElvesSettler(Human):
     max_squads = 1
     settler = 1
     type = "civil"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -6006,7 +6057,7 @@ class Huntress(Elf):
     min_units = 5
     max_squads = 5
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -6052,7 +6103,7 @@ class WoodArcher(Elf):
     min_units = 10
     max_squads = 5
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 2
@@ -6097,7 +6148,7 @@ class SisterFromTheDeepth(Elf):
     max_squads = 6
     poisonres = 1
     type = "infantry"
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -6144,7 +6195,7 @@ class ElkRider(Elf):
     max_squads = 6
     type = "cavalry"
     mounted = 1
-    traits = [elf_t]
+    physical_traits = [elf_t]
     aligment = wild_t
     size = 4
     train_rate = 3
@@ -6185,7 +6236,7 @@ class ElkRider(Elf):
 # Holy empire.
 class Hamlet(City):
     name = hamlet_t
-    traits = [human_t]
+    physical_traits = [human_t]
     events = [Starving, Unrest, Looting, Revolt]
     food = 50
     food_rate = 80
@@ -6478,7 +6529,7 @@ class Augur(Human):
     leadership = 30
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 3
@@ -6487,7 +6538,7 @@ class Augur(Human):
     food = 3
     pop = 3
 
-    hp = 10
+    hp = 12
     sight = 2
     mp = [2, 2]
     moves = 5
@@ -6505,7 +6556,6 @@ class Augur(Human):
 
     weapon1 = weapons.Staff
     att1 = 1
-    att1 = 1
     off = 7
     strn = 5
 
@@ -6517,8 +6567,14 @@ class Augur(Human):
         self.spells = [HealingRoots, SightFromFuture]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 5
 
 
@@ -6536,7 +6592,7 @@ class Aquilifer(Human):
     leadership = 80
     unique = 1
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 3
@@ -6578,8 +6634,14 @@ class Aquilifer(Human):
         self.spells = [RecruitLevy]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -6595,7 +6657,7 @@ class Ballistarius(Human):
     can_hire = 1
     leadership = 40
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -6604,9 +6666,8 @@ class Ballistarius(Human):
     food = 5
     pop = 2.5
     terrain_skills = []
-    tags = ["commander"]
 
-    hp = 10
+    hp = 12
     power = 2
     power_max = 6
     power_res = 2
@@ -6621,14 +6682,13 @@ class Ballistarius(Human):
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
     weapon1 = weapons.GreatSword
-    att1 = 2
+    att1 = 1
     weapon2 = weapons.Pugio
     att2 = 1
     off = 8
-    strn = 12
+    strn = 10
     offensive_skills = []
 
     can_hire = 1
@@ -6639,21 +6699,32 @@ class Ballistarius(Human):
         super().__init__(nation)
         self.spells = []
         self.mp = [2, 2]
+    def levelup(self):
+        if self.xp >= 10 and self.level == 1:
+            self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 10
+
 
 
 class Centurion(Human):
     name = "centurion"
     namelist = [praenomen, nomen]
     age_range = 30, 50
-    units = 20
+    units = 10
     sts = 4
     ln = 10
     min_units = 10
     max_squads = 1
     can_hire = 1
-    leadership = 100
+    leadership = 80
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
@@ -6679,15 +6750,13 @@ class Centurion(Human):
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
     weapon1 = weapons.GreatSword
-    att1 = 2
+    att1 = 1
     weapon2 = weapons.Pugio
     att2 = 1
     off = 10
-    strn = 12
-    offensive_skills = []
+    strn = 10
 
     can_hire = 1
     lead_traits = [human_t]
@@ -6699,8 +6768,14 @@ class Centurion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -6708,15 +6783,15 @@ class Decarion(Human):
     name = "decarion"
     namelist = [praenomen, nomen]
     age_range = 20, 30
-    units = 10
+    units = 5
     sts = 2
-    min_units = 10
+    min_units = 5
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 60
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -6727,7 +6802,7 @@ class Decarion(Human):
     terrain_skills = []
     tags = ["commander"]
 
-    hp = 10
+    hp = 12
     power = 2
     power_max = 6
     power_res = 2
@@ -6742,15 +6817,13 @@ class Decarion(Human):
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
-    weapon1 = weapons.GreatSword
+    weapon1 = weapons.Sword
     att1 = 2
     weapon2 = weapons.Pugio
     att2 = 1
     off = 9
     strn = 9
-    offensive_skills = []
 
     can_hire = 1
     lead_traits = [human_t]
@@ -6762,27 +6835,31 @@ class Decarion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
             self.leadership += 10
-        if self.xp >= 30 and self.level == 2:
+        if self.xp >= 25 and self.level == 2:
             self.level = 3
             self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 10
+
 
 
 class Decurion(Human):
     name = "Decurion"
     namelist = [praenomen, nomen]
     age_range = 25, 40
-    units = 10
+    units = 5
     sts = 2
-    min_units = 10
+    min_units = 5
     max_squads = 1
     can_hire = 1
     leadership = 70
     type = "infantry"
     mounted = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
@@ -6808,15 +6885,13 @@ class Decurion(Human):
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
     weapon1 = weapons.GreatSword
-    att1 = 2
+    att1 = 1
     weapon2 = weapons.Pugio
     att2 = 1
     off = 9
-    strn = 12
-    offensive_skills = []
+    strn = 10
 
     can_hire = 1
     lead_traits = [human_t]
@@ -6828,25 +6903,31 @@ class Decurion(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
-            self.leadership += 10
+            self.leadership += 5
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 5
 
 
 class Flamen(Human):
     name = "flamen"
     namelist = [praenomen, nomen, cognomen]
     age_range = 30, 50
-    units = 10
+    units = 5
     sts = 2
-    min_units = 10
+    min_units = 5
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 30
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 3
@@ -6855,7 +6936,7 @@ class Flamen(Human):
     food = 3
     pop = 4
 
-    hp = 15
+    hp = 10
     mp = [2, 2]
     moves = 5
     resolve = 8
@@ -6871,7 +6952,7 @@ class Flamen(Human):
 
     weapon1 = weapons.Staff
     att1 = 1
-    off = 8
+    off = 6
     strn = 5
 
     lead_traits = [human_t]
@@ -6882,8 +6963,14 @@ class Flamen(Human):
         self.spells = [BlessingWeapons]  # Cleanship
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
+        if self.xp >= 45 and self.level == 3:
+            self.level = 4
             self.leadership += 5
 
 
@@ -6899,7 +6986,7 @@ class Legatus(Human):
     can_hire = 1
     leadership = 140
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
@@ -6919,21 +7006,19 @@ class Legatus(Human):
     resolve = 8
     global_skills = [HoldPositions, Organization, Regroup]
 
-    dfs = 10
+    dfs = 12
     res = 10
     hres = 4
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
     weapon1 = weapons.GreatSword
-    att1 = 2
+    att1 = 1
     weapon2 = weapons.Pugio
     att2 = 1
     off = 10
     strn = 12
-    offensive_skills = []
 
     lead_traits = [human_t]
     lead_aligments = [order_t]
@@ -6944,8 +7029,14 @@ class Legatus(Human):
         self.mp = [2, 2]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 45 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -6953,16 +7044,16 @@ class PontifexMaximus(Human):
     name = "pontifex maximus"
     namelist = [praenomen, nomen, cognomen]
     age_range = 45, 60
-    units = 5
+    units = 10
     sts = 5
-    min_units = 5
+    min_units = 10
     ln = 10
     max_squads = 1
     leadership = 40
     unique = 1
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 3
@@ -6999,8 +7090,14 @@ class PontifexMaximus(Human):
         self.spells = [SummonSecondSun, SummonDevourerOfDemons]
 
     def levelup(self):
-        if self.xp >= 30 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
+        if self.xp >= 45 and self.level == 3:
+            self.level = 4
             self.leadership += 5
 
 
@@ -7013,7 +7110,7 @@ class Settler(Human):
     max_squads = 1
     settler = 1
     type = "civil"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 4
@@ -7052,7 +7149,7 @@ class Flagellant(Human):
     ln = 10
     max_squads = 10
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 1.5
@@ -7096,7 +7193,7 @@ class RebornOne(Human):
     ln = 10
     max_squads = 10
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 2
@@ -7139,7 +7236,7 @@ class Velites(Human):
     ln = 10
     max_squads = 6
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -7182,7 +7279,7 @@ class ImperialGuard(Human):
     ln = 10
     max_squads = 3
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -7225,7 +7322,7 @@ class Hastati(Human):
     ln = 10
     max_squads = 3
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -7268,7 +7365,7 @@ class Principes(Human):
     ln = 10
     max_squads = 6
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
@@ -7311,7 +7408,7 @@ class Halberdier(Human):
     ln = 10
     max_squads = 6
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
@@ -7353,7 +7450,7 @@ class SacredWarrior(Human):
     ln = 10
     max_squads = 6
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 2.5
@@ -7396,7 +7493,7 @@ class KnightsTemplar (Human):
     ln = 5
     max_squads = 6
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 2
@@ -7438,7 +7535,7 @@ class Sagittarii(Human):
     min_units = 10
     max_squads = 4
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -7480,7 +7577,7 @@ class CrossBowMan(Human):
     min_units = 10
     max_squads = 3
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -7521,7 +7618,7 @@ class Arquebusier(Human):
     min_units = 10
     max_squads = 5
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -7559,7 +7656,7 @@ class Musket(Human):
     min_units = 10
     max_squads = 5
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -7598,7 +7695,7 @@ class Equite(Human):
     max_squads = 6
     type = "cavalry"
     mounted = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 3
     train_rate = 2
@@ -7646,7 +7743,7 @@ class Equites2(Human):
     max_squads = 6
     type = "cavalry"
     mounted = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 3
     train_rate = 3
@@ -7690,7 +7787,7 @@ class Gryphon(Unit):
     ln = 5
     max_squads = 5
     type = "beast"
-    traits = [gryphon_t]
+    physical_traits = [gryphon_t]
     aligment = wild_t
     size = 4
     train_rate = 3
@@ -7733,7 +7830,7 @@ class GryphonRiders(Unit):
     max_squads = 5
     type = "beast"
     mounted = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 4
     train_rate = 4.5
@@ -7771,7 +7868,7 @@ class GryphonRiders(Unit):
 # Vampiros.
 class CursedHamlet(City):
     name = cursed_hamlet_t
-    traits = [death_t, malignant_t]
+    physical_traits = [death_t, malignant_t]
     events = [Starving, Looting, Reanimation, Revolt]
     food = 200
     food_rate = 60
@@ -8098,23 +8195,23 @@ class BoierLord(Human):
     name = boyar_lord_t
     namelist = [romanian_name1, romanian_name2]
     age_range = 20, 40
-    units = 10
+    units = 5
     sts = 2
-    min_units = 10
+    min_units = 5
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 60
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
-    upkeep = 18
+    upkeep = 20
     resource_cost = 15
     food = 4
-    pop = 4
+    pop = 5
     terrain_skills = [Burn, Raid]
 
     hp = 10
@@ -8149,8 +8246,14 @@ class BoierLord(Human):
         self.spells = [RecruitLevy]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
             self.leadership += 10
 
 
@@ -8168,7 +8271,7 @@ class Paznic(Human):
     poisonres = 1
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -8209,29 +8312,31 @@ class Paznic(Human):
         self.corpses = [BloodSkeleton]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
-            self.leadership += 5
-        if self.xp >= 30 and self.level == 2:
+            self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
             self.level = 3
-            self.leadership += 5
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 10
 
 
 class ForgeMaster(Human):
     name = "forge master"
     units = 10
     age_range = 40, 60
-    min_units = 1
+    min_units = 10
     max_squads = 1
     can_hire = 1
     leadership = 120
     unique = 1
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = malignant_t
     size = 2
-    unique = 1
     train_rate = 3
     upkeep = 33
     resource_cost = 25
@@ -8271,9 +8376,15 @@ class ForgeMaster(Human):
         self.spells = [RaiseBloodSkeleton, RaiseFellBat]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
             self.leadership += 10
+        if self.xp >= 25 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
+        if self.xp >= 40 and self.level == 3:
+            self.level = 4
+            self.leadership += 5
 
 
 class Necromancer(Human):
@@ -8281,15 +8392,15 @@ class Necromancer(Human):
     namelist = [necromancer_name1]
     age_range = 40, 50
     old_factor = 200
-    units = 10
-    ln = 10
-    min_units = 1
+    units = 5
+    ln = 5
+    min_units = 5
     max_squads = 1
     can_hire = 1
     leadership = 40
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -8333,6 +8444,13 @@ class Necromancer(Human):
         self.spells = [CastWailingWinds, RaiseDead]
         self.favhill = [1]
         self.favsurf = [forest_t, swamp_t]
+    def levelup(self):
+        if self.xp >= 10 and self.level == 1:
+            self.level = 2
+            self.leadership += 5
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
 
 
 class VampireCount(Undead):
@@ -8346,7 +8464,7 @@ class VampireCount(Undead):
     can_hire = 1
     leadership = 80
     type = "beast"
-    traits = [blood_drinker_t, vampire_t]
+    physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 2
     train_rate = 2.5
@@ -8412,7 +8530,7 @@ class VarGhul(Undead):
     ln = 1
     leadership = 40
     type = "beast"
-    traits = [death_t, blood_drinker_t]
+    physical_traits = [death_t, blood_drinker_t]
     aligment = malignant_t
     size = 3
     train_rate = 3
@@ -8453,7 +8571,7 @@ class VarGhul(Undead):
         self.spells = [EatCorpses]
 
     def levelup(self):
-        if self.xp >= 40 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
             self.leadership += 5
 
@@ -8466,12 +8584,12 @@ class VladDracul(Undead):
     min_units = 1
     max_squads = 1
     can_hire = 1
-    leadership = 160
+    leadership = 90
     is_leader = 1
     unique = 1
     type = "beast"
     wizard = 1
-    traits = [death_t, blood_drinker_t, vampire_t]
+    physical_traits = [death_t, blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 2
     train_rate = 3
@@ -8520,9 +8638,12 @@ class VladDracul(Undead):
         self.favhill = 0, 1
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 5
+            self.leadership += 10
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 10
 
 
 # unidades.
@@ -8533,7 +8654,7 @@ class Adjule(Unit):
     ln = 15
     max_squads = 5
     type = beast_t
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -8578,7 +8699,7 @@ class WailingLady(Undead):
     max_squads = 1
     ethereal = 1
     type = "infantry"
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = hell_t
     size = 2
     train_rate = 2
@@ -8623,7 +8744,7 @@ class Bat(Unit):
     max_squads = 10
     poisonres = 1
     type = "beast"
-    traits = [bat_t]
+    physical_traits = [bat_t]
     aligment = nature_t
     size = 1
     train_rate = 1.5
@@ -8670,7 +8791,7 @@ class BlackKnight(Undead):
     max_squads = 6
     type = "cavalry"
     mounted = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 3
     train_rate = 2
@@ -8718,7 +8839,7 @@ class BloodKnight(Undead):
     ln = 10
     max_squads = 20
     type = "infantry"
-    traits = [death_t, blood_drinker_t]
+    physical_traits = [death_t, blood_drinker_t]
     aligment = malignant_t
     size = 2
     train_rate = 2.5
@@ -8763,7 +8884,7 @@ class CryptHorror(Undead):
     ln = 5
     max_squads = 20
     type = "beast"
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 4
     train_rate = 3
@@ -8805,7 +8926,7 @@ class DireWolf(Undead):
     ln = 7
     max_squads = 20
     type = "beast"
-    traits = [death_t, wolf_t]
+    physical_traits = [death_t, wolf_t]
     aligment = malignant_t
     size = 3
     train_rate = 2
@@ -8850,7 +8971,7 @@ class Draugr(Unit):
     ln = 5
     max_squads = 20
     type = "infantry"
-    traits = [death_t, blood_drinker_t]
+    physical_traits = [death_t, blood_drinker_t]
     aligment = malignant_t
     size = 4
     train_rate = 2
@@ -8901,7 +9022,7 @@ class FellBat(Undead):
     ln = 15
     max_squads = 10
     type = beast_t
-    traits = [death_t, bat_t, blood_drinker_t]
+    physical_traits = [death_t, bat_t, blood_drinker_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -8948,7 +9069,7 @@ class Ghoul(Human):
     max_squads = 5
     poisonres = 1
     type = "infantry"
-    traits = [human_t, blood_drinker_t]
+    physical_traits = [human_t, blood_drinker_t]
     aligment = malignant_t
     size = 2
     train_rate = 1.5
@@ -8997,7 +9118,7 @@ class GraveGuard(Undead):
     ln = 10
     max_squads = 8
     type = "infantry"
-    traits = [death_t, ]
+    physical_traits = [death_t, ]
     aligment = malignant_t
     size = 2
     train_rate = 2.5
@@ -9042,7 +9163,7 @@ class Settler2(Human):
     max_squads = 1
     settler = 1
     type = "civil"
-    traits = [human_t]
+    physical_traits = [human_t]
     size = 2
     aligment = order_t
     train_rate = 3.5
@@ -9082,7 +9203,7 @@ class Skeleton(Undead):
     max_squads = 10
     type = "infantry"
     will_less = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 2
     train_rate = 1.5
@@ -9125,7 +9246,7 @@ class BloodSkeleton(Undead):
     max_squads = 10
     type = "infantry"
     will_less = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -9168,7 +9289,7 @@ class SpectralInfantry(Unit):
     max_squads = 10
     type = "infantry"
     will_less = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = wild_t
     size = 2
     train_rate = 2.5
@@ -9211,7 +9332,7 @@ class Vampire(Undead):
     ln = 10
     max_squads = 20
     type = "beast"
-    traits = [blood_drinker_t, vampire_t]
+    physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
@@ -9260,7 +9381,7 @@ class Vargheist(Undead):
     ln = 7
     max_squads = 3
     type = "beast"
-    traits = [blood_drinker_t, vampire_t]
+    physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 3
     train_rate = 2.5
@@ -9310,7 +9431,7 @@ class Zombie(Undead, Ground):
     max_squads = 20
     type = "infantry"
     will_less = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 2
     train_rate = 1.5
@@ -9580,7 +9701,7 @@ class SlaveMarket(Building):
 class HolyEmpire(Nation):
     name = holy_empire_t
     nick = nation_phrase1_t
-    traits = [human_t, sacred_t]
+    physical_traits = [human_t, sacred_t]
     capital_pop_bonus = 100
     expansion = 1000
     gold = 8000
@@ -9671,7 +9792,7 @@ class HolyEmpire(Nation):
 class WoodElves(Nation):
     name = wood_elves_t
     nick = ""
-    traits = [elf_t, wild_t]
+    physical_traits = [elf_t, wild_t]
     capital_pop_bonus = 140
     expansion = 2500
     gold = 8000
@@ -9759,7 +9880,7 @@ class WoodElves(Nation):
 class Valahia(Nation):
     name = valahia_t
     nick = nation_phrase2_t
-    traits = [blood_drinker_t, death_t, vampire_t]
+    physical_traits = [blood_drinker_t, death_t, vampire_t]
     capital_pop_bonus = 120
     expansion = 1500
     gold = 8000
@@ -10367,7 +10488,7 @@ class AncientWitch(Human):
     leadership = 50
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 3
@@ -10420,15 +10541,15 @@ class CannibalWarlord(Human):
     name = "canibal warlord"
     namelist = [male_name1 + romanian_name1, ]
     age_range = 20, 40
-    units = 10
+    units = 3
     sts = 2
-    min_units = 1
+    min_units = 3
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 60
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = hell_t
     size = 2
     train_rate = 2
@@ -10457,8 +10578,8 @@ class CannibalWarlord(Human):
 
     weapon1 = weapons.Sword
     att1 = 1
-    off = 8
-    strn = 19
+    off = 9
+    strn = 9
     offensive_skills = []
 
     can_hire = 1
@@ -10472,8 +10593,11 @@ class CannibalWarlord(Human):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
             self.leadership += 10
 
 
@@ -10482,15 +10606,15 @@ class GoblinShaman(Unit):
     namelist = [goblin_name1]
     age_range = 30, 40
     old_factor = 40
-    units = 10
+    units = 3
     sts = 4
-    min_units = 10
+    min_units = 3
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 60
     type = "infantry"
-    traits = [goblin_t]
+    physical_traits = [goblin_t]
     aligment = orcs_t
     size = 2
     train_rate = 2
@@ -10499,13 +10623,13 @@ class GoblinShaman(Unit):
     food = 4
     pop = 3
 
-    hp = 7
+    hp = 8
     mp = [2, 2]
     moves = 6
     resolve = 6
     global_skills = []  # grant night vision.
 
-    dfs = 6
+    dfs = 8
     res = 6
     hres = 1
     arm = 0
@@ -10516,7 +10640,7 @@ class GoblinShaman(Unit):
     att1 = 2
     weapon2 = weapons.Fist
     att2 = 1
-    off = 5
+    off = 7
     strn = 6
     offensive_skills = []
 
@@ -10532,21 +10656,24 @@ class GoblinShaman(Unit):
         if self.xp >= 15 and self.level == 1:
             self.level = 2
             self.leadership += 15
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 15
 
 
 class Inquisitor(Human):
     name = inquisitors_t
     namelist = [praenomen, nomen]
     age_range = 30, 60
-    units = 10
-    sts = 2
-    min_units = 10
+    units = 3
+    sts = 1
+    min_units = 3
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 40
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = sacred_t
     size = 2
     train_rate = 2
@@ -10583,9 +10710,12 @@ class Inquisitor(Human):
         self.corpses = [Skeleton]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 10
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
 
 
 class OrcCaptain(Unit):
@@ -10593,45 +10723,43 @@ class OrcCaptain(Unit):
     namelist = [orc_name1, orc_name2]
     age_range = 20, 40
     old_factor = 50
-    units = 10
-    sts = 2
-    min_units = 10
+    units = 1
+    min_units = 1
     ln = 10
     max_squads = 1
     can_hire = 1
     leadership = 90
     type = "infantry"
-    traits = [orc_t]
+    physical_traits = [orc_t]
     aligment = [malignant_t]
     size = 2
     train_rate = 2
-    upkeep = 14
+    upkeep = 40
     resource_cost = 15
     food = 5
-    pop = 4
+    pop = 5
     terrain_skills = []
 
-    hp = 10
+    hp = 18
     power = 2
     power_max = 6
     power_res = 2
     mp = [2, 2]
-    moves = 6
+    moves = 7
     resolve = 8
     global_skills = [Organization]
 
-    dfs = 8
-    res = 10
+    dfs = 9
+    res = 11
     hres = 6
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
     weapon1 = weapons.GreatSword
-    att1 = 1
+    att1 = 2
     off = 9
-    strn = 10
+    strn = 12
     offensive_skills = []
 
     can_hire = 1
@@ -10645,9 +10773,12 @@ class OrcCaptain(Unit):
         self.spells = []
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
-            self.leadership += 10
+            self.leadership += 15
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
+            self.leadership += 15
 
 
 class ShamanOfTheLostTribe(Human):
@@ -10655,18 +10786,17 @@ class ShamanOfTheLostTribe(Human):
     namelist = [aztec_name1]
     age_range = 40, 60
     old_factor = 50
-    units = 10
-    sts = 4
+    units = 1
     min_units = 1
     ln = 10
     max_squads = 10
     leadership = 50
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 2
-    upkeep = 15
+    upkeep = 40
     resource_cost = 18
     food = 3
     pop = 2
@@ -10707,8 +10837,11 @@ class ShamanOfTheLostTribe(Human):
         self.spells += [CastStorm, SummonGiantBears]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
             self.leadership += 5
 
 
@@ -10717,18 +10850,17 @@ class ShamanOfTheWind(Human):
     namelist = [cold_name1]
     age_range = 50, 70
     old_factor = 50
-    units = 10
-    sts = 4
+    units = 1
     min_units = 1
     ln = 10
     max_squads = 10
     leadership = 60
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
-    train_rate = 2
-    upkeep = 15
+    train_rate = 3
+    upkeep = 50
     resource_cost = 18
     food = 3
     pop = 3
@@ -10770,8 +10902,11 @@ class ShamanOfTheWind(Human):
         self.spells += [CastStorm, SummonGiantBears]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
             self.leadership += 5
 
 
@@ -10784,13 +10919,13 @@ class VampireLord(Undead):
     min_units = 1
     max_squads = 1
     can_hire = 1
-    leadership = 50
+    leadership = 60
     type = "beast"
-    traits = [death_t, blood_drinker_t, vampire_t]
+    physical_traits = [death_t, blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 2
     train_rate = 2
-    upkeep = 300
+    upkeep = 90
     resource_cost = 20
     food = 0
     pop = 25
@@ -10808,8 +10943,8 @@ class VampireLord(Undead):
     resolve = 10
     global_skills = [ElusiveShadow, Helophobia, BloodLord]
 
-    dfs = 11
-    res = 12
+    dfs = 10
+    res = 10
     hres = 6
     arm = 0
     armor = MediumArmor()
@@ -10819,7 +10954,7 @@ class VampireLord(Undead):
     weapon2 = weapons.VampireBite
     att2 = 1
     off = 11
-    strn = 12
+    strn = 14
 
     common = 2
     lead_traits = [bat_t, blood_drinker_t, human_t, vampire_t, wolf_t]
@@ -10833,8 +10968,11 @@ class VampireLord(Undead):
         self.favsurf = [forest_t, none_t]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
             self.leadership += 10
 
 
@@ -10842,13 +10980,13 @@ class WarlockApprentice(Human):
     name = "warlock aprentice"
     namelist = [male_name1, surfname1]
     age_range = 20, 30
-    units = 5
-    min_units = 10
-    ln = 5
+    units = 1
+    min_units = 1
+    ln = 10
     max_squads = 1
-    leadership = 20
+    leadership = 30
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -10867,7 +11005,7 @@ class WarlockApprentice(Human):
     resolve = 6
     global_skills = []
 
-    dfs = 8
+    dfs = 6
     res = 5
     hres = 1
     arm = 0
@@ -10875,7 +11013,7 @@ class WarlockApprentice(Human):
 
     weapon1 = weapons.Staff
     att1 = 1
-    off = 8
+    off = 7
     strn = 4
 
     common = 7
@@ -10893,9 +11031,12 @@ class WarlockApprentice(Human):
         self.spells += [Curse]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
-            self.leadership += 10
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
+            self.leadership += 5
 
 
 class Warlock(Human):
@@ -10904,18 +11045,18 @@ class Warlock(Human):
     age_range = 40, 70
     old_factor = 50
     units = 5
-    sts = 2
-    min_units = 1
-    ln = 5
+    sts = 1
+    min_units = 5
+    ln = 10
     max_squads = 1
     can_hire = 1
-    leadership = 40
+    leadership = 50
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
-    train_rate = 2
+    train_rate = 3
     upkeep = 30
     resource_cost = 22
     food = 3
@@ -10931,7 +11072,7 @@ class Warlock(Human):
     resolve = 6
     global_skills = [Furtive]
 
-    dfs = 9
+    dfs = 8
     res = 6
     hres = 1
     arm = 0
@@ -10939,7 +11080,7 @@ class Warlock(Human):
 
     weapon1 = weapons.Staff
     att1 = 1
-    off = 9
+    off = 7
     strn = 6
 
     common = 4
@@ -10957,8 +11098,11 @@ class Warlock(Human):
         self.spells = [Curse, SummonClayGolem, SummonWoodlandSpirit]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
             self.leadership += 5
 
 
@@ -10966,19 +11110,19 @@ class Warlord(Human):
     name = "warlord"
     namelist = [barbarian_name1, barbarian_name1 + surfname1]
     age_range = 20, 40
-    units = 10
-    sts = 2
-    min_units = 10
+    units = 3
+    sts = 3
+    min_units = 3
     ln = 10
     max_squads = 1
     can_hire = 1
-    leadership = 60
+    leadership = 40
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 2
-    upkeep = 15
+    upkeep = 40
     resource_cost = 15
     food = 5
     pop = 4
@@ -11000,10 +11144,9 @@ class Warlord(Human):
     arm = 0
     armor = MediumArmor()
     shield = Shield()
-    defensive_skills = []
 
-    weapon1 = weapons.GreatSword
-    att1 = 1
+    weapon1 = weapons.Sword
+    att1 = 2
     off = 9
     strn = 9
     offensive_skills = []
@@ -11020,8 +11163,11 @@ class Warlord(Human):
         self.spells = [RecruitPeasants]
 
     def levelup(self):
-        if self.xp >= 15 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
             self.leadership += 10
 
 
@@ -11031,17 +11177,17 @@ class WarMonger(Human):
     age_range = 40, 60
     units = 10
     sts = 2
-    min_units = 1
+    min_units = 10
     ln = 10
     max_squads = 1
     can_hire = 1
-    leadership = 100
+    leadership = 80
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 2.5
-    upkeep = 200
+    upkeep = 50
     resource_cost = 25
     food = 4
     pop = 4
@@ -11059,10 +11205,8 @@ class WarMonger(Human):
     armor = LightArmor()
 
     weapon = weapons.Sword
-    att1 = 1
-    damage = 3
-    off = 8
-    pn = 0
+    att1 = 2
+    off = 9
     offensive_skills = [ShadowHunter]
     strn = 9
 
@@ -11071,8 +11215,11 @@ class WarMonger(Human):
         self.corpses = [Skeleton]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 10 and self.level == 1:
             self.level = 2
+            self.leadership += 10
+        if self.xp >= 20 and self.level == 2:
+            self.level = 3
             self.leadership += 10
 
 
@@ -11080,14 +11227,14 @@ class Witch(Human):
     name = "witch"
     namelist = [female_name1, surfname1]
     age_range = 20, 50
-    units = 5
-    min_units = 5
+    units = 1
+    min_units = 1
     ln = 5
     max_squads = 1
-    leadership = 30
+    leadership = 20
     type = "infantry"
     wizard = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 2
@@ -11115,7 +11262,7 @@ class Witch(Human):
     weapon1 = weapons.Staff
     att1 = 1
     off = 7
-    strn = 5
+    strn = 3
 
     common = 6
     fear = 6
@@ -11129,10 +11276,14 @@ class Witch(Human):
         self.corpses = [Harpy]
         self.favsoil = [grassland_t, plains_t, tundra_t]
         self.favsurf = [forest_t, none_t]
+        #self.spells = [SummonBat, SummonSatir]
 
     def levelup(self):
-        if self.xp >= 20 and self.level == 1:
+        if self.xp >= 15 and self.level == 1:
             self.level = 2
+            self.leadership += 5
+        if self.xp >= 30 and self.level == 2:
+            self.level = 3
             self.leadership += 5
 
 
@@ -11145,7 +11296,7 @@ class Abomination(Unit):
     max_squads = 5
     poisonres = 1
     type = "beast"
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = malignant_t
     size = 4
     train_rate = 3
@@ -11190,7 +11341,7 @@ class Archer(Human):
     min_units = 10
     max_squads = 5
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -11238,7 +11389,7 @@ class Akhlut(Unit):
     ln = 5
     max_squads = 5
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = wild_t
     size = 3
     train_rate = 2.5
@@ -11285,7 +11436,7 @@ class BlackOrc(Unit):
     ln = 10
     max_squads = 16
     type = "infantry"
-    traits = [orc_t]
+    physical_traits = [orc_t]
     aligment = malignant_t
     size = 3
     train_rate = 2.3
@@ -11332,7 +11483,7 @@ class BlizzardWarrior(Human):
     ln = 10
     max_squads = 10
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -11378,7 +11529,7 @@ class CannibalWarrior(Human):
     ln = 10
     max_squads = 10
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = hell_t
     size = 2
     train_rate = 1.5
@@ -11424,7 +11575,7 @@ class Crocodile(Unit):
     ln = 7
     max_squads = 20
     type = "beast"
-    traits = [crocodile_t]
+    physical_traits = [crocodile_t]
     aligment = nature_t
     size = 2
     train_rate = 2
@@ -11470,7 +11621,7 @@ class DeadBear(Unit):
     ln = 7
     max_squads = 5
     type = "beast"
-    traits = [death_t, bear_t]
+    physical_traits = [death_t, bear_t]
     aligment = malignant_t
     size = 3
     train_rate = 2
@@ -11516,7 +11667,7 @@ class CamelRider(Human):
     max_squads = 5
     mounted = 1
     type = "cavalry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 3
     train_rate = 1.5
@@ -11566,7 +11717,7 @@ class DevourerOfDemons(Unit):
     min_units = 1
     max_squads = 1
     type = "beast"
-    traits = [spirit_t]
+    physical_traits = [spirit_t]
     aligment = wild_t
     size = 5
     train_rate = 2.5
@@ -11615,7 +11766,7 @@ class DevoutOfChaos(Human):
     ln = 15
     max_squads = 3
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = hell_t
     size = 2
     train_rate = 1.5
@@ -11692,7 +11843,7 @@ class Galley(Ship):
         self.favhill = [0]
         self.favsoil = [coast_t]
         self.favsurf = [none_t]
-        self.traits += ["ship", ]
+        self.physical_traits += ["ship", ]
 
 
 class GiantBear(Unit):
@@ -11702,7 +11853,7 @@ class GiantBear(Unit):
     ln = 5
     max_squads = 10
     type = "beast"
-    traits = [bear_t]
+    physical_traits = [bear_t]
     aligment = nature_t
     size = 4
     train_rate = 2.5
@@ -11749,7 +11900,7 @@ class GiantDeadBear(Unit):
     ln = 5
     max_squads = 10
     type = "beast"
-    traits = [death_t, bear_t]
+    physical_traits = [death_t, bear_t]
     aligment = malignant_t
     size = 4
     train_rate = 3
@@ -11796,7 +11947,7 @@ class GiantCrocodile(Unit):
     ln = 7
     max_squads = 10
     type = "beast"
-    traits = [crocodile_t]
+    physical_traits = [crocodile_t]
     aligment = nature_t
     size = 3
     train_rate = 2.5
@@ -11842,7 +11993,7 @@ class GiantOfTheLostTribe(Unit):
     ln = 7
     max_squads = 10
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = wild_t
     size = 3
     train_rate = 3
@@ -11893,7 +12044,7 @@ class GiantWolf(Unit):
     ln = 10
     max_squads = 6
     type = "beast"
-    traits = [wolf_t]
+    physical_traits = [wolf_t]
     aligment = nature_t
     size = 3
     train_rate = 2.5
@@ -11946,7 +12097,7 @@ class Ghost(Undead):
     ethereal = 1
     type = "infantry"
     will_less = 1
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = hell_t
     size = 2
     train_rate = 3
@@ -11988,7 +12139,7 @@ class Goblin(Unit):
     ln = 20
     max_squads = 10
     type = "infantry"
-    traits = [goblin_t]
+    physical_traits = [goblin_t]
     aligment = orcs_t
     size = 1
     train_rate = 1.5
@@ -12042,7 +12193,7 @@ class ClayGolem(Unit):
     max_squads = 5
     type = "beast"
     will_less = 1
-    traits = [golem_t, ]
+    physical_traits = [golem_t, ]
     aligment = wild_t
     size = 4
     train_rate = 3
@@ -12093,7 +12244,7 @@ class Harpy(Unit):
     max_squads = 6
     poisonres = 1
     type = beast_t
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = malignant_t
     size = 2
     train_rate = 2.5
@@ -12142,7 +12293,7 @@ class HellHound(Undead):
     min_units = 1
     max_squads = 5
     type = "beast"
-    traits = [death_t]
+    physical_traits = [death_t]
     aligment = hell_t
     size = 3
     train_rate = 3
@@ -12193,7 +12344,7 @@ class Hyena(Unit):
     min_units = 5
     max_squads = 12
     type = "beast"
-    traits = [hyena_t]
+    physical_traits = [hyena_t]
     aligment = nature_t
     size = 2
     train_rate = 1.5
@@ -12241,7 +12392,7 @@ class Hunter(Human):
     min_units = 10
     max_squads = 4
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -12293,7 +12444,7 @@ class KillerMantis(Human):
     max_squads = 4
     type = "Beast"
     will_less = 1
-    traits = [mantis_t]
+    physical_traits = [mantis_t]
     aligment = nature_t
     size = 3
     train_rate = 2
@@ -12342,7 +12493,7 @@ class NomadsRider(Human):
     max_squads = 6
     mounted = 1
     type = "cavalry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 3
     train_rate = 2.5
@@ -12392,7 +12543,7 @@ class OrcArcher(Unit):
     min_units = 10
     max_squads = 10
     type = "infantry"
-    traits = [orc_t]
+    physical_traits = [orc_t]
     aligment = malignant_t
     size = 2
     train_rate = 1.3
@@ -12444,7 +12595,7 @@ class OrcWarrior(Unit):
     ln = 20
     max_squads = 10
     type = "infantry"
-    traits = [orc_t]
+    physical_traits = [orc_t]
     aligment = malignant_t
     size = 2
     train_rate = 1.3
@@ -12454,14 +12605,14 @@ class OrcWarrior(Unit):
     pop = 1.5
     terrain_skills = [Burn, DarkVision, ForestSurvival, MountainSurvival, Raid]
 
-    hp = 12
+    hp = 10
     mp = [2, 2]
     moves = 6
     resolve = 4
     global_skills = [BloodyBeast, Undisciplined]
 
     dfs = 8
-    res = 10
+    res = 8
     hres = 5
     arm = 1
     armor = None
@@ -12469,7 +12620,7 @@ class OrcWarrior(Unit):
     weapon1 = weapons.Sword
     att1 = 1
     off = 7
-    strn = 10
+    strn = 9
 
     common = 12
     fear = 4
@@ -12482,7 +12633,7 @@ class OrcWarrior(Unit):
         Ground.__init__(self)
         self.favsoil = [waste_t, grassland_t, plains_t, tundra_t]
         self.favsurf = [none_t, forest_t]
-        self.traits += [orc_t]
+        self.physical_traits += [orc_t]
 
 
 class Levy(Human):
@@ -12494,7 +12645,7 @@ class Levy(Human):
     max_squads = 10
     levy = 1
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.3
@@ -12538,7 +12689,7 @@ class LizardMan(Human):
     max_squads = 10
     poisonres = 1
     type = "infantry"
-    traits = [lizard_t]
+    physical_traits = [lizard_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -12590,7 +12741,7 @@ class LizardManInfantry(Human):
     max_squads = 6
     poisonres = 1
     type = "infantry"
-    traits = [lizard_t]
+    physical_traits = [lizard_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -12637,7 +12788,7 @@ class Mandeha(Unit):
     ln = 2
     max_squads = 1
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = hell_t
     size = 5
     train_rate = 2
@@ -12683,7 +12834,7 @@ class Mammot(Unit):
     ln = 4
     max_squads = 10
     type = "beast"
-    traits = [mammot_t]
+    physical_traits = [mammot_t]
     aligment = nature_t
     size = 4
     train_rate = 3
@@ -12732,7 +12883,7 @@ class DeadMammot(Unit):
     ln = 4
     max_squads = 10
     type = "beast"
-    traits = [death_t, mammot_t]
+    physical_traits = [death_t, mammot_t]
     aligment = malignant_t
     size = 4
     train_rate = 4
@@ -12781,8 +12932,8 @@ class MASTER(Unit):
     max_squads = 1
     unique = 1
     type = "DEBUG ONLY"
-    traits = [human_t, death_t, malignant_t,
-              leader_t, vampire_t, wizard_t, commander_t]
+    physical_traits = [human_t, death_t, malignant_t,
+                       leader_t, vampire_t, wizard_t, commander_t]
     size = 10
     gold = 0
     upkeep = 0
@@ -12834,7 +12985,7 @@ class Ogre(Unit):
     ln = 7
     max_squads = 20
     type = "beast"
-    traits = [ogre_t]
+    physical_traits = [ogre_t]
     aligment = wild_t
     size = 3
     train_rate = 2.5
@@ -12882,7 +13033,7 @@ class PaleOne(Unit):
     ln = 10
     max_squads = 6
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = order_t
     size = 2
     train_rate = 2
@@ -12932,7 +13083,7 @@ class Peasant(Human):
     levy = 1
     type = "civil"
     will_less = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1
@@ -12977,7 +13128,7 @@ class PeasantLevy(Human):
     max_squads = 12
     levy = 1
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.3
@@ -13022,7 +13173,7 @@ class Population(Human):
     min_units = 10
     max_squads = 5
     type = "civil"
-    traits = [human_t]
+    physical_traits = [human_t]
     size = 2
     gold = 60
     upkeep = 2
@@ -13067,7 +13218,7 @@ class Raider(Human):
     ln = 15
     max_squads = 5
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -13116,7 +13267,7 @@ class Rider(Human):
     max_squads = 4
     type = "cavalry"
     mounted = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 3
     train_rate = 2
@@ -13166,7 +13317,7 @@ class Satyr(Human):
     ln = 10
     max_squads = 4
     type = "infantry"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -13215,7 +13366,7 @@ class Slave(Human):
     max_squads = 60
     type = "civil"
     will_less = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 4
@@ -13261,7 +13412,7 @@ class SlaveHunter(Human):
     max_squads = 5
     type = "infantry"
     will_less = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 5
@@ -13312,7 +13463,7 @@ class SlaveWarrior(Human):
     max_squads = 8
     type = "infantry"
     will_less = 1
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 8
@@ -13359,7 +13510,7 @@ class StormWalkers(Human):
     ln = 10
     max_squads = 4
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 1.5
@@ -13400,7 +13551,7 @@ class Troglodyte(Unit):
     ln = 10
     max_squads = 10
     type = "beast"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = wild_t
     size = 2
     train_rate = 2
@@ -13448,7 +13599,7 @@ class Troll(Unit):
     max_squads = 8
     poisonres = 1
     type = "beast"
-    traits = [troll_t]
+    physical_traits = [troll_t]
     aligment = wild_t
     size = 5
     train_rate = 3
@@ -13495,7 +13646,7 @@ class Warg(Unit):
     ln = 10
     max_squads = 12
     type = "beast"
-    traits = [wolf_t]
+    physical_traits = [wolf_t]
     aligment = malignant_t
     size = 2
     train_rate = 3
@@ -13547,7 +13698,7 @@ class WargRider(Unit):
     max_squads = 6
     mounted = 1
     type = "beast"
-    traits = [orc_t]
+    physical_traits = [orc_t]
     aligment = malignant_t
     size = 3
     train_rate = 2.5
@@ -13601,7 +13752,7 @@ class Warrior(Human):
     ln = 5
     max_squads = 10
     type = "infantry"
-    traits = [human_t]
+    physical_traits = [human_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -13647,7 +13798,7 @@ class WetOne(Unit):
     ln = 5
     max_squads = 6
     type = "beast"
-    traits = [beast_t]
+    physical_traits = [beast_t]
     aligment = order_t
     size = 2
     train_rate = 1.5
@@ -13696,7 +13847,7 @@ class WoodlandSpirit(Unit):
     max_squads = 5
     ethereal = 1
     type = "beast"
-    traits = [spirit_t]
+    physical_traits = [spirit_t]
     aligment = wild_t
     size = 4
     train_rate = 2
@@ -13739,7 +13890,7 @@ class Wolf(Unit):
     ln = 15
     max_squads = 6
     type = "beast"
-    traits = [wolf_t]
+    physical_traits = [wolf_t]
     aligment = nature_t
     size = 2
     train_rate = 2
@@ -13790,7 +13941,7 @@ class WolfRider(Unit):
     max_squads = 6
     mounted = 1
     type = "infantry"
-    traits = [goblin_t]
+    physical_traits = [goblin_t]
     aligment = orcs_t
     size = 2
     train_rate = 2
@@ -13832,7 +13983,7 @@ class WolfRider(Unit):
         self.favsoil = [waste_t, grassland_t, plains_t, tundra_t]
         self.favsurf = [forest_t, swamp_t]
         self.favhill = [0, 1]
-        self.traits += [goblin_t]
+        self.physical_traits += [goblin_t]
 
 
 # Random nations.

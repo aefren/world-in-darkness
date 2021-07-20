@@ -10,7 +10,7 @@ DIFFICULTY = 66
 DIFFICULTY_TYPE = "dynamic"
 # Random Buildings.
 random_buildings = random_buildings
-buildings_value = 20
+buildings_value = 10
 
 # factions.
 #ELF = WoodElves()

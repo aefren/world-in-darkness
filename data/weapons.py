@@ -723,8 +723,8 @@ class ToxicClaw(Weapon):
         itm = self.itm
         if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100
             and itm.target.hp_total >= 1
-            and death_t not in itm.target.traits
-                and poisonres_t not in itm.target.traits):
+            and death_t not in itm.target.physical_traits
+                and poisonres_t not in itm.target.physical_traits):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 4:
                 sk = skills.Intoxicated(itm.target)
@@ -751,8 +751,8 @@ class ToxicDagger(Weapon):
         itm = self.itm
         if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100
             and itm.target.hp_total >= 1
-            and death_t not in itm.target.traits
-                and poisonres_t not in itm.target.traits):
+            and death_t not in itm.target.physical_traits
+                and poisonres_t not in itm.target.physical_traits):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 4:
                 sk = skills.Intoxicated(itm.target)
@@ -779,8 +779,8 @@ class ToxicFangs(Weapon):
         itm = self.itm
         if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100
             and itm.target.hp_total >= 1
-            and death_t not in itm.target.traits
-                and poisonres_t not in itm.target.traits):
+            and death_t not in itm.target.physical_traits
+                and poisonres_t not in itm.target.physical_traits):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 4:
                 sk = skills.Intoxicated(itm.target)

@@ -14,10 +14,9 @@ import natsort
 import pygame
 
 from language import *
-# import numpy as np
 
 
-dev_mode = 0
+#dev_mode = 0
 if dev_mode == 0:
     exec("import basics")
     exec("import log_module")
@@ -167,7 +166,7 @@ class Terrain:
         roll = basics.roll_dice(2)
         if self.units: roll -= 1
         if roll >= 10:
-            unit = self.add_unit(Ghoul, hell_t)
+            unit = self.add_unit(Ghoul  , hell_t)
             unit.hp_total = unit.hp * randint(5, 10)
             # unit.update()
 
@@ -493,7 +492,7 @@ class Terrain:
             self.units_aligment += [uni.aligment]
             self.units_effects += uni.effects
             self.units_tags += uni.tags
-            self.units_traits += uni.traits
+            self.units_traits += uni.physical_traits
         for bu in self.buildings:
             self.buildings_tags += bu.tags
             self.buildings_nation += [bu.nation]
@@ -946,31 +945,32 @@ class World:
 
     def add_random_buildings(self, value, info=1):
         logging.info(f"add_random_buildings {world.turn=:}.")
-        tiles = [t for t in self.map if t.buildings == []
-                 and t.get_nearest_nation() <= 4]
-        [t.update() for t in tiles]
-        shuffle(tiles)
         shuffle(self.random_buildings)
         while value:
-            for bu in self.random_buildings:
-                tile = tiles.pop()
-                for nt in self.random_nations:
-                    if nt.name == bu.nation: bu = bu(nt, tile)
-                if info: logging.debug(f"adding_t {bu}.")
-                if bu.common:
-                    roll = randint(1, 13)
-                    if info: logging.debug(f"{bu.common=:}, {roll=:}.")
-                    if roll > bu.common: continue
-                if City.check_tile_req(bu, tile) and len(tile.buildings) < 1:
-                    msg = f"{bu} added in {tile} {tile.cords}."
-                    if info: logging.debug(msg)
-                    self.log[-1] += [msg]
-                    bu.size = 0
-                    bu.resource_cost[0] = bu.resource_cost[1]
-                    tile.buildings += [bu]
-                    self.buildings += [bu]
-                    value -= 1
-                    if value < 1: break
+            for nt in self.nations:
+                for bu in self.random_buildings:
+                    tiles = nt.pos.get_near_tiles(5)
+                    tiles = [ it for it in tiles if it.buildings == []]
+                    [it.update() for it in tiles]
+                    tile = choice(tiles)
+                    for it in self.random_nations:
+                        if it.name == bu.nation: bu = bu(it, tile)
+                    if info: logging.debug(f"adding_t {bu}.")
+                    if bu.common:
+                        roll = randint(1, 13)
+                        if info: logging.debug(f"{bu.common=:}, {roll=:}.")
+                        if roll > bu.common: continue
+                    if City.check_tile_req(bu, tile) :
+                        msg = f"{bu} added in {tile} {tile.cords}."
+                        if info: logging.debug(msg)
+                        self.log[-1] += [msg]
+                        bu.size = 0
+                        bu.resource_cost[0] = bu.resource_cost[1]
+                        tile.buildings += [bu]
+                        self.buildings += [bu]
+                        value -= 1
+                        break
+                if value < 1: break
 
     def add_random_unit(self, value, info=1):
         logging.info(f"add_frandom_unit {value=:}.")
@@ -4337,6 +4337,7 @@ class Game:
                 if event.key == pygame.K_5:
                     sp.speak(f"level {itm.level} (xp {itm.xp}).", 1)
                     if itm.age: sp.speak(f"{age_t}: {itm.age}.")
+                    if itm.traits: sp.speak(f"{[tr.name for tr in itm.traits]}.")
                 if event.key == pygame.K_6:
                     if nation in itm.belongs:
                         sp.speak(
@@ -4497,6 +4498,7 @@ class Game:
                     ambient.week = 1
                     ambient.season[0] += 1
                     if ambient.season[0] >= 3:
+                        ambient.season[0] = 0
                         ambient.year += ambient.year_change
                         world.set_new_year()
                     
@@ -4679,7 +4681,6 @@ class Game:
         if nation.cities == [] and world.turn == 1:
             nation_start_placement(nation)
         # Unidades.
-        # for uni in nation.units: uni.log.append([f"{turn_t} {world.turn}."])
         logging.debug(f"unidades.")
         for uni in nation.units:
             uni.start_turn()

@@ -16,7 +16,7 @@ class Spell:
 
     tile_area = -1
     target = None
-    traits = None
+    physical_traits = None
 
     ambient_day = 0
     ambient_night = 0
@@ -66,7 +66,7 @@ class Spell:
             msg += f"{self.name} {needs_t} {self.gold} {gold_t}."
         if self.target and target.type not in self.target:
             msg += f"not {self.target} selected."
-        if self.traits: pass
+        if self.physical_traits: pass
         if self.tile_forest and itm.pos.surf.name != forest_t:
             msg += f"{self.name} {needs_t} {forest_t}."
         if self.tile_waste and itm.pos.soil.name != waste_t:
@@ -670,7 +670,7 @@ class RaiseBloodSkeleton(Spell):
         for cr in tile.corpses:
             cr.sort(key=lambda x: sum(x.deads), reverse=True)
         for cr in tile.corpses:
-            if death_t not in cr.traits:
+            if death_t not in cr.physical_traits: 
                 dead = cr
                 break
         raised = BloodSkeleton(itm.nation)
@@ -720,7 +720,7 @@ class RaiseDead(Spell):
         for cr in tile.corpses:
             shuffle(cr.corpses)
             for de in cr.corpses:
-                if death_t in de.traits:
+                if death_t in de.physical_traits:
                     raised = de(itm.nation)
                     dead = cr
                     break
@@ -770,7 +770,7 @@ class RaiseFellBat(Spell):
         for cr in tile.corpses:
             cr.sort(key=lambda x: sum(x.deads), reverse=True)
         for cr in tile.corpses:
-            if death_t not in cr.traits:
+            if death_t not in cr.physical_traits:
                 dead = cr
                 break
         raised = FellBat(itm.nation)

@@ -247,8 +247,7 @@ class DarkPresence(Skill):
 
     def run(self, itm):
         if (itm.nation in self.itm.belongs
-            and malignant_t in itm.traits
-                and self.name not in itm.effects):
+                and malignant_t in itm.physical_traits and self.name not in itm.effects):
             if itm.pos and itm.pos.day_night == 0:
                 itm.effects.append(self.name + str(f" ({day_t})"))
                 itm.res_mod += 1
@@ -332,7 +331,7 @@ class DHLevels(Skill):
 
 class Diseased(Skill):
     name = weak_t
-    desc = "-2 off, -2 dfs, -2 moves, -1 res, -2 str."
+    desc = "-2 off, -2 dfs, -2 moves, -2 res, -2 str."
     effect = "self"
     ranking = 0.5
     type = "generic"
@@ -342,7 +341,7 @@ class Diseased(Skill):
         itm.dfs_mod -= 2
         itm.moves_mod -= 2
         itm.off_mod -= 2
-        itm.res_mod -= 1
+        itm.res_mod -= 2
         itm.strn_mod -= 2
 
 
@@ -372,7 +371,7 @@ class Fanatism(Skill):
     type = "generic"
 
     def run(self, itm):
-        if itm.target and death_t in itm.target.traits:
+        if itm.target and death_t in itm.target.physical_traits:
             itm.effects.append(self.name)
             itm.att1_mod += 1
             itm.dfs_mod -= 2
@@ -390,7 +389,7 @@ class FearAura(Skill):
     tags = ["fear aura"]
 
     def run(self, itm):
-        if mindless_t in itm.traits: return
+        if mindless_t in itm.physical_traits: return
         if itm == self.itm: return
         if itm.nation in self.itm.belongs: return
         itm.effects.append(fear_t)
@@ -614,7 +613,7 @@ class Exaltation(Skill):
     type = "generic"
 
     def run(self, itm):
-        if sacred_t in itm.traits:
+        if sacred_t in itm.physical_traits: 
             itm.effects += [self.name]
             itm.resolve_mod += 1
             itm.hit_rolls_mod += 1
@@ -687,20 +686,22 @@ class Intoxicated(Skill):
     type = "start turn"
 
     def run(self, itm):
+        if itm.hp_total < 1: return
         sk = Diseased(itm)
         sk.turns = self.turns
         if sk.name not in [s.name for s in itm.global_skills]:
-            itm.global_skills += [sk]
-        deads = randint(5, 25)
-        if basics.roll_dice(1) >= 6: deads *= 2
+            itm.other_skills += [sk]
+        deads = randint(10, 30)
+        if basics.roll_dice(1) >= 5: deads *= 2
+        if basics.roll_dice(1) >= 6: deads *= 3
         deads = floor(deads / itm.hp)
-        if deads and itm.hp_total > 0:
-            if deads > itm.units: deads = itm.units
-            msg = f"{itm} loses {deads} by {self.name} in {itm.pos}. ({itm.pos.cords})"
-            itm.log[-1] += [msg]
-            itm.nation.log[-1] += [msg]
-            itm.units -= deads
-            if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
+        if deads > itm.units: deads = itm.units
+        msg = f"{itm} loses {deads} by {self.name} in {itm.pos}. ({itm.pos.cords})"
+        itm.log[-1] += [msg]
+        itm.nation.log[-1] += [msg]
+        itm.hp_total -= itm.hp*deads
+        itm.update()
+        if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
 
 
 class Inspiration(Skill):
@@ -805,7 +806,7 @@ class BloodLord(Skill):
 
     def run(self, itm):
         if (itm.nation in self.itm.belongs and itm != self.itm
-                and blood_drinker_t in itm.traits):
+                and blood_drinker_t in itm.physical_traits):
             itm.effects.append(self.name)
             itm.moves_mod += 1
             itm.resolve_mod += 1
@@ -843,7 +844,7 @@ class MastersEye(Skill):
         if itm.nation not in self.itm.belongs: return
         itm.effects.append(self.name)
         itm.hit_rolls_mod += 1
-        if death_t in itm.traits:
+        if death_t in itm.physical_traits:
             itm.effects += [f" {death_t}."]
             itm.moves_mod += 1
             itm.res_mod += 1
@@ -869,7 +870,7 @@ class Miasma(Skill):
         if roll >= 3:
             if self.name not in [ev.name for ev in itm.pos.events]:
                 sk = Miasma(itm.pos)
-                sk.turns = randint(5, 10)
+                sk.turns = randint(3, 7)
                 itm.pos.events += [sk]
                 msg = f"miasma in {itm.pos} {itm.pos.cords}."
                 if itm.pos.nation: itm.pos.nation.log[-1] += [msg]
@@ -892,21 +893,17 @@ class Miasma(Skill):
             corpse = choice(
                 [cr for cr in itm.nation.population_type if cr.poisonres == 0])
             itm.add_corpses(corpse, deads)
-            # corpse.deads = [pop_death * itm.pop // 100]
-            # corpse.units=0
-            # corpse.hp_total = 0
-            # itm.units += [corpse]
             itm.pop -= deads
             if itm.nation.show_info: sleep(
                 loadsound("notify23", channel=CHTE2) // 1.5)
 
         units = [
-            it for it in itm.units if it.poisonres == 0 and death_t not in it.traits and Intoxicated.name not in [
+            it for it in itm.units if it.poisonres == 0 and death_t not in it.physical_traits and Intoxicated.name not in [
                 s.name for s in it.skills] and it.hp_total >= 1]
         roll = basics.roll_dice(1)
         if roll >= 6 and units:
             unit = choice(units)
-            turns = randint(1, 3)
+            turns = randint(1, 2)
             roll = basics.roll_dice(1)
             if roll >= 6: turns += 5
             elif roll >= 5: turns += 3
@@ -1005,7 +1002,7 @@ class Organization(Skill):
     tags = ["leader"]
 
     def run(self, itm):
-        if itm.nation in self.itm.belongs and human_t in itm.traits:
+        if itm.nation in self.itm.belongs and human_t in itm.physical_traits:
             itm.effects.append(self.name)
             itm.dfs_mod += 1
             itm.off_mod += 1
@@ -1058,7 +1055,7 @@ class Pestilence(Skill):
             if itm.nation.show_info: sleep(
                 loadsound("notify23", channel=CHTE2) // 1.5)
         units = [u for u in itm.units if u.poisonres == 0
-                 and death_t not in u.traits and Intoxicated.name not in [s.name for s in u.skills]]
+                 and death_t not in u.physical_traits and Intoxicated.name not in [s.name for s in u.skills]]
         roll = basics.roll_dice(1)
         if roll >= 6 and units:
             unit = choice(units)
@@ -1196,7 +1193,7 @@ class SermonOfCourage(Skill):
     tags = ["leader"]
 
     def run(self, itm):
-        if itm != self.itm and human_t in itm.traits and sacred_t in itm.traits:
+        if itm != self.itm and human_t in itm.physical_traits and sacred_t in itm.aligment:
             itm.effects.append(self.name)
             itm.resolve_mod += 2
 
@@ -1259,7 +1256,7 @@ class Spread(Skill):
     type = "after attack"
 
     def run(self, itm):
-        if death_t not in itm.target.traits:
+        if death_t not in itm.target.physical_traits:
             deads = sum(itm.target.deads)
             raised = 0
             for i in range(deads):
@@ -1323,7 +1320,7 @@ class Scream(Skill):
         if itm.target:
             target = itm.target
             logging.debug(f"grito ardiente.")
-            if death_t not in target.traits:
+            if death_t not in target.physical_traits:
                 roll = basics.roll_dice(1)
                 if roll >= 5:
                     damage = randint(4, 10)
@@ -1454,7 +1451,7 @@ class RainOfToads(Skill):
     def tile_run(self, itm):
         self.turns -= 1
         itm.unrest += randint(5, 10)
-        units = [uni for uni in itm.units if death_t not in uni.traits]
+        units = [uni for uni in itm.units if death_t not in uni.physical_traits]
         for uni in units:
             roll = basics.roll_dice(1)
             if roll >= 6:
@@ -1472,9 +1469,9 @@ class ToxicArrows(Skill):
 
     def run(self, itm):
         if (itm.target and sum(itm.damage_done)
-            and all(i not in [death_t, spirit_t] for i in itm.target.traits)
+            and all(i not in [death_t, spirit_t] for i in itm.target.physical_traits)
             and itm.target.poisonres == 0
-                and i.ethereal == 0):
+                and itm.ethereal == 0):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 5:
                 sk = Intoxicated(itm.target)
@@ -1495,7 +1492,7 @@ class ToxicClaws(Skill):
 
     def run(self, itm):
         if (itm.target and sum(itm.damage_done) and itm.target.hp_total >= 1
-            and death_t not in itm.target.traits
+            and death_t not in itm.target.physical_traits
             and itm.poisonres == 0
                 and itm.ethereal == 0):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
@@ -1529,7 +1526,7 @@ class VigourMourtis(Skill):
     type = "generic"
 
     def run(self, itm):
-        if itm != self.itm and death_t in itm.traits:
+        if itm != self.itm and death_t in itm.physical_traits:
             itm.effects.append(self.name)
             itm.hit_rolls_mod += 1
 
@@ -1563,8 +1560,7 @@ class WailingWinds(Skill):
 
     def run(self, itm):
         itm.effects += [self.name]
-        if any(i not in itm.traits for i in [death_t]):
-            itm.resolve_mod -= 1
+        if any(i not in itm.physical_traits for i in [death_t]): itm.resolve_mod -= 1
 
 
 class WarCry(Skill):
@@ -1575,7 +1571,7 @@ class WarCry(Skill):
     type = "generic"
 
     def run(self, itm):
-        if itm.nation in self.itm.belongs and itm != self.itm and human_t in itm.traits:
+        if itm.nation in self.itm.belongs and itm != self.itm and human_t in itm.physical_traits:
             itm.effects.append(self.name)
             itm.resolve_mod += 1
 
