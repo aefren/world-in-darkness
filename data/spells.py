@@ -553,7 +553,7 @@ class Curse(Spell):
 
     def run(self, itm, target):
         if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
-        sk = Diseased(itm)
+        sk = Diseased
         sk.turns = randint(1, 4)
         if sk.name not in [s.name for s in target.global_skills]:
             target.global_skills += [sk]

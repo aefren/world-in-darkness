@@ -2,7 +2,8 @@ import basics
 import math
 
 from data import skills
-from data.lang.es import *
+from language import *
+#from data.lang import es
 from log_module import *
 from random import choice, randint, shuffle, uniform
 from screen_reader import *
@@ -35,7 +36,7 @@ class Looting(Event):
             roll = basics.roll_dice(2)
             buildings = [b for b in t.buildings if b.nation != self.itm.nation]
             if buildings: roll += 4
-            if info: print(f'{roll = : }')
+            if info: print(f'{roll = : }.')
             if roll >= 10 and t.unrest >= 20:
                 raided = randint(math.ceil(t.income * 0.2),
                                  math.ceil(t.income * 0.4))
@@ -74,28 +75,34 @@ class Reanimation(Event):
     type = 0
 
     def run(self, info=1):
-        if info: logging.info(f'revisando eventos de {self.itm}.')
+        if info: logging.info(f'event {self.name}.')
         if self.itm.pos.world.turn < 2: return
         for t in self.itm.tiles:
             if t.corpses == []: continue
+            if info: logging.debug(f"checking {t} {t.cords}.")
             total_hp = randint(40, 80)
             corpses = []
             dead = None
             for it in t.corpses: corpses += [it]
-            for it in corpses: it._go = 1
+            for it in corpses: it._go = 0
+            if info: logging.debug(f"preview corpses {len(corpses)}.")
             for it in corpses:
                 for cr in it.corpses:
-                    if cr.aligment != malignant_t: it._go = 0
+                    if info: logging.debug(f"{cr} {cr.aligment}.")
+                    if cr.aligment == malignant_t: it._go = 1
             corpses = [it for it in corpses if it._go]
             shuffle(corpses)
+            if info: logging.debug(f"total corpses {len(corpses)}.")
             for it in corpses:
                 shuffle(it.corpses)
                 for cr in it.corpses:
                     if cr.aligment == malignant_t:
                         dead = it
                         raised = cr(t.nation)
-                    break
-            if dead is None: break
+                        break
+            if dead is None:
+                logging.debug(f"no dead.")
+                break
             if sum(dead.deads) * dead.hp >= total_hp:
                 raised.hp_total = total_hp
                 dead.deads[0] -= total_hp / dead.hp

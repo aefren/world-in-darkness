@@ -36,13 +36,6 @@ class Arrogant(Trait):
         self.exclude = [Humble]
 
 
-class Brave(Trait):
-    name = "brave"
-
-    def __init__(self):
-        super().__init__()
-        self.exclude = [Craven]
-
 
 class Chaste(Trait):
     name = "chaste"
@@ -113,7 +106,6 @@ class Humble(Trait):
     name = "humble"
 
     def __init__(self):
-        super().__init__()
         super().__init__()
         self.exclude = [Arrogant]
 

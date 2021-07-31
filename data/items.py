@@ -1803,6 +1803,7 @@ class Unit:
     nick = str()
     age = None
     age_range = None
+    old_factor = 50
     units = 0
     min_units = 0
     ln = 0
@@ -1994,7 +1995,7 @@ class Unit:
         if self.nick: name = f"{self.nick}. "
         else: name = ""
         if self.units > 1: name += f"{self.units} "
-        name += f" {self.name}."
+        name += f" {self.name}"
 
         # if self.show_info == 0: name += f" id {self.id}."
         return name
@@ -2017,7 +2018,7 @@ class Unit:
     def add_starting_traits(self):
         traits = [it for it in trait_list]
         shuffle(traits)
-        for i in range(randint(1,4)):
+        for i in range(randint(1, 4)):
             self.add_trait(traits.pop())
 
     def add_trait(self, trait):
@@ -2027,6 +2028,7 @@ class Unit:
         for tr in self.traits:
             if tr.name in exclude_names:
                 self.traits = [it for it in self.traits if it != tr]
+
     def auto_attack(self):
         target = self.set_attack()
         if target:
@@ -3263,10 +3265,10 @@ class Unit:
                     # f"{type_t}: {self.type}.",
                     f"effects {effects}.",
                     f"physical {traits_t}: {self.physical_traits}.",
-                    ]
+                ]
                 if self in self.nation.units: lista += [
                     f"{traits_t} {[tr.name for tr in self.traits]}.",
-                    ]
+                ]
                 lista += [
                     f"{aligment_t}: {self.aligment}.",
                     f"{size_t} {self.size}.",
@@ -4336,6 +4338,15 @@ class Unit:
             if basics.has_name(self.nation.units, self.nick) is None: return
             else: self.nick = str()
 
+    def set_old_traits(self):
+        if self.age >= self.old_factor and basics.roll_dice(1):
+            self.other_skills += [Diseased(self)]
+            if self.show_info:
+                sleep(loadsound("notify18")/2)
+            msg = f"{self} gets diseased."
+            self.nation.log[-1] += [msg]
+            
+            
     def set_ranking(self):
         self.ranking_off = 0
         self.ranking_off_l = []
@@ -4686,7 +4697,11 @@ class Unit:
                 # logging.debug(f"hostiles explorados {len(self.tiles_hostile)}.")
 
         # atributos.
-        self.all_traits = [tr if isinstance(tr, str) else tr.name for tr in self.traits + self.physical_traits]
+        self.all_traits = [
+            tr if isinstance(
+                tr,
+                str) else tr.name for tr in self.traits +
+            self.physical_traits]
 
         self.ranged = 0
         try:
@@ -4698,8 +4713,7 @@ class Unit:
         if self.mp[0] < 0: self.mp[0] = 0
         self.total_pop = self.pop * self.units
         self.upkeep_total = self.upkeep * self.units
-        if death_t in self.physical_traits:
-            self.can_recall = 0
+        if self.can_recall:
             self.pop = 0
         if self.can_hide: self.hidden = 1
         if self.can_charge and self.target is None: self.charges = 1
@@ -4822,7 +4836,7 @@ class Hall(City):
     grouth_min_upg = 6
     income = 100
     public_order = 20
-    initial_unrest = 5
+    initial_unrest = 12
     resource = 1
     upkeep = 1500
 
@@ -5314,7 +5328,12 @@ class KeeperOfTheGrove (Elf):
     power = 0
     power_max = 30
     power_res = 3
-    global_skills = [ForestWalker, Furtive, Organization, PyreOfCorpses, Regroup]
+    global_skills = [
+        ForestWalker,
+        Furtive,
+        Organization,
+        PyreOfCorpses,
+        Regroup]
 
     dfs = 11
     res = 10
@@ -5421,7 +5440,7 @@ class PriestessOfTheMoon(Elf):
     min_units = 1
     ln = 1
     max_squads = 1
-    can_hire = 1
+    can_recall = 0
     unique = 1
     leadership = 60
     type = "infantry"
@@ -5578,8 +5597,9 @@ class DemonHunter(Elf):
     name = "demon hunter"
     units = 1
     ln = 1
-    min_units = 1
+    mtn_units = 1
     max_squads = 1
+    can_recall = 0
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -6245,7 +6265,7 @@ class Hamlet(City):
     grouth_min_bu = 10
     grouth_min_upg = 6
     income = 100
-    initial_unrest = 5
+    initial_unrest = 8
     public_order = 10
     resource = 1
     upkeep = 1000
@@ -6699,6 +6719,7 @@ class Ballistarius(Human):
         super().__init__(nation)
         self.spells = []
         self.mp = [2, 2]
+
     def levelup(self):
         if self.xp >= 10 and self.level == 1:
             self.level = 2
@@ -6709,7 +6730,6 @@ class Ballistarius(Human):
         if self.xp >= 40 and self.level == 3:
             self.level = 4
             self.leadership += 10
-
 
 
 class Centurion(Human):
@@ -6844,7 +6864,6 @@ class Decarion(Human):
         if self.xp >= 40 and self.level == 3:
             self.level = 4
             self.leadership += 10
-
 
 
 class Decurion(Human):
@@ -7879,7 +7898,7 @@ class CursedHamlet(City):
     grouth_min_upg = 8
     income = 100
     public_order = 20
-    initial_unrest = 5
+    initial_unrest = 8
     resource = 1
     upkeep = 600
 
@@ -8444,6 +8463,7 @@ class Necromancer(Human):
         self.spells = [CastWailingWinds, RaiseDead]
         self.favhill = [1]
         self.favsurf = [forest_t, swamp_t]
+
     def levelup(self):
         if self.xp >= 10 and self.level == 1:
             self.level = 2
@@ -8583,7 +8603,7 @@ class VladDracul(Undead):
     old_factor = 200
     min_units = 1
     max_squads = 1
-    can_hire = 1
+    can_recall = 0
     leadership = 90
     is_leader = 1
     unique = 1
@@ -12787,6 +12807,7 @@ class Mandeha(Unit):
     min_units = 1
     ln = 2
     max_squads = 1
+    can_recall = 0
     type = "beast"
     physical_traits = [beast_t]
     aligment = hell_t
@@ -13078,7 +13099,7 @@ class Peasant(Human):
     name = peasant_t
     units = 40
     min_units = 10
-    ln = 20
+    ln = 8
     max_squads = 20
     levy = 1
     type = "civil"
@@ -13124,7 +13145,7 @@ class PeasantLevy(Human):
     name = peasant_levie_t
     units = 30
     min_units = 10
-    ln = 15
+    ln = 8
     max_squads = 12
     levy = 1
     type = "infantry"

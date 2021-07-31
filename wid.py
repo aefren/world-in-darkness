@@ -69,7 +69,7 @@ class Ambient:
         self.year_change = 3
         self.update()
 
-    def update(self): 
+    def update(self):
         self.sseason = f"{self.season[1][self.season[0]]}"
         self.stime = f"{self.time[1][self.time[0]]}"
         self.smonth = f" {self.month[1][self.month[0]]}"
@@ -101,6 +101,7 @@ class Terrain:
     income = 0
     is_city = 0
     land = 0
+    miasma = 0
     name = None
     nation = None
     location = None
@@ -163,27 +164,23 @@ class Terrain:
         self.units += [corpse]
 
     def add_ghouls(self):
-        roll = basics.roll_dice(2)
-        if self.units: roll -= 1
+        corpses = ceil(self.get_corpses()/5)
+        roll = basics.roll_dice(2) + corpses
+        if self.units: roll -= 2
         if roll >= 10:
-            unit = self.add_unit(Ghoul  , hell_t)
-            unit.hp_total = unit.hp * randint(5, 10)
+            unit = self.add_unit(Ghoul, hell_t)
+            unit.hp_total = unit.hp * randint(2, 5)
             # unit.update()
 
     def add_miasma(self):
-        roll = basics.roll_dice(2)
-        corpses = 0
-        for cr in self.corpses:
-            corpses += sum(cr.deads)
-        corpses = ceil(corpses / 10)
-        sk = Miasma(self)
-        if roll + \
-                corpses >= 11 and sk.name not in [ev.name for ev in self.events]:
-            sk.turns = 2 + corpses
+        if Miasma.name in [ev.name for ev in self.events]: return
+        minimum = 10
+        if self.season == summer_t: minimum = 5
+        if self.season == winter_t: minimum = 15
+        if self.miasma >= minimum:
+            sk = Miasma(self)
+            sk.turns = randint(3,5)
             self.events += [sk]
-        elif sk.name in [ev.name for ev in self.events] and roll >= 10:
-            for ev in self.events:
-                if ev.name == sk.name: ev.turns += 1
 
     def add_unit(self, unit, nation, revealed=0, squads=None, units=None):
         global sayland
@@ -254,6 +251,11 @@ class Terrain:
             units += [i]
         return units
 
+    def get_corpses(self):
+        corpses = 0
+        for cr in self.corpses:
+            corpses += sum(cr.deads)
+        return corpses
     def get_distance(self, pos, trg):
         v = 1
         while True:
@@ -520,6 +522,8 @@ class Terrain:
 
     def set_corpses(self):
         if self.corpses:
+            corpses = ceil(self.get_corpses()/5)
+            self.miasma += corpses
             self.add_miasma()
             self.add_ghouls()
             for cr in self.corpses:
@@ -713,7 +717,10 @@ class Terrain:
         for u in self.units_blocked: u.blocked -= 1
         self.units += [u for u in self.units_blocked if u.blocked < 1]
         self.units_blocked = [u for u in self.units_blocked if u.blocked > 0]
+        self.miasma -= 1
+        if self.corpses == []: self.miasma -= 1
         self.set_corpses()
+        if self.miasma < 0: self.miasma = 0
 
     def stats_buildings(self):
         for b in self.buildings:
@@ -947,10 +954,12 @@ class World:
         logging.info(f"add_random_buildings {world.turn=:}.")
         shuffle(self.random_buildings)
         while value:
-            for nt in self.nations:
+            nations = [nt for nt in self.nations]
+            shuffle(nations)
+            for nt in nations:
                 for bu in self.random_buildings:
                     tiles = nt.pos.get_near_tiles(5)
-                    tiles = [ it for it in tiles if it.buildings == []]
+                    tiles = [it for it in tiles if it.buildings == []]
                     [it.update() for it in tiles]
                     tile = choice(tiles)
                     for it in self.random_nations:
@@ -960,7 +969,7 @@ class World:
                         roll = randint(1, 13)
                         if info: logging.debug(f"{bu.common=:}, {roll=:}.")
                         if roll > bu.common: continue
-                    if City.check_tile_req(bu, tile) :
+                    if City.check_tile_req(bu, tile):
                         msg = f"{bu} added in {tile} {tile.cords}."
                         if info: logging.debug(msg)
                         self.log[-1] += [msg]
@@ -978,65 +987,72 @@ class World:
         while tries > 0 and value > 0:
             tries -= 1
             shuffle(self.buildings)
-            #self.buildings.sort(key=lambda x: x.pos.threat +
-                                #x.pos.around_threat, reverse=True)
-            #self.buildings.sort(key=lambda x: x.pos.threat +
-                                #x.pos.around_threat and len(x.units) < 1, reverse=True)
+            # self.buildings.sort(key=lambda x: x.pos.threat +
+            # x.pos.around_threat, reverse=True)
+            # self.buildings.sort(key=lambda x: x.pos.threat +
+            # x.pos.around_threat and len(x.units) < 1, reverse=True)
             #self.buildings.sort(key=lambda x: len(x.units) <= 5, reverse=True)
             self.buildings.sort(key=lambda x: len(x.units))
-            self.buildings.sort(key=lambda x: x.units_ranking < x.pos.threat+x.pos.around_threat,reverse=True)
-            building = self.buildings[0]
-            shuffle(building.av_units)
-            if basics.roll_dice(1) >= 5:
-                building.av_units.sort(
-                    key=lambda x: x.leadership > 1, reverse=True)
-            if info: logging.debug(f"adding unit from {building}.")
-            for uni in building.av_units:
-                logging.debug(f"adding {uni.name}.")
-                if uni.common:
-                    roll = randint(1, 13)
-                    if info: logging.debug(f"{uni.common=:}, {roll=:}.")
-                    if roll > uni.common: continue
-                uni = uni(building.nation)
-                uni.city = building
-                building.units += [uni]
-                msg = str(
-                    f"adding {uni} from {building} {building.pos.cords} ({building.units}).")
-                if info: logging.debug(msg)
-                self.log[-1] += [msg]
-                try:
-                    uni.update()
-                except Exception: Pdb().set_trace()
-                if uni.units > 1 and uni.leadership == 0:
-                    if info: logging.debug(f"randomly set units number")
-                    uni.hp_total = randint(40, 60) * uni.hp_total / 100
-                    uni.update()
-                uni.pos = building.pos
-                uni.nation.update(uni.nation.map)
-                loadsound("set10")
-                building.pos.units += [uni]
-                self.units.append(uni)
-                if uni.leadership:
-                    av_units = [
-                        it for it in building.av_units if it.leadership == 0]
-                    for r in range(randint(2, 5)):
-                        if av_units == []: break
-                        if uni.leading > uni.leadership * 0.8: break
-                        if info: logging.debug(f"adding squads to {uni}.")
-                        squad = choice(av_units)(uni.nation)
-                        squad.hp_total = randint(40, 60) * squad.hp_total / 100
-                        squad.city = uni.city
-                        squad.leader = uni
-                        squad. pos = uni.pos
-                        uni.pos.units += [squad]
-                        uni.leads += [squad]
-                        squad.update()
+            self.buildings.sort(
+                key=lambda x: x.units_ranking < x.pos.threat +
+                x.pos.around_threat,
+                reverse=True)
+            for building in self.buildings:
+                if value < 1: break
+                shuffle(building.av_units)
+                if basics.roll_dice(1) >= 5:
+                    building.av_units.sort(
+                        key=lambda x: x.leadership > 1, reverse=True)
+                if info: logging.debug(f"adding unit from {building}.")
+                for uni in building.av_units:
+                    logging.debug(f"adding {uni.name}.")
+                    if uni.common:
+                        roll = randint(1, 13)
+                        if info: logging.debug(f"{uni.common=:}, {roll=:}.")
+                        if roll > uni.common: continue
+                    uni = uni(building.nation)
+                    uni.city = building
+                    building.units += [uni]
+                    msg = str(
+                        f"adding {uni} from {building} {building.pos.cords} ({building.units}).")
+                    if info: logging.debug(msg)
+                    self.log[-1] += [msg]
+                    try:
                         uni.update()
-                        if info: logging.debug(f"added {squad}")
-                value -= uni.ranking
-                self.log[-1] += [f"{uni} {added_t} {in_t} {building.pos} {building.pos.cords}."]
-                if info: logging.debug(f"{uni}. ranking {uni.ranking}.")
-                break
+                    except Exception: Pdb().set_trace()
+                    if uni.units > 1 and uni.leadership == 0:
+                        if info: logging.debug(f"randomly set units number")
+                        uni.hp_total = randint(40, 60) * uni.hp_total / 100
+                        uni.update()
+                    uni.pos = building.pos
+                    uni.nation.update(uni.nation.map)
+                    loadsound("set10")
+                    building.pos.units += [uni]
+                    self.units.append(uni)
+                    if uni.leadership:
+                        av_units = [
+                            it for it in building.av_units if it.leadership == 0]
+                        for r in range(randint(2, 5)):
+                            if av_units == []: break
+                            if uni.leading > uni.leadership * 0.8: break
+                            if info: logging.debug(f"adding squads to {uni}.")
+                            squad = choice(av_units)(uni.nation)
+                            squad.hp_total = randint(
+                                30, 70) * squad.hp_total / 100
+                            squad.city = uni.city
+                            squad.leader = uni
+                            squad. pos = uni.pos
+                            uni.pos.units += [squad]
+                            uni.leads += [squad]
+                            squad.update()
+                            uni.update()
+                            if info: logging.debug(f"added {squad}")
+                            value -= uni.ranking
+                            if value < 1: break
+                    self.log[-1] += [
+                        f"{uni} {added_t} {in_t} {building.pos} {building.pos.cords}."]
+                    if info: logging.debug(f"{uni}. ranking {uni.ranking}.")
+                    break
 
     def autum_events(self):
         for r in range(len(self.map) // 50):
@@ -1090,6 +1106,7 @@ class World:
                 if it.age: it.age += self.ambient.year_change
         for it in world.units:
             if it.age: it.age += self.ambient.year_change
+
     def season_events(self):
         self.set_master()
         self.events_num = int((self.height + self.width) * 0.1)
@@ -1279,8 +1296,6 @@ class World:
 
         self.random_score = sum(u.ranking for u in self.units)
         [nt.update(scenary) for nt in self.random_nations]
-
-
 
 
 class Ai:
@@ -2043,7 +2058,7 @@ class Ai:
                     f"{uni} rnd {round(rnd)} max ranking {round(max_ranking)}."]
                 nation.devlog[-1] += [f"a threat {tl.around_threat}."]
                 if (rnd > max_ranking and tl.defense > tl.around_threat):
-                    msg = f"garrison attack to {s} {tl.cords}. "
+                    msg = f"garrison attack to {t} {tl.cords}. "
                     msg += f"rnd {rnd}, threat {tl.threat}, around threat {tl.around_threat}."
                     nation.devlog[-1] += [msg]
                     uni.move_set(tl)
@@ -4318,9 +4333,10 @@ class Game:
             if x > -1 and mapeditor == 0:
                 itm = local_units[x]
                 if event.key == pygame.K_1:
-                    sp.speak(f"{itm}.",1)
+                    sp.speak(f"{itm}.", 1)
                     if nation in itm.belongs and itm.leadership:
-                        sp.speak(f"leading {itm.leading} {of_t} {itm.leadership}.")
+                        sp.speak(
+                            f"leading {itm.leading} {of_t} {itm.leadership}.")
                     sp.speak(f"{itm.nation}.")
                 if event.key == pygame.K_2:
                     sp.speak(f"hp: {itm.hp_total}")
@@ -4374,6 +4390,7 @@ class Game:
                     sp.speak(f"{size_t} {pos.size}.")
                 if event.key == pygame.K_6 and dev_mode:
                     sp.speak(pos.food_rate, 1)
+                    sp.speak(f"{pos.miasma=:}.")
                     sp.speak(f"{pos.flood= }.")
                     sp.speak(f"{len(nation.units_comm)=:}.")
                     sp.speak(f"{len(nation.units_scout)=:}.")
@@ -4497,11 +4514,10 @@ class Game:
                 if ambient.week > 1:
                     ambient.week = 1
                     ambient.season[0] += 1
+                    ambient.year += ambient.year_change
                     if ambient.season[0] >= 3:
                         ambient.season[0] = 0
-                        ambient.year += ambient.year_change
                         world.set_new_year()
-                    
 
             ambient.time[0] += 1
 

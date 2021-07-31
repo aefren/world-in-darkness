@@ -328,21 +328,22 @@ class DHLevels(Skill):
             itm.off_mod += 1
             itm.strn_mod += 1
 
-
 class Diseased(Skill):
-    name = weak_t
-    desc = "-2 off, -2 dfs, -2 moves, -2 res, -2 str."
+    name = "diseased"
+    desc = "probability to dead."
     effect = "self"
-    ranking = 0.5
+    ranking = 1
     type = "generic"
 
     def run(self, itm):
         itm.effects += [self.name]
-        itm.dfs_mod -= 2
-        itm.moves_mod -= 2
-        itm.off_mod -= 2
-        itm.res_mod -= 2
-        itm.strn_mod -= 2
+        if basics.roll_dice(2) >= 12:
+            itm.hp_total = 0
+            if itm.show_info:
+                sleep(loadsound("notify36"))
+            msg = f"{itm} has dead by disease."
+            self.nation.log[-1] += [msg]
+            if itm.nation in itm.pos.world.random_nations: logging.debug(msg)
 
 
 class Eclipse(Skill):
@@ -687,9 +688,9 @@ class Intoxicated(Skill):
 
     def run(self, itm):
         if itm.hp_total < 1: return
-        sk = Diseased(itm)
+        sk = Weak(itm)
         sk.turns = self.turns
-        if sk.name not in [s.name for s in itm.global_skills]:
+        if sk.name not in [s.name for s in itm.other_skills]:
             itm.other_skills += [sk]
         deads = randint(10, 30)
         if basics.roll_dice(1) >= 5: deads *= 2
@@ -1440,7 +1441,7 @@ class TheBeast(Skill):
 
 class RainOfToads(Skill):
     name = "lluvia de sapos"
-    desc = "adds unrest and chance to creates miasma by toads corpses. Batallion can get Diseased"
+    desc = "adds unrest and chance to creates miasma by toads corpses. Batallion can get Weak"
     effects = "self"
     ranking = 1
     type = "generic"
@@ -1455,7 +1456,7 @@ class RainOfToads(Skill):
         for uni in units:
             roll = basics.roll_dice(1)
             if roll >= 6:
-                sk = Diseased(uni)
+                sk = Weak(uni)
                 sk.turns = randint(4, 8)
                 uni.other_skills += [sk]
 
@@ -1574,6 +1575,22 @@ class WarCry(Skill):
         if itm.nation in self.itm.belongs and itm != self.itm and human_t in itm.physical_traits:
             itm.effects.append(self.name)
             itm.resolve_mod += 1
+
+
+class Weak(Skill):
+    name = weak_t
+    desc = "-2 off, -2 dfs, -2 moves, -2 res, -2 str."
+    effect = "self"
+    ranking = 0.5
+    type = "generic"
+
+    def run(self, itm):
+        itm.effects += [self.name]
+        itm.dfs_mod -= 2
+        itm.moves_mod -= 2
+        itm.off_mod -= 2
+        itm.res_mod -= 2
+        itm.strn_mod -= 2
 
 
 class Withdrawall(Skill):
