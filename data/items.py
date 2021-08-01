@@ -2375,6 +2375,12 @@ class Unit:
             res = target.hres + target.hres_mod
         return hit_to, res
 
+    def combat_ln(self):
+        ln = self.ln + self.ln_mod
+        if self.ranged: ln = self.units
+        if ln > self.units: ln = self.units
+        return ln
+        
     def combat_menu(
             self,
             target=None,
@@ -2492,6 +2498,8 @@ class Unit:
                     f"{units[1].res+units[1].res_mod} ({units[1].res_mod})",
                     f"hres: {units[0].hres+units[0].hres_mod} ({units[0].hres_mod}) VS "
                     f"{units[1].hres+units[1].hres_mod} ({units[1].hres_mod})",
+                    f"ln: {units[0].ln+units[0].ln_mod} (+{units[0].ln_mod}) "
+                    f"VS {units[1].ln+units[1].ln_mod} (+{units[1].ln_mod}).",
                     f"off: {units[0].off+units[0].off_mod} (+{units[0].off_mod}) "
                     f"VS {units[1].off+units[1].off_mod} (+{units[1].off_mod}).",
                     f"strn: {units[0].strn+units[0].strn_mod} (+{units[0].strn_mod}) "
@@ -2634,9 +2642,7 @@ class Unit:
 
             self.combat_dex(weapon)
 
-            ln = self.ln + self.ln_mod
-            if self.ranged: ln = self.units
-            if ln > self.units: ln = self.units
+            ln = self.combat_ln()
             for uni in range(ln):
                 if info: logging.debug(f"unidad {uni+1} de {self.units}.")
                 attacks = self.att1 + self.att1_mod
@@ -3299,6 +3305,7 @@ class Unit:
                           ]
                 if self.weapon1:
                     lista += [
+                        f"ln {self.ln+self.ln_mod}.",
                         f"{weapon_t} {self.weapon1}",
                         f"{attacks_t} {self.att1+self.att1_mod} ({self.att1_mod}).",
                     ]
@@ -3969,7 +3976,7 @@ class Unit:
                 try:
                     sk.run(self)
                 except Exception: Pdb().set_trace()
-                if sk.turns > 0: sk.turns -= 1
+            if sk.turns > 0: sk.turns -= 1
         self.global_skills = [
             sk for sk in self.global_skills if sk.turns == -1 or sk.turns > 0]
         self.offensive_skills = [
@@ -4510,7 +4517,9 @@ class Unit:
         for sk in skills:
             if info: logging.debug(sk.name)
             if sk.type == "generic":
-                sk.run(self)
+                try:
+                    sk.run(self)
+                except Exception: Pdb().set_trace()
 
         self.skill_names.sort()
 
@@ -5551,7 +5560,7 @@ class BladeDancer(Elf):
     name = "blade dancer"
     units = 10
     min_units = 10
-    ln = 10
+    ln = 15
     max_squads = 5
     type = "infantry"
     physical_traits = [elf_t]
@@ -5816,7 +5825,7 @@ class ForestEagle(Elf):
     name = "forest eagle"
     units = 2
     min_units = 2
-    ln = 20
+    ln = 15
     max_squads = 10
     type = "beast"
     physical_traits = [eagle_t]
@@ -5858,6 +5867,7 @@ class GreatEagle(Elf):
     name = "great eagle "
     units = 1
     min_units = 1
+    ln = 10
     max_squads = 1
     type = "beast"
     physical_traits = [eagle_t]
@@ -5944,7 +5954,7 @@ class ForestGuard(Elf):
     name = forest_guard_t
     units = 20
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 10
     type = "infantry"
     physical_traits = [elf_t]
@@ -5988,7 +5998,7 @@ class ForestRider(Elf):
     units = 5
     sts = 2
     min_units = 5
-    ln = 7
+    ln = 6
     max_squads = 6
     type = "cavalry"
     mounted = 1
@@ -7165,7 +7175,7 @@ class Flagellant(Human):
     name = flagellant_t
     units = 20
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
@@ -7252,7 +7262,7 @@ class Velites(Human):
     name = "velites "
     units = 20
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 6
     type = "infantry"
     physical_traits = [human_t]
@@ -7710,7 +7720,7 @@ class Equite(Human):
     name = equites_t
     units = 5
     min_units = 5
-    ln = 7
+    ln = 8
     max_squads = 6
     type = "cavalry"
     mounted = 1
@@ -8671,7 +8681,7 @@ class Adjule(Unit):
     name = "adjule"
     units = 10
     min_units = 5
-    ln = 15
+    ln = 8
     max_squads = 5
     type = beast_t
     physical_traits = [death_t]
@@ -9219,7 +9229,7 @@ class Skeleton(Undead):
     name = skeleton_t
     units = 10
     min_units = 10
-    ln = 10
+    ln = 6
     max_squads = 10
     type = "infantry"
     will_less = 1
@@ -9262,7 +9272,7 @@ class BloodSkeleton(Undead):
     name = "blood skeleton"
     units = 10
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 10
     type = "infantry"
     will_less = 1
@@ -9349,7 +9359,7 @@ class Vampire(Undead):
     name = vampire_t
     units = 5
     min_units = 1
-    ln = 10
+    ln = 20
     max_squads = 20
     type = "beast"
     physical_traits = [blood_drinker_t, vampire_t]
@@ -9398,8 +9408,8 @@ class Vargheist(Undead):
     name = "vargheist"
     units = 1
     min_units = 1
-    ln = 7
-    max_squads = 3
+    ln = 5
+    max_squads = 5
     type = "beast"
     physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
@@ -9447,7 +9457,7 @@ class Zombie(Undead, Ground):
     name = zombie_t
     units = 20
     min_units = 10
-    ln = 30
+    ln = 10
     max_squads = 20
     type = "infantry"
     will_less = 1
@@ -11312,7 +11322,7 @@ class Abomination(Unit):
     name = "abomination"
     units = 4
     min_units = 4
-    ln = 5
+    ln = 4
     max_squads = 5
     poisonres = 1
     type = "beast"
@@ -11638,7 +11648,7 @@ class DeadBear(Unit):
     name = dead_bear_t
     units = 4
     min_units = 4
-    ln = 7
+    ln = 4
     max_squads = 5
     type = "beast"
     physical_traits = [death_t, bear_t]
@@ -11917,7 +11927,7 @@ class GiantDeadBear(Unit):
     name = giant_dead_bear_t
     units = 1
     min_units = 1
-    ln = 5
+    ln = 3
     max_squads = 10
     type = "beast"
     physical_traits = [death_t, bear_t]
@@ -12061,7 +12071,7 @@ class GiantWolf(Unit):
     name = giant_wolf_t
     units = 5
     min_units = 5
-    ln = 10
+    ln = 8
     max_squads = 6
     type = "beast"
     physical_traits = [wolf_t]
@@ -12112,7 +12122,7 @@ class Ghost(Undead):
     name = ghost_t
     units = 5
     min_units = 5
-    ln = 20
+    ln = 50
     max_squads = 6
     ethereal = 1
     type = "infantry"
@@ -12259,7 +12269,7 @@ class Harpy(Unit):
     name = harpy_t
     units = 20
     sts = 2
-    ln = 20
+    ln = 10
     min_units = 10
     max_squads = 6
     poisonres = 1
@@ -12360,7 +12370,7 @@ class Hyena(Unit):
     name = hyena_t
     units = 20
     sts = 4
-    ln = 15
+    ln = 10
     min_units = 5
     max_squads = 12
     type = "beast"
@@ -12509,7 +12519,7 @@ class NomadsRider(Human):
     name = nomads_rider_t
     units = 20
     min_units = 10
-    ln = 15
+    ln = 6
     max_squads = 6
     mounted = 1
     type = "cavalry"
@@ -12612,7 +12622,7 @@ class OrcWarrior(Unit):
     units = 20
     sts = 4
     min_units = 10
-    ln = 20
+    ln = 8
     max_squads = 10
     type = "infantry"
     physical_traits = [orc_t]
@@ -12661,7 +12671,7 @@ class Levy(Human):
     units = 20
     sts = 2
     min_units = 10
-    ln = 15
+    ln = 8
     max_squads = 10
     levy = 1
     type = "infantry"
@@ -12757,7 +12767,7 @@ class LizardManInfantry(Human):
     units = 20
     sts = 2
     min_units = 10
-    ln = 10
+    ln = 15
     max_squads = 6
     poisonres = 1
     type = "infantry"
@@ -12852,7 +12862,7 @@ class Mammot(Unit):
     name = "mammot"
     units = 2
     min_units = 2
-    ln = 4
+    ln = 6
     max_squads = 10
     type = "beast"
     physical_traits = [mammot_t]
@@ -12901,7 +12911,7 @@ class DeadMammot(Unit):
     name = "dead mammot"
     units = 1
     min_units = 1
-    ln = 4
+    ln = 3
     max_squads = 10
     type = "beast"
     physical_traits = [death_t, mammot_t]
@@ -13099,7 +13109,7 @@ class Peasant(Human):
     name = peasant_t
     units = 40
     min_units = 10
-    ln = 8
+    ln = 6
     max_squads = 20
     levy = 1
     type = "civil"
@@ -13145,7 +13155,7 @@ class PeasantLevy(Human):
     name = peasant_levie_t
     units = 30
     min_units = 10
-    ln = 8
+    ln = 6
     max_squads = 12
     levy = 1
     type = "infantry"
@@ -13236,7 +13246,7 @@ class Raider(Human):
     units = 20
     sts = 1
     min_units = 10
-    ln = 15
+    ln = 8
     max_squads = 5
     type = "infantry"
     physical_traits = [human_t]
@@ -13335,7 +13345,7 @@ class Satyr(Human):
     name = "satyr"
     units = 10
     min_units = 10
-    ln = 10
+    ln = 7
     max_squads = 4
     type = "infantry"
     physical_traits = [beast_t]
@@ -13383,7 +13393,7 @@ class Slave(Human):
     name = "slave"
     units = 30
     min_units = 10
-    ln = 20
+    ln = 5
     max_squads = 60
     type = "civil"
     will_less = 1
@@ -13480,7 +13490,7 @@ class SlaveWarrior(Human):
     name = "guerrero esclavo"
     units = 20
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 8
     type = "infantry"
     will_less = 1
@@ -13569,7 +13579,7 @@ class Troglodyte(Unit):
     name = "troglodyte"
     units = 6
     min_units = 6
-    ln = 10
+    ln = 8
     max_squads = 10
     type = "beast"
     physical_traits = [human_t]
@@ -13616,7 +13626,7 @@ class Troll(Unit):
     name = "troll"
     units = 2
     min_units = 1
-    ln = 5
+    ln = 4
     max_squads = 8
     poisonres = 1
     type = "beast"
@@ -13664,7 +13674,7 @@ class Warg(Unit):
     units = 10
     sts = 1
     min_units = 5
-    ln = 10
+    ln = 6
     max_squads = 12
     type = "beast"
     physical_traits = [wolf_t]
@@ -13715,7 +13725,7 @@ class WargRider(Unit):
     name = "warg rider"
     units = 5
     min_units = 5
-    ln = 7
+    ln = 8
     max_squads = 6
     mounted = 1
     type = "beast"
@@ -13770,7 +13780,7 @@ class Warrior(Human):
     units = 20
     sts = 2
     min_units = 10
-    ln = 5
+    ln = 8
     max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
@@ -13908,7 +13918,7 @@ class Wolf(Unit):
     name = wolf_t
     units = 20
     min_units = 10
-    ln = 15
+    ln = 10
     max_squads = 6
     type = "beast"
     physical_traits = [wolf_t]
@@ -13958,7 +13968,7 @@ class WolfRider(Unit):
     name = "wolf rider"
     units = 10
     min_units = 10
-    ln = 10
+    ln = 8
     max_squads = 6
     mounted = 1
     type = "infantry"

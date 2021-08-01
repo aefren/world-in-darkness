@@ -306,8 +306,10 @@ class EatCorpses(Spell):
     tags = ["feeding", "cannibalize"]
 
     def ai_run(self, itm):
-        if FeedingFrenzy.name not in [
-            s.__class__.name for s in itm.skills] and itm.pos.corpses: self.run(itm)
+        try:
+            if FeedingFrenzy.name not in [
+                s.__class__.name for s in itm.skills] and itm.pos.corpses: self.run(itm)
+        except Exception: Pdb().set_trace()
 
     def run(self, itm):
         itm.update()
@@ -316,7 +318,7 @@ class EatCorpses(Spell):
             corpses = sum(sum(i.deads) for i in itm.pos.corpses)
             sk = FeedingFrenzy(itm)
             if corpses >= itm.units:
-                sk.turns = 5
+                sk.turns = 3
                 sk.name += f" full"
                 times = itm.units
                 for cr in itm.pos.corpses:
@@ -327,7 +329,7 @@ class EatCorpses(Spell):
                         times -= 1
                         if times < 1: break
             elif corpses >= 50 * itm.units / 100:
-                sk.turns = 3
+                sk.turns = 2
                 sk.name += f" half"
                 itm.pos.corpses = []
             else:
@@ -338,7 +340,7 @@ class EatCorpses(Spell):
             msg = f"{itm} cannivalizes {corpses} {corpses_t}"
             itm.log[-1] += [msg]
             itm.pos.world.log[-1] += [msg]
-            if itm.show_info: sleep(loadsound("spell37") // 2)
+            if itm.show_info: sleep(loadsound("spell37"))
         else:
             itm.log[-1] += [f"can not cannivalize"]
             if itm.show_info: loadsound("errn1")
@@ -545,7 +547,7 @@ class Curse(Spell):
 
     def ai_run(self, itm):
         units = [i for i in itm.pos.units if itm.nation not in i.belongs
-                 and self.name not in i.global_skills]
+                 and self.name not in [it.name for it in i.global_skills]]
 
         if units:
             units.sort(key=lambda x: x.ranking, reverse=True)
@@ -553,7 +555,7 @@ class Curse(Spell):
 
     def run(self, itm, target):
         if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
-        sk = Diseased
+        sk = Diseased(target)
         sk.turns = randint(1, 4)
         if sk.name not in [s.name for s in target.global_skills]:
             target.global_skills += [sk]

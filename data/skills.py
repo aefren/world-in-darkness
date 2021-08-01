@@ -333,7 +333,7 @@ class Diseased(Skill):
     desc = "probability to dead."
     effect = "self"
     ranking = 1
-    type = "generic"
+    type = "start turn"
 
     def run(self, itm):
         itm.effects += [self.name]
@@ -455,9 +455,12 @@ class ForestSurvival(Skill):
 
 class ForestTerrain(Skill):
     effect = "all"
-    desc = """-2 moves for grount unit, -4 move for mounted unit, -1 off,
-  -1 dfs.unit can not charge, ignores forest survival and flying units.
-  +4 stealth."""
+    desc = """
+    -2 moves for grount unit, -4 move for mounted unit, -1 off,
+    -1 dfs. unit can not charge.
+    -30% ln. 
+    ignores forest survival and flying units.+4 stealth.
+    """
     name = "forest terrain"
     type = "generic"
 
@@ -466,10 +469,11 @@ class ForestTerrain(Skill):
         if itm.forest_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
+            itm.ln_mod -= itm.ln//3
             itm.moves_mod -= 2
+            if itm.mounted: itm.moves_mod -= 2
             itm.dfs_mod -= 1
             itm.off_mod -= 1
-            if itm.mounted: itm.moves_mod -= 2
 
 
 class ForestWalker(Skill):
@@ -557,10 +561,13 @@ class Storm(Skill):
 
 class HillTerrain(Skill):
     name = "hill terrain"
-    desc = """-2 moves for grount units, -4 move for mounted unit,
-  unit can not charge, -1 dfs, -1 off.
-  ignores mountain survival and fying units. +5 range if unit is ranged.
-  +4 stealth."""
+    desc = """
+    -2 moves for grount units, -4 move for mounted unit.
+    -30% ln.
+    unit can not charge, -1 dfs, -1 off.
+    ignores mountain survival and fying units. +5 range if unit is ranged.
+    +4 stealth.
+    """
     effect = "all"
     type = "generic"
 
@@ -570,6 +577,7 @@ class HillTerrain(Skill):
         if itm.mountain_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
+            itm.ln_mod -= itm.ln//3
             itm.moves_mod -= 2
             itm.dfs_mod -= 1
             itm.off_mod -= 1
@@ -935,8 +943,9 @@ class mist(Skill):
 
 class Night(Skill):
     name = night_t
-    desc = """if unit is not dark vision -1 off (-2 if unit is ranged),
-  -1dfs (-2 if unit is ranged), -1 resolve. +2 stealth."""
+    desc = """if unit is not dark vision: -2 off, 
+  -2 dfs, -1 resolve. +2 stealth,
+  -4 ln."""
     effect = "all"
     type = "generic"
 
@@ -945,11 +954,10 @@ class Night(Skill):
             itm.effects.append(self.name)
             itm.stealth_mod += 2
             if itm.dark_vision == 0:
-                itm.dfs_mod -= 1
-                itm.off_mod -= 1
+                itm.dfs_mod -= 2
+                itm.ln_mod -= 4
+                itm.off_mod -= 2
                 itm.resolve_mod -= 1
-                if itm.range[1] > 5:
-                    itm.off_mod -= 2
 
 
 class NightFerocity(Skill):
@@ -1276,23 +1284,24 @@ class Spread(Skill):
 
 class Surrounded(Skill):
     effect = "self"
-    desc = "+1 off, str if 3 squads. +2 off, str if 6 squads. +3 off, str if 10 squads."
+    desc = """
+    +10 ln if 3 squads.
+    +20 ln if 6 squads. 
+    +30 ln if 10 squads.
+    """
     name = "rodeados"
     type = "generic"
 
     def run(self, itm):
         if itm.squads >= 10:
             itm.effects.append(self.name + str(3))
-            itm.off_mod += 3
-            itm.strn_mod += 3
+            itm.ln_mod += 10
         elif itm.squads >= 7:
             itm.effects.append(self.name + str(2))
-            itm.off_mod += 2
-            itm.strn_mod += 2
+            itm.ln_mod += 10
         elif itm.squads >= 3:
             itm.effects.append(self.name + str(1))
-            itm.off_mod += 1
-            itm.strn_mod += 1
+            itm.ln_mod += 10
 
 
 class Scavenger(Skill):
@@ -1383,8 +1392,11 @@ class SwampSurvival(Skill):
 
 class SwampTerrain(Skill):
     effect = "all"
-    desc = """-1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit,
-  unit can not charge. ignores swamp survival and flying units."""
+    desc = """
+    -1 dfs, -1 off,-2 moves for grount unit, -4 move for mounted unit.
+    -30% ln.
+    unit can not charge. ignores swamp survival and flying units.
+    """
     name = "swamp terrain"
     type = "generic"
 
@@ -1392,6 +1404,7 @@ class SwampTerrain(Skill):
         if itm.swamp_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
+            itm.ln_mod -= itm.ln//3
             itm.dfs_mod -= 1
             itm.moves_mod -= 2
             itm.off_mod -= 1

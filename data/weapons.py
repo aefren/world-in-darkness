@@ -724,11 +724,11 @@ class ToxicClaw(Weapon):
         if (sum(itm.damage_done) >= self.damage_need * itm.target.hp_total / 100
             and itm.target.hp_total >= 1
             and death_t not in itm.target.physical_traits
-                and poisonres_t not in itm.target.physical_traits):
+                and itm.target.poisonres == 0):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 4:
                 sk = skills.Intoxicated(itm.target)
-                sk.turns = sum(itm.damage_done)
+                sk.turns = randint(2, 7)
                 if skills.Intoxicated.name not in [s.name for s in self.itm.target.other_skills]:
                     itm.target.other_skills += [sk]
                     msg = [f"{itm.target} {is_t} intoxicated by {itm}. {sk.turns}"]
