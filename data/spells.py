@@ -57,7 +57,7 @@ class Spell:
             msg = f"{self} {failed_t}."
             if itm.show_info:
                 # sp.speak(msg, 1)
-                sleep(loadsound("spell11", channel=CHTE3) // 2)
+                sleep(loadsound("spell11", channel=CHUNE1) // 2)
             return msg
 
     def check_conditions(self, itm, target):
@@ -108,7 +108,7 @@ class Spell:
         if check != 1: return check
         cast = self.check_cast(itm)
         if cast != 1: return cast
-        if itm.show_info: sleep(loadsound(self.sound) / 2)
+        #if itm.show_info: sleep(loadsound(self.sound) / 2)
         if target: self.run(itm, target)
         else:
             if self.type == "recruit": self.recruit(itm)
@@ -201,7 +201,7 @@ class FeastForBaal(Spell):
             itm.other_skills += [sk]
             msg = f"{itm} cannivalizes {corpses} {corpses_t}"
             itm.log[-1] += [msg]
-            if itm.show_info: sleep(loadsound("spell37") // 2)
+            if itm.show_info: sleep(loadsound("spell37", channel=CHUNE1)*0.5)
         else:
             itm.log[-1] += [f"can not cannivalize"]
             if itm.show_info: loadsound("errn1")
@@ -247,7 +247,7 @@ class BloodHeal(Spell):
         if itm.hp_total < itm.hp * itm.units: self.init(itm)
 
     def run(self, itm):
-        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
+        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHUNE1)*0.5)
         itm.pos.pop -= 20
         itm.hp_total += 5
         itm.update()
@@ -278,7 +278,7 @@ class CastBloodRain(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 2
         roll = basics.roll_dice(1)
@@ -340,7 +340,7 @@ class EatCorpses(Spell):
             msg = f"{itm} cannivalizes {corpses} {corpses_t}"
             itm.log[-1] += [msg]
             itm.pos.world.log[-1] += [msg]
-            if itm.show_info: sleep(loadsound("spell37"))
+            if itm.show_info: sleep(loadsound("spell37", channel=CHUNE1)*0.5)
         else:
             itm.log[-1] += [f"can not cannivalize"]
             if itm.show_info: loadsound("errn1")
@@ -359,7 +359,7 @@ class CastLocustSwarm(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         pos = itm.pos
         casting = LocustSwarm
@@ -378,7 +378,7 @@ class CastMist(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         pos = itm.pos
         casting = Rain
@@ -404,7 +404,7 @@ class CastRain(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 1
         roll = basics.roll_dice(1)
@@ -449,7 +449,7 @@ class CastRainOfToads(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 1
         roll = basics.roll_dice(1)
@@ -482,7 +482,7 @@ class CastStorm(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 1
         pos = itm.pos
@@ -517,7 +517,7 @@ class CastWailingWinds(Spell):
         if wailing == 0: self.init(itm)
 
     def run(self, itm):
-        if itm.show_info: sleep(loadsound("spell38", channel=CHTE3, vol=0.7))
+        if itm.show_info: sleep(loadsound("spell38", channel=CHUNE, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 1
         roll = basics.roll_dice(1)
@@ -554,7 +554,7 @@ class Curse(Spell):
             self.init(itm, units[0])
 
     def run(self, itm, target):
-        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
+        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHUNE1)*0.5)
         sk = Diseased(target)
         sk.turns = randint(1, 4)
         if sk.name not in [s.name for s in target.global_skills]:
@@ -590,7 +590,7 @@ class HealingRoots(Spell):
         if units: self.init(itm, units[0])
 
     def run(self, itm, target):
-        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHTE))
+        if itm.nation.show_info: sleep(loadsound("spell42", channel=CHUNE1)*0.5)
         target.other_skills = [
             sk for sk in target.other_skills if sk.name != intoxicated_t]
         msg = f"{itm} has removed {intoxicated_t} {from_t} {target}."
@@ -694,7 +694,7 @@ class RaiseBloodSkeleton(Spell):
         raised.pos.units.append(raised)
         msg = f"reanimados {raised}."
         itm.log[-1].append(msg)
-        if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+        if itm.nation.show_info: sleep(loadsound("raiseundead1", channel=CHUNE1)*0.5)
         itm.pos.update(itm.nation)
 
 
@@ -745,7 +745,7 @@ class RaiseDead(Spell):
         raised.auto_attack()
         msg = f"reanimados {raised}."
         itm.log[-1].append(msg)
-        if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+        if itm.nation.show_info: sleep(loadsound("raiseundead1", channel=CHUNE1)*0.5)
         itm.pos.update(itm.nation)
 
 
@@ -794,7 +794,7 @@ class RaiseFellBat(Spell):
         raised.pos.units.append(raised)
         msg = f"reanimados {raised}."
         itm.log[-1].append(msg)
-        if itm.nation.show_info: sleep(loadsound("raiseundead1") / 2)
+        if itm.nation.show_info: sleep(loadsound("raiseundead1", channel=CHUNE1)*0.5)
         itm.pos.update(itm.nation)
 
 
@@ -922,7 +922,7 @@ class Returning(Spell):
         itm.log[-1] += [msg]
         logging.debug(msg)
         if itm.nation.show_info: sleep(
-            loadsound("spell41", channel=CHTE3) * 0.5)
+            loadsound("spell41", channel=CHUNE1) * 0.5)
         itm.mp[0] = 0
         pos = itm.pos
         itm.nation.cities[0].pos.units += [itm]
@@ -959,7 +959,7 @@ class SightFromFuture(Spell):
         self.set_msg0(itm)
         #logging.debug(msg)
         if itm.nation.show_info: sleep(
-            loadsound("spell41", channel=CHTE3) * 0.5)
+            loadsound("spell41", channel=CHUNE1) * 0.5)
         tiles = itm.pos.get_near_tiles(1)
         for t in tiles:
             for uni in t.units:
@@ -1021,7 +1021,7 @@ class SummonSecondSun(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 5
         pos = itm.pos
@@ -1130,7 +1130,7 @@ class SummonEclipse(Spell):
 
     def run(self, itm):
         if itm.show_info: sleep(
-            loadsound("spell27", channel=CHTE3, vol=0.7) / 2)
+            loadsound("spell27", channel=CHUNE1, vol=0.7)*0.5)
         self.set_msg0(itm)
         dist = 8
         pos = itm.pos

@@ -6772,7 +6772,7 @@ class Centurion(Human):
     mp = [2, 2]
     moves = 6
     resolve = 8
-    global_skills = [HoldPositions, Organization, Regroup]
+    global_skills = [Coesion, HoldPositions, Organization, Regroup]
 
     dfs = 10
     res = 9
@@ -6807,6 +6807,7 @@ class Centurion(Human):
         if self.xp >= 40 and self.level == 3:
             self.level = 4
             self.leadership += 10
+            self.global_skills += [Champion(self)]
 
 
 class Decarion(Human):
@@ -6871,9 +6872,11 @@ class Decarion(Human):
         if self.xp >= 25 and self.level == 2:
             self.level = 3
             self.leadership += 10
+            self.global_skills += [Coesion(self)]
         if self.xp >= 40 and self.level == 3:
             self.level = 4
             self.leadership += 10
+            self.global_skills += [Champion(self)]
 
 
 class Decurion(Human):
@@ -6938,9 +6941,12 @@ class Decurion(Human):
         if self.xp >= 25 and self.level == 2:
             self.level = 3
             self.leadership += 5
+            self.global_skills += [Coesion(self)]
         if self.xp >= 40 and self.level == 3:
             self.level = 4
             self.leadership += 5
+            self.global_skills += [Champion(self)]
+            
 
 
 class Flamen(Human):
@@ -7013,7 +7019,7 @@ class Legatus(Human):
     min_units = 10
     max_squads = 1
     can_hire = 1
-    leadership = 140
+    leadership = 100
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7033,7 +7039,7 @@ class Legatus(Human):
     mp = [4, 4]
     moves = 6
     resolve = 8
-    global_skills = [HoldPositions, Organization, Regroup]
+    global_skills = [Coesion, HoldPositions, Organization, Regroup]
 
     dfs = 12
     res = 10
@@ -7064,9 +7070,11 @@ class Legatus(Human):
         if self.xp >= 25 and self.level == 2:
             self.level = 3
             self.leadership += 10
+            self.global_skills += [Champion(self)] 
         if self.xp >= 45 and self.level == 3:
             self.level = 4
             self.leadership += 10
+            self.global_skills += [Inspiration(self)]
 
 
 class PontifexMaximus(Human):

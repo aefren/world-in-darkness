@@ -387,12 +387,12 @@ class Terrain:
         if self.hill: loadsound("terra_hill5", vol=0.3, channel=CHT3)
         if self.surf.name == forest_t: loadsound("terra_forest1", channel=CHT2, vol=0.5)
         elif self.surf.name == swamp_t: loadsound("terra_swamp1", channel=CHT2, vol=0.3)
-        elif self.soil.name == waste_t: loadsound("terra_waste1", vol=0.3, channel=CHT1)
-        elif self.soil.name == grassland_t: loadsound("terra_grass1", vol=0.3, channel=CHT1)
-        elif self.soil.name == plains_t: loadsound("terra_plains1", vol=0.3, channel=CHT1)
+        elif self.soil.name == waste_t: loadsound("terra_waste1", vol=0.5, channel=CHT1)
+        elif self.soil.name == grassland_t: loadsound("terra_grass1", vol=0.5, channel=CHT1)
+        elif self.soil.name == plains_t: loadsound("terra_plains1", vol=0.5, channel=CHT1)
         elif self.soil.name in [ocean_t, coast_t]: loadsound("terra_ocean1", channel=CHT3, vol=0.1)
         elif self.soil.name == coast_t: loadsound("terra_ocean1", channel=CHT3, vol=0.1)
-        elif self.soil.name == tundra_t: loadsound("terra_tundra1", vol=0.3, channel=CHT1)
+        elif self.soil.name == tundra_t: loadsound("terra_tundra1", vol=0.5, channel=CHT1)
 
     def pos_sight(self, nation, scenary):
         for t in scenary: t.sight = 0
@@ -4724,12 +4724,12 @@ class Game:
             # [it.update(nation) for it in scenary]
             # nation.update(scenary)
             if pos.nation == nation and pos.blocked: sleep(
-                loadsound("nav2") * 0.3)
+                loadsound("nav2", channel=CHT1) * 0.3)
             elif pos.nation == nation:
-                sleep(loadsound("nav1") * 0.3)
+                sleep(loadsound("nav1", channel=CHTN1) * 0.2)
             elif pos.nation != nation:
                 if pos.nation is None and pos.sight: sleep(
-                    loadsound("nav4") * 0.3)
+                    loadsound("nav4", channel=CHTN1) * 0.2)
             # if pos.name and pos.sight: sp.speak(f"{pos.name}.", 1)
             if pos in nation.map:
                 pos.play_tile()
@@ -4744,15 +4744,15 @@ class Game:
                     if pos.city:
                         city_name = pos.city.nick
                         if pos.sight or pos in nation.nations_tiles:
+                            sleep(loadsound("notify20")*0.5)
                             sp.speak(f"{city_name}")
-                            loadsound("notify20")
                 if pos.nation is None or str(pos.nation) != nation_name:
                     nation_name = None
                     if pos.nation:
                         nation_name = str(pos.nation)
                         if nation_name and pos.sight or pos in nation.nations_tiles:
+                            sleep(loadsound("notify20")*0.5)
                             sp.speak(f"{nation_name}")
-                            loadsound("notify20")
                 if pos.sight == 0:
                     sp.speak(f"{fog_t}.")
                     if pos not in nation.nations_tiles:

@@ -12,14 +12,15 @@ pygame.mixer.pre_init(frequency=44100, size=16, channels=2, buffer=1000)
 pygame.init()
 pygame.mixer.set_num_channels(16)
 
-CHT1 = pygame.mixer.Channel(0)  # generic.
-CHT2 = pygame.mixer.Channel(1)  # unit move.
-CHT3 = pygame.mixer.Channel(2)  # construction effects.
-CHTE1 = pygame.mixer.Channel(3)  # warn1.
-CHTE2 = pygame.mixer.Channel(4)  # warn2.
-CHTE3 = pygame.mixer.Channel(5)  # magic.
-CHUNE1 = pygame.mixer.Channel(6)  # magic.
-channels1 = [CHT1, CHT2, CHT3, CHTE1, CHTE2, CHTE3]
+CHT1 = pygame.mixer.Channel(0)
+CHT2 = pygame.mixer.Channel(1)
+CHT3 = pygame.mixer.Channel(2)
+CHTE1 = pygame.mixer.Channel(3)
+CHTE2 = pygame.mixer.Channel(4)
+CHTE3 = pygame.mixer.Channel(5)
+CHTN1 = pygame.mixer.Channel(7)
+CHUNE1 = pygame.mixer.Channel(6)
+channels1 = [CHT1, CHT2, CHT3, CHTE1, CHTE2, CHTE3, CHUNE1, CHTN1]
 
 
 def loadsound(soundfile, channel=CHT1, path=path, extention=wav, vol=1):

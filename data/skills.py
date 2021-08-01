@@ -235,6 +235,20 @@ class Charge(Skill):
         itm.can_charge = 1
 
 
+class Coesion(Skill):
+    name = "coesion"
+    desc = "+2 ln."
+    effect = "leading"
+    ranking = 1.2
+    type = "generic"
+    tags = ["leader"]
+
+    def run(self, itm):
+        if itm.nation in self.itm.belongs and human_t in itm.physical_traits:
+            itm.effects.append(self.name)
+            itm.ln_mod += 2
+
+
 class DarkPresence(Skill):
     name = "dark presence"
     desc = """if death: in day: +2 res.
