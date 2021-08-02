@@ -113,20 +113,23 @@ class BlessedWeapons(Skill):
             itm.strn_mod += 2
 
 
-class ColdResist(Skill):
-    name = blizzard_wanderer_t
-    desc = "ignores storm penalties."
-    effect = "self"
-    ranking = 1.1
+class BloodLord(Skill):
+    name = "señor de sangre"
+    desc = "+1 dfs, +1 off, +1 moves, +1 resolve if unit is blood drinker."
+    effect = "leading"
+    ranking = 1.2
     type = "generic"
+    tags = ["leader"]
 
     def run(self, itm):
-        itm.coldres = 1
-        if itm.pos and itm.pos.raining:
-            itm.effects.append(self.name)
-        if itm.pos and itm.pos.storm:
-            itm.can_hide = 1
-            itm.stealth_mod += 2
+        if (itm.nation in self.itm.belongs and itm != self.itm
+                and blood_drinker_t in itm.physical_traits):
+            itm.effects += [self.name]
+            itm.dfs_mod += 1
+            itm.ln_mod += 2
+            itm.moves_mod += 1
+            itm.resolve_mod += 1
+            itm.off_mod += 1
 
 
 class BloodRaining(Skill):
@@ -208,6 +211,21 @@ class Burn(Skill):
         itm.can_burn = 1
 
 
+class ColdResist(Skill):
+    name = blizzard_wanderer_t
+    desc = "ignores storm penalties."
+    effect = "self"
+    ranking = 1.1
+    type = "generic"
+
+    def run(self, itm):
+        itm.coldres = 1
+        if itm.pos and itm.pos.raining:
+            itm.effects.append(self.name)
+        if itm.pos and itm.pos.storm:
+            itm.can_hide = 1
+            itm.stealth_mod += 2
+
 class ChaliceOfBlood(Skill):
     name = "ChaliceOfBlood"
     desc = "After attack round restores 1 hp if the unit has make damage on the enemy."
@@ -222,6 +240,21 @@ class ChaliceOfBlood(Skill):
             itm.hp_total += 2
             msg = f"{self.name}: {itm} restores 2 hp."
             itm.temp_log += [msg]
+
+
+class Champion(Skill):
+    name = "champion"
+    desc = "+1 resolve."
+    effect = "friend"
+    ranking = 1.2
+    type = "generic"
+    tags = ["leader"]
+
+    def run(self, itm):
+        if self.itm == itm: return
+        if itm.nation not in self.itm.belongs: return
+        itm.effects.append(self.name)
+        itm.resolve_mod += 1
 
 
 class Charge(Skill):
@@ -251,9 +284,10 @@ class Coesion(Skill):
 
 class DarkPresence(Skill):
     name = "dark presence"
-    desc = """if death: in day: +2 res.
-  if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.
-  """
+    desc = """
+    if death: in day: +2 res.
+    if night: +1 dfs, +1 moves, +1 off, +2 res, +2 str.
+    """
     effect = "friend"
     ranking = 1.1
     type = "generic"
@@ -342,6 +376,7 @@ class DHLevels(Skill):
             itm.off_mod += 1
             itm.strn_mod += 1
 
+
 class Diseased(Skill):
     name = "diseased"
     desc = "probability to dead."
@@ -381,24 +416,23 @@ class Eclipse(Skill):
 
 class Fanatism(Skill):
     name = fanatism_t
-    desc = "+1 att, +1 str, -2 dfs, +1 moves, +1 resolve if enemy is death."
+    desc = """
+    +5 ln, +2 resolve if enemy is death.
+    """
     effect = "self"
     type = "generic"
 
     def run(self, itm):
         if itm.target and death_t in itm.target.physical_traits:
-            itm.effects.append(self.name)
-            itm.att1_mod += 1
-            itm.dfs_mod -= 2
-            itm.moves_mod += 1
+            itm.effects += [self.name]
+            itm.ln_mod += 5
             itm.resolve_mod += 2
-            itm.strn_mod += 1
 
 
 class FearAura(Skill):
     name = fearaura_t
-    effect = "enemy"
     desc = "if target is not mindless. -2 resolve, -2 moves, -1 off, -1 dfs."
+    effect = "enemy"
     ranking = 1.3
     type = "generic"
     tags = ["fear aura"]
@@ -408,10 +442,11 @@ class FearAura(Skill):
         if itm == self.itm: return
         if itm.nation in self.itm.belongs: return
         itm.effects.append(fear_t)
-        itm.resolve_mod -= 2
+        itm.dfs_mod -= 2
+        itm.ln_mod -= 2
         itm.moves_mod -= 2
-        itm.off_mod -= 1
-        itm.dfs_mod -= 1
+        itm.off_mod -= 2
+        itm.resolve_mod -= 2
 
 
 class FeedingFrenzy(Skill):
@@ -430,7 +465,7 @@ class FeedingFrenzy(Skill):
 
 
 class Fly(Skill):
-    name = "vuela"
+    name = fly_t
     desc = "unit can fly. enemy can not charge."
     effect = "self"
     ranking = 1.1
@@ -454,7 +489,7 @@ class Furtive(Skill):
 
 
 class ForestSurvival(Skill):
-    name = "sobreviviente del bosque"
+    name = "forest survival"
     desc = "+4 stealth if unit is on forest."
     effect = "self"
     ranking = 1.1
@@ -468,14 +503,14 @@ class ForestSurvival(Skill):
 
 
 class ForestTerrain(Skill):
+    name = "forest terrain"
     effect = "all"
     desc = """
     -2 moves for grount unit, -4 move for mounted unit, -1 off,
     -1 dfs. unit can not charge.
-    -30% ln. 
+    -30% ln.
     ignores forest survival and flying units.+4 stealth.
     """
-    name = "forest terrain"
     type = "generic"
 
     def run(self, itm):
@@ -483,7 +518,7 @@ class ForestTerrain(Skill):
         if itm.forest_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
-            itm.ln_mod -= itm.ln//3
+            itm.ln_mod -= itm.ln // 3
             itm.moves_mod -= 2
             if itm.mounted: itm.moves_mod -= 2
             itm.dfs_mod -= 1
@@ -507,7 +542,7 @@ class ForestWalker(Skill):
 
 
 class ElusiveShadow(Skill):
-    name = "sombra elusiva"
+    name = "elusive shadow"
     desc = "+8 stealth on day, +10 stealth on night."
     effect = "self"
     type = "generic"
@@ -519,7 +554,7 @@ class ElusiveShadow(Skill):
 
 
 class Ethereal(Skill):
-    name = "et�reo"
+    name = "ethereal"
     desc = "Ignores enemy pn."
     effect = "self"
     ranking = 1.2
@@ -531,9 +566,9 @@ class Ethereal(Skill):
 
 
 class HeavyCharge(Skill):
-    effect = "self"
+    name = "heavy charge"
     desc = "charge damage = 3"
-    name = "carga pesada"
+    effect = "self"
     ranking = 1.3
     type = "generic"
 
@@ -591,7 +626,7 @@ class HillTerrain(Skill):
         if itm.mountain_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
-            itm.ln_mod -= itm.ln//3
+            itm.ln_mod -= itm.ln // 3
             itm.moves_mod -= 2
             itm.dfs_mod -= 1
             itm.off_mod -= 1
@@ -612,7 +647,7 @@ class HoldPositions(Skill):
 
 
 class HolyAura(Skill):
-    name = fearaura_t
+    name = "holy aura"
     desc = """-2 moves, -2 dfs, -2 off if enemy is death and malignant.
   """
     effect = "enemy"
@@ -629,14 +664,14 @@ class HolyAura(Skill):
 
 
 class Exaltation(Skill):
-    name = "exaltaci�n."
+    name = "exaltation"
     desc = "undefined."
     effect = "friend"
     ranking = 1
     type = "generic"
 
     def run(self, itm):
-        if sacred_t in itm.physical_traits: 
+        if sacred_t in itm.physical_traits:
             itm.effects += [self.name]
             itm.resolve_mod += 1
             itm.hit_rolls_mod += 1
@@ -722,14 +757,14 @@ class Intoxicated(Skill):
         msg = f"{itm} loses {deads} by {self.name} in {itm.pos}. ({itm.pos.cords})"
         itm.log[-1] += [msg]
         itm.nation.log[-1] += [msg]
-        itm.hp_total -= itm.hp*deads
+        itm.hp_total -= itm.hp * deads
         itm.update()
         if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
 
 
 class Inspiration(Skill):
-    name = "inspiraci�n"
-    desc = "+1 hit roll, +2 resolve."
+    name = "inspiration"
+    desc = "+1 hit roll, +4 resolve."
     effect = "friend"
     ranking = 1.2
     type = "generic"
@@ -740,7 +775,7 @@ class Inspiration(Skill):
         if itm.nation not in self.itm.belongs: return
         itm.effects.append(self.name)
         itm.hit_rolls_mod += 1
-        itm.resolve_mod += 2
+        itm.resolve_mod += 4
 
 
 class LeadershipExceeded(Skill):
@@ -801,8 +836,10 @@ class LocustSwarm(Skill):
 
 
 class LordOfBones(Skill):
-    name = "se�or de los huesos"
-    desc = """if unit is skeleton, skeleton warrior +1 att, +1 dfs, +1 off."""
+    name = "lord of bones"
+    desc = """
+    if unit is skeleton or skeleton warrior: +2 ln, +1 off, +1 strn.
+    """
     effect = "leading"
     ranking = 1.2
     type = "generic"
@@ -810,31 +847,12 @@ class LordOfBones(Skill):
 
     def run(self, itm):
         if (itm.nation in self.itm.belongs and itm != self.itm
-                and itm.name in [skeleton_t, skeleton_warrior_t]):
+                and itm.name in [skeleton_t, "blood skeleton"]):
             itm.effects.append(self.name)
-            itm.att1_mod += 1
-            itm.dfs_mod += 1
+            itm.ln_mod += 2
             itm.off_mod += 1
-            itm.res_mod += 2
             itm.strn_mod += 1
 
-
-class BloodLord(Skill):
-    name = "señor de sangre"
-    desc = "+1 dfs, +1 off, +1 moves, +1 resolve if unit is blood drinker."
-    effect = "leading"
-    ranking = 1.2
-    type = "generic"
-    tags = ["leader"]
-
-    def run(self, itm):
-        if (itm.nation in self.itm.belongs and itm != self.itm
-                and blood_drinker_t in itm.physical_traits):
-            itm.effects.append(self.name)
-            itm.moves_mod += 1
-            itm.resolve_mod += 1
-            itm.dfs_mod += 1
-            itm.off_mod += 1
 
 
 class MassSpears(Skill):
@@ -856,7 +874,7 @@ class MassSpears(Skill):
 
 class MastersEye(Skill):
     name = "ojos del amo"
-    desc = "+1 att, +1 hit roll, +1 str, +1 res."
+    desc = "+1 att, +1 hit roll, +4 ln, +1 str, +1 res."
     effect = "friend"
     ranking = 1.3
     type = "generic"
@@ -869,12 +887,33 @@ class MastersEye(Skill):
         itm.hit_rolls_mod += 1
         if death_t in itm.physical_traits:
             itm.effects += [f" {death_t}."]
+            itm.ln_mod += 4
             itm.moves_mod += 1
             itm.res_mod += 1
             itm.strn_mod += 1
         if itm.aligment == malignant_t:
             itm.effects += [f" {malignant_t}"]
+            itm.ln_mod += 4
             itm.resolve_mod += 1
+
+class MasterOfBones(Skill):
+    name = "master of bones"
+    desc = """
+    if unit is skeleton or skeleton warrior: +2 ln, +1 off, +1 strn.
+    """
+    effect = "leading"
+    ranking = 1.2
+    type = "generic"
+    tags = ["leader"]
+
+    def run(self, itm):
+        if (itm.nation in self.itm.belongs and itm != self.itm
+                and itm.name in [skeleton_t, "blood skeleton"]):
+            itm.effects.append(self.name)
+            itm.ln_mod += 2
+            itm.off_mod += 1
+            itm.strn_mod += 1
+
 
 
 class Miasma(Skill):
@@ -957,7 +996,7 @@ class mist(Skill):
 
 class Night(Skill):
     name = night_t
-    desc = """if unit is not dark vision: -2 off, 
+    desc = """if unit is not dark vision: -2 off,
   -2 dfs, -1 resolve. +2 stealth,
   -4 ln."""
     effect = "all"
@@ -1300,7 +1339,7 @@ class Surrounded(Skill):
     effect = "self"
     desc = """
     +10 ln if 3 squads.
-    +20 ln if 6 squads. 
+    +20 ln if 6 squads.
     +30 ln if 10 squads.
     """
     name = "rodeados"
@@ -1418,7 +1457,7 @@ class SwampTerrain(Skill):
         if itm.swamp_survival == 0 and itm.can_fly == 0:
             itm.effects.append(self.name)
             itm.charges = 0
-            itm.ln_mod -= itm.ln//3
+            itm.ln_mod -= itm.ln // 3
             itm.dfs_mod -= 1
             itm.moves_mod -= 2
             itm.off_mod -= 1

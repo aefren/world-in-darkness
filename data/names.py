@@ -112,7 +112,7 @@ romanian_name1 = ["Bodgan", "Luca", "Glad", "Serban", "Alexandru", "Sorin",
                   "Vasile", "Velkan", "Mihail", "Glad", "Serghei", "Nicolae", 
                   "Rasvan", "Vladislav", "Radu", "Basarab", "Kalinikia",]
 
-romanian_name2 = ["Enescu", "", "Covaci", "Cinca", "lupu", "Tanase", "Vianu", 
+romanian_name2 = ["Enescu", "Szilagyi", "Covaci", "Cinca", "lupu", "Tanase", "Vianu", 
                   "Vladimiri", "Ragar", "Bucur", "Stinga", "Skutnik", "Negru"]
 
 surfname1 = ["Shade", "Vossen", "Kobe", "Drach", "Brevil", "Strain", 

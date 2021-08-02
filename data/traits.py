@@ -11,15 +11,6 @@ class Trait:
     def __str__(self):
         return self.name
 
-
-class Brave(Trait):
-    name = "brave"
-
-    def __init__(self):
-        super().__init__()
-        self.exclude = [Craven]
-
-
 class Arbitrary(Trait):
     name = "arbitrary"
 
@@ -35,6 +26,13 @@ class Arrogant(Trait):
         super().__init__()
         self.exclude = [Humble]
 
+
+class Brave(Trait):
+    name = "brave"
+
+    def __init__(self):
+        super().__init__()
+        self.exclude = [Craven]
 
 
 class Chaste(Trait):
@@ -79,19 +77,19 @@ class Generous(Trait):
         self.exclude = [Greedy]
 
 
+class Greedy(Trait):
+    name = "greedy"
+    def __init__(self):
+        super().__init__()
+        self.exclude = [Generous]
+
+
 class Gregarious(Trait):
     name = "gregarious"
 
     def __init__(self):
         super().__init__()
         self.exclude = [Shy]
-
-
-class Greedy(Trait):
-    name = "greedy"
-    def __init__(self):
-        super().__init__()
-        self.exclude = [Generous]
 
 
 class Honest(Trait):
