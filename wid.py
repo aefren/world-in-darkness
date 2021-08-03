@@ -721,6 +721,7 @@ class Terrain:
         if self.corpses == []: self.miasma -= 1
         self.set_corpses()
         if self.miasma < 0: self.miasma = 0
+        if self.flood < 0: self.flood = 0
 
     def stats_buildings(self):
         for b in self.buildings:

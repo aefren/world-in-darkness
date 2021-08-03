@@ -2981,6 +2981,8 @@ class Unit:
                 if it.scout and it.pos.get_distance(it.pos, self.pos) > 2: continue
                 units += [it]
         if chosen_units: units = chosen_units
+        [it.split() for it in units]
+        units = [it for it in units if it.hp_total >= 1]
         shuffle(units)
         units.sort(key=lambda x: x.pos.get_distance(self.pos, x.pos))
         units.sort(key=lambda x: x.pos.around_threat + x.pos.threat)
@@ -3017,10 +3019,6 @@ class Unit:
                 if leading >= leadership:
                     if info: logging.debug(f"grupo creado.")
                     break
-            else:
-                logging.debug(f"full leading.")
-                i.split()
-                break
 
     def disband(self, hired=0):
         skill_names = [sk.name for sk in self.skills]
@@ -5615,7 +5613,7 @@ class AwakenTree(Elf):
     units = 1
     min_units = 1
     ln = 3
-    max_squads = 6
+    max_squads = 5
     poisonres = 1
     type = "infantry"
     physical_traits = [tree_t]
@@ -5663,8 +5661,8 @@ class BladeDancer(Elf):
     name = "blade dancer"
     units = 10
     min_units = 10
+    max_squads = 3
     ln = 15
-    max_squads = 5
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -5751,8 +5749,8 @@ class Driad(Elf):
     name = "driad"
     units = 5
     min_units = 5
+    max_squads = 4
     ln = 15
-    max_squads = 5
     poisonres = 1
     type = "infantry"
     physical_traits = [elf_t]
@@ -5794,11 +5792,11 @@ class Driad(Elf):
 
 class EternalGuard(Elf):
     name = "eternal guard"
-    units = 20
+    units = 10
     sts = 4
-    min_units = 20
-    ln = 10
+    min_units = 10
     max_squads = 3
+    ln = 10
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -5842,8 +5840,8 @@ class Falcon(Elf):
     name = falcon_t
     units = 2
     min_units = 2
+    max_squads = 5
     ln = 20
-    max_squads = 10
     type = "beast"
     physical_traits = [falcon_t]
     aligment = nature_t
@@ -5884,8 +5882,8 @@ class ForestBear(Unit):
     name = "forest bear"
     units = 4
     min_units = 4
+    max_squads = 2
     ln = 7
-    max_squads = 10
     type = "beast"
     physical_traits = [bear_t]
     aligment = nature_t
@@ -5928,8 +5926,8 @@ class ForestEagle(Elf):
     name = "forest eagle"
     units = 2
     min_units = 2
-    ln = 15
     max_squads = 10
+    ln = 15
     type = "beast"
     physical_traits = [eagle_t]
     aligment = nature_t
@@ -5970,8 +5968,8 @@ class GreatEagle(Elf):
     name = "great eagle "
     units = 1
     min_units = 1
+    max_squads = 5
     ln = 10
-    max_squads = 1
     type = "beast"
     physical_traits = [eagle_t]
     aligment = nature_t
@@ -6011,8 +6009,8 @@ class ForestGiant(Unit):
     name = "forest giant"
     units = 5
     min_units = 5
+    max_squads = 3
     ln = 5
-    max_squads = 6
     type = "beast"
     physical_traits = [beast_t]
     aligment = wild_t
@@ -6057,8 +6055,8 @@ class ForestGuard(Elf):
     name = forest_guard_t
     units = 20
     min_units = 10
+    max_squads = 4
     ln = 8
-    max_squads = 10
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -6101,8 +6099,8 @@ class ForestRider(Elf):
     units = 5
     sts = 2
     min_units = 5
+    max_squads = 4
     ln = 6
-    max_squads = 6
     type = "cavalry"
     mounted = 1
     physical_traits = [elf_t]
@@ -6188,7 +6186,7 @@ class Huntress(Elf):
     name = huntress_t
     units = 5
     min_units = 5
-    max_squads = 5
+    max_squads = 4
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -6234,7 +6232,7 @@ class WoodArcher(Elf):
     units = 10
     sts = 2
     min_units = 10
-    max_squads = 5
+    max_squads = 4
     type = "infantry"
     physical_traits = [elf_t]
     aligment = wild_t
@@ -6324,8 +6322,8 @@ class ElkRider(Elf):
     name = "elk rider"
     units = 5
     min_units = 5
+    max_squads = 3
     ln = 5
-    max_squads = 6
     type = "cavalry"
     mounted = 1
     physical_traits = [elf_t]
@@ -7285,8 +7283,8 @@ class Flagellant(Human):
     name = flagellant_t
     units = 20
     min_units = 10
+    max_squads = 6
     ln = 6
-    max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = sacred_t
@@ -7329,8 +7327,8 @@ class RebornOne(Human):
     name = reborn_one_t
     units = 20
     min_units = 10
+    max_squads = 5
     ln = 8
-    max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = sacred_t
@@ -7372,8 +7370,8 @@ class Velites(Human):
     name = "velites "
     units = 20
     min_units = 10
+    max_squads = 4
     ln = 8
-    max_squads = 6
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7415,8 +7413,8 @@ class ImperialGuard(Human):
     units = 10
     sts = 4
     min_units = 10
-    ln = 10
     max_squads = 3
+    ln = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7455,11 +7453,10 @@ class ImperialGuard(Human):
 class Hastati(Human):
     name = "hastati"
     units = 10
-    sts = 1
     min_units = 10
     sts = 1
+    max_squads = 4
     ln = 10
-    max_squads = 3
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7501,8 +7498,8 @@ class Principes(Human):
     units = 10
     sts = 2
     min_units = 10
+    max_squads = 3
     ln = 10
-    max_squads = 6
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7544,8 +7541,8 @@ class Halberdier(Human):
     units = 10
     sts = 2
     min_units = 10
+    max_squads = 3
     ln = 10
-    max_squads = 6
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7586,8 +7583,8 @@ class SacredWarrior(Human):
     name = sacred_warrior_t
     units = 10
     min_units = 10
+    max_squads = 4
     ln = 10
-    max_squads = 3
     type = "infantry"
     physical_traits = [human_t]
     aligment = sacred_t
@@ -7629,8 +7626,8 @@ class KnightsTemplar (Human):
     name = knights_templar_t
     units = 5
     min_units = 5
+    max_squads = 4
     ln = 10
-    max_squads = 6
     type = "infantry"
     physical_traits = [human_t]
     aligment = sacred_t
@@ -7755,7 +7752,7 @@ class Arquebusier(Human):
     units = 10
     sts = 2
     min_units = 10
-    max_squads = 5
+    max_squads = 4
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7793,7 +7790,7 @@ class Musket(Human):
     units = 10
     sts = 2
     min_units = 10
-    max_squads = 5
+    max_squads = 4
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -7830,8 +7827,8 @@ class Equite(Human):
     name = equites_t
     units = 5
     min_units = 5
+    max_squads = 8
     ln = 8
-    max_squads = 6
     type = "cavalry"
     mounted = 1
     physical_traits = [human_t]
@@ -7878,8 +7875,8 @@ class Equites2(Human):
     units = 5
     sts = 2
     min_units = 5
-    ln = 7
     max_squads = 6
+    ln = 7
     type = "cavalry"
     mounted = 1
     physical_traits = [human_t]
@@ -7921,10 +7918,10 @@ class Equites2(Human):
 
 class Gryphon(Unit):
     name = "gryphon"
-    units = 4
+    units = 2
     min_units = 2
-    ln = 5
     max_squads = 5
+    ln = 5
     type = "beast"
     physical_traits = [gryphon_t]
     aligment = wild_t
@@ -7965,8 +7962,8 @@ class GryphonRiders(Unit):
     name = "gryphon rider"
     units = 2
     min_units = 2
+    max_squads = 4
     ln = 5
-    max_squads = 5
     type = "beast"
     mounted = 1
     physical_traits = [human_t]
@@ -8333,7 +8330,7 @@ class FuneraryDungeon(Pit, Building):
 class BoierLord(Human):
     name = boyar_lord_t
     namelist = [romanian_name1, romanian_name2]
-    age_range = 20, 40
+    age_range = 30, 50
     units = 5
     sts = 2
     min_units = 5
@@ -8376,7 +8373,7 @@ class BoierLord(Human):
     strn = 9
 
     fear = 6
-    lead_traits = [human_t, blood_drinker_t, ]
+    lead_traits = [human_t, blood_drinker_t, wolf_t]
     lead_aligments = [malignant_t, wild_t, order_t]
 
     def __init__(self, nation):
@@ -8400,7 +8397,7 @@ class BoierLord(Human):
 class Sfetnic(Human):
     name = "Sfetnic"
     namelist = [romanian_name1, romanian_name2]
-    age_range = 30, 40
+    age_range = 30, 50
     units = 10
     sts = 2
     min_units = 10
@@ -8470,7 +8467,7 @@ class Polcovnic(Human):
     units = 5
     sts = 2
     min_units = 5
-    ln = 5
+    ln = 10
     max_squads = 1
     gets_traits = 1
     leadership = 50
@@ -8490,7 +8487,7 @@ class Polcovnic(Human):
     mp = [2, 2]
     moves = 6
     resolve = 6
-    global_skills = [BloodLord, Furtive, Organization]
+    global_skills = [BloodLord, Furtive]
 
     dfs = 8
     res = 7
@@ -8517,6 +8514,7 @@ class Polcovnic(Human):
         if self.xp >= 10 and self.level == 1:
             self.level = 2
             self.leadership += 10
+            self.global_skills += [Organization(self)]
         if self.xp >= 25 and self.level == 2:
             self.level = 3
             self.leadership += 10
@@ -8856,8 +8854,8 @@ class Adjule(Undead):
     name = "adjule"
     units = 10
     min_units = 5
+    max_squads = 4
     ln = 6
-    max_squads = 5
     type = beast_t
     physical_traits = [death_t]
     aligment = malignant_t
@@ -8943,11 +8941,11 @@ class WailingLady(Undead):
 
 class Bat(Unit):
     name = bat_t
-    units = 40
+    units = 20
     sts = 2
-    min_units = 20
-    ln = 40
+    min_units = 10
     max_squads = 10
+    ln = 40
     poisonres = 1
     type = "beast"
     physical_traits = [bat_t]
@@ -8993,8 +8991,8 @@ class BlackKnight(Undead):
     name = black_knight_t
     units = 5
     min_units = 5
+    max_squads = 4
     ln = 7
-    max_squads = 6
     type = "cavalry"
     mounted = 1
     physical_traits = [death_t]
@@ -9042,8 +9040,8 @@ class BloodKnight(Undead):
     name = blood_knight_t
     units = 2
     min_units = 2
+    max_squads = 10
     ln = 10
-    max_squads = 20
     type = "infantry"
     physical_traits = [death_t, blood_drinker_t]
     aligment = malignant_t
@@ -9087,8 +9085,8 @@ class CryptHorror(Undead):
     name = crypt_horror_t
     units = 4
     min_units = 2
+    max_squads = 10
     ln = 5
-    max_squads = 20
     type = "beast"
     physical_traits = [death_t]
     aligment = malignant_t
@@ -9129,8 +9127,8 @@ class DireWolf(Undead):
     name = dire_wolf_t
     units = 4
     min_units = 2
+    max_squads = 30
     ln = 7
-    max_squads = 20
     type = "beast"
     physical_traits = [death_t, wolf_t]
     aligment = malignant_t
@@ -9172,10 +9170,10 @@ class DireWolf(Undead):
 
 class Draugr(Undead):
     name = "Draugr"
-    units = 5
-    min_units = 5
-    ln = 7
+    units = 4
+    min_units = 4
     max_squads = 2
+    ln = 7
     type = "infantry"
     physical_traits = [death_t, blood_drinker_t]
     aligment = malignant_t
@@ -9225,8 +9223,8 @@ class FellBat(Undead):
     name = fell_bat_t
     units = 5
     min_units = 5
+    max_squads = 4
     ln = 15
-    max_squads = 10
     type = beast_t
     physical_traits = [death_t, bat_t, blood_drinker_t]
     aligment = malignant_t
@@ -9269,10 +9267,10 @@ class FellBat(Undead):
 
 class Ghoul(Human):
     name = ghoul_t
-    units = 20
+    units = 10
     min_units = 10
+    max_squads = 4
     ln = 10
-    max_squads = 5
     poisonres = 1
     type = "infantry"
     physical_traits = [human_t, blood_drinker_t]
@@ -9321,8 +9319,8 @@ class GraveGuard(Undead):
     name = grave_guard_t
     units = 5
     min_units = 5
+    max_squads = 6
     ln = 10
-    max_squads = 8
     type = "infantry"
     physical_traits = [death_t, ]
     aligment = malignant_t
@@ -9405,8 +9403,8 @@ class Skeleton(Undead):
     name = skeleton_t
     units = 10
     min_units = 10
+    max_squads = 6
     ln = 6
-    max_squads = 10
     type = "infantry"
     will_less = 1
     physical_traits = [death_t]
@@ -9423,7 +9421,7 @@ class Skeleton(Undead):
     mp = [2, 2]
     moves = 4
     resolve = 10
-    global_skills = [SkeletonLegion]
+    global_skills = []
 
     dfs = 7
     res = 8
@@ -9432,8 +9430,9 @@ class Skeleton(Undead):
 
     weapon1 = weapons.Claw
     att1 = 1
-    off = 7
+    off = 6
     strn = 7
+    offensive_skills = [SkeletonLegion]
 
     common = 8
     fear = 0
@@ -9466,7 +9465,6 @@ class BloodSkeleton(Undead):
     mp = [2, 2]
     moves = 5
     resolve = 10
-    global_skills = [SkeletonLegion]
 
     dfs = 9
     res = 10
@@ -9475,8 +9473,9 @@ class BloodSkeleton(Undead):
 
     weapon1 = weapons.RustSword
     att1 = 1
-    off = 10
+    off = 8
     strn = 9
+    offensive_skills = [SkeletonLegion]
 
     common = 8
     fear = 0
@@ -9491,8 +9490,8 @@ class SpectralInfantry(Undead):
     name = "spectral infantry"
     units = 10
     min_units = 10
+    max_squads = 5
     ln = 15
-    max_squads = 10
     type = "infantry"
     will_less = 1
     physical_traits = [death_t]
@@ -9533,10 +9532,10 @@ class SpectralInfantry(Undead):
 
 class Vampire(Undead):
     name = vampire_t
-    units = 5
+    units = 4
     min_units = 2
-    ln = 20
     max_squads = 10
+    ln = 20
     type = "beast"
     physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
@@ -9584,17 +9583,17 @@ class Vargheist(Undead):
     name = "vargheist"
     units = 1
     min_units = 1
-    ln = 5
-    max_squads = 5
+    max_squads = 10
+    ln = 10
     type = "beast"
     physical_traits = [blood_drinker_t, vampire_t]
     aligment = malignant_t
     size = 3
-    train_rate = 2.5
-    upkeep = 25
+    train_rate = 3
+    upkeep = 30
     resource_cost = 20
     food = 0
-    pop = 15
+    pop = 30
     terrain_skills = [DarkVision, ForestSurvival, MountainSurvival]
 
     hp = 25
@@ -9633,8 +9632,8 @@ class Zombie(Undead, Ground):
     name = zombie_t
     units = 20
     min_units = 10
+    max_squads = 12
     ln = 10
-    max_squads = 20
     type = "infantry"
     will_less = 1
     physical_traits = [death_t]
@@ -11503,8 +11502,8 @@ class Abomination(Undead):
     name = "abomination"
     units = 4
     min_units = 4
+    max_squads = 2
     ln = 4
-    max_squads = 5
     poisonres = 1
     type = "beast"
     physical_traits = [death_t]
@@ -11597,8 +11596,8 @@ class Akhlut(Unit):
     name = "akhlut"
     units = 1
     min_units = 1
-    ln = 5
     max_squads = 5
+    ln = 5
     type = "beast"
     physical_traits = [beast_t]
     aligment = wild_t
@@ -11644,8 +11643,8 @@ class BlackOrc(Orc):
     name = "black orc"
     units = 10
     min_units = 10
+    max_squads = 6
     ln = 10
-    max_squads = 16
     type = "infantry"
     physical_traits = [orc_t]
     aligment = malignant_t
@@ -11691,8 +11690,8 @@ class BlizzardWarrior(Human):
     name = "blizzard warrior"
     units = 20
     min_units = 10
+    max_squads = 6
     ln = 10
-    max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = wild_t
@@ -11737,8 +11736,8 @@ class CannibalWarrior(Human):
     name = "cannibal warrior"
     units = 20
     min_units = 10
+    max_squads = 6
     ln = 10
-    max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = hell_t
@@ -11783,8 +11782,8 @@ class Crocodile(Unit):
     name = crocodile_t
     units = 1
     min_units = 1
+    max_squads = 10
     ln = 7
-    max_squads = 20
     type = "beast"
     physical_traits = [crocodile_t]
     aligment = nature_t
@@ -11829,8 +11828,8 @@ class DeadBear(Undead):
     name = dead_bear_t
     units = 4
     min_units = 4
-    ln = 4
     max_squads = 5
+    ln = 4
     type = "beast"
     physical_traits = [death_t, bear_t]
     aligment = malignant_t
@@ -11874,8 +11873,8 @@ class CamelRider(Human):
     units = 20
     sts = 2
     min_units = 10
+    max_squads = 6
     ln = 10
-    max_squads = 5
     mounted = 1
     type = "cavalry"
     physical_traits = [human_t]
@@ -11974,7 +11973,7 @@ class DevoutOfChaos(Human):
     units = 10
     sts = 2
     min_units = 10
-    ln = 15
+    ln = 3
     max_squads = 3
     type = "infantry"
     physical_traits = [human_t]
@@ -12061,8 +12060,8 @@ class GiantBear(Unit):
     name = giant_bear_t
     units = 1
     min_units = 1
-    ln = 5
     max_squads = 10
+    ln = 5
     type = "beast"
     physical_traits = [bear_t]
     aligment = nature_t
@@ -12108,8 +12107,8 @@ class GiantDeadBear(Undead):
     name = giant_dead_bear_t
     units = 1
     min_units = 1
-    ln = 3
     max_squads = 10
+    ln = 3
     type = "beast"
     physical_traits = [death_t, bear_t]
     aligment = malignant_t
@@ -12154,8 +12153,8 @@ class GiantCrocodile(Unit):
     name = giant_crocodrile_t
     units = 1
     min_units = 1
-    ln = 7
     max_squads = 10
+    ln = 7
     type = "beast"
     physical_traits = [crocodile_t]
     aligment = nature_t
@@ -12200,8 +12199,8 @@ class GiantOfTheLostTribe(Undead):
     name = giant_of_the_lost_tribe_t
     units = 4
     min_units = 4
+    max_squads = 5
     ln = 7
-    max_squads = 10
     type = "beast"
     physical_traits = [beast_t]
     aligment = wild_t
@@ -12251,8 +12250,8 @@ class GiantWolf(Unit):
     name = giant_wolf_t
     units = 5
     min_units = 5
-    ln = 8
     max_squads = 6
+    ln = 8
     type = "beast"
     physical_traits = [wolf_t]
     aligment = nature_t
@@ -12302,8 +12301,8 @@ class Ghost(Undead):
     name = ghost_t
     units = 5
     min_units = 5
-    ln = 50
     max_squads = 6
+    ln = 50
     ethereal = 1
     type = "infantry"
     will_less = 1
@@ -12346,8 +12345,8 @@ class GoblinArcher(Goblin):
     units = 20
     sts = 4
     min_units = 10
+    max_squads = 8
     ln = 20
-    max_squads = 10
     type = "infantry"
     physical_traits = [goblin_t]
     aligment = orcs_t
@@ -12399,8 +12398,8 @@ class ClayGolem(Unit):
     name = clay_golem_t
     units = 5
     min_units = 1
-    ln = 5
     max_squads = 5
+    ln = 5
     type = "beast"
     will_less = 1
     physical_traits = [golem_t, ]
@@ -12450,7 +12449,7 @@ class Harpy(Unit):
     units = 20
     sts = 2
     ln = 10
-    min_units = 10
+    min_units = 6
     max_squads = 6
     poisonres = 1
     type = beast_t
@@ -12550,9 +12549,9 @@ class Hyena(Unit):
     name = hyena_t
     units = 20
     sts = 4
-    ln = 10
     min_units = 5
     max_squads = 12
+    ln = 10
     type = "beast"
     physical_traits = [hyena_t]
     aligment = nature_t
@@ -12650,8 +12649,8 @@ class KillerMantis(Human):
     name = "killer mantis"
     units = 5
     min_units = 5
-    ln = 15
     max_squads = 4
+    ln = 15
     type = "Beast"
     will_less = 1
     physical_traits = [mantis_t]
@@ -12699,8 +12698,8 @@ class NomadsRider(Human):
     name = nomads_rider_t
     units = 10
     min_units = 10
-    ln = 6
     max_squads = 6
+    ln = 6
     mounted = 1
     type = "cavalry"
     physical_traits = [human_t]
@@ -12751,7 +12750,7 @@ class OrcArcher(Orc):
     units = 30
     sts = 2
     min_units = 10
-    max_squads = 10
+    max_squads = 6
     type = "infantry"
     physical_traits = [orc_t]
     aligment = malignant_t
@@ -12802,8 +12801,8 @@ class OrcWarrior(Orc):
     units = 20
     sts = 4
     min_units = 10
+    max_squads = 6
     ln = 8
-    max_squads = 10
     type = "infantry"
     physical_traits = [orc_t]
     aligment = malignant_t
@@ -12851,8 +12850,8 @@ class Levy(Human):
     units = 20
     sts = 2
     min_units = 10
+    max_squads = 4
     ln = 8
-    max_squads = 10
     levy = 1
     type = "infantry"
     physical_traits = [human_t]
@@ -12895,8 +12894,8 @@ class LizardMan(Human):
     name = "lizardman"
     units = 20
     min_units = 10
+    max_squads = 4
     ln = 10
-    max_squads = 10
     poisonres = 1
     type = "infantry"
     physical_traits = [lizard_t]
@@ -12947,8 +12946,8 @@ class LizardManInfantry(Human):
     units = 20
     sts = 2
     min_units = 10
+    max_squads = 4
     ln = 15
-    max_squads = 6
     poisonres = 1
     type = "infantry"
     physical_traits = [lizard_t]
@@ -13042,8 +13041,8 @@ class Mammot(Unit):
     name = "mammot"
     units = 2
     min_units = 2
+    max_squads = 5
     ln = 6
-    max_squads = 10
     type = "beast"
     physical_traits = [mammot_t]
     aligment = nature_t
@@ -13091,8 +13090,8 @@ class DeadMammot(Undead):
     name = "dead mammot"
     units = 1
     min_units = 1
-    ln = 3
     max_squads = 10
+    ln = 3
     type = "beast"
     physical_traits = [death_t, mammot_t]
     aligment = malignant_t
@@ -13193,8 +13192,8 @@ class Ogre(Unit):
     name = "ogro"
     units = 10
     min_units = 5
+    max_squads = 4
     ln = 7
-    max_squads = 20
     type = "beast"
     physical_traits = [ogre_t]
     aligment = wild_t
@@ -13241,8 +13240,8 @@ class PaleOne(Unit):
     name = "pale one"
     units = 20
     min_units = 10
+    max_squads = 4
     ln = 10
-    max_squads = 6
     type = "beast"
     physical_traits = [beast_t]
     aligment = order_t
@@ -13287,10 +13286,10 @@ class PaleOne(Unit):
 
 class Peasant(Human):
     name = peasant_t
-    units = 40
+    units = 30
     min_units = 10
+    max_squads = 8
     ln = 6
-    max_squads = 20
     levy = 1
     type = "civil"
     will_less = 1
@@ -13426,7 +13425,7 @@ class Raider(Human):
     units = 20
     sts = 1
     min_units = 10
-    ln = 8
+    ln = 2
     max_squads = 3
     type = "infantry"
     physical_traits = [human_t]
@@ -13474,8 +13473,8 @@ class Rider(Human):
     name = rider_t
     units = 5
     min_units = 5
+    max_squads = 4
     ln = 7
-    max_squads = 6
     type = "cavalry"
     mounted = 1
     physical_traits = [human_t]
@@ -13525,8 +13524,8 @@ class Satyr(Human):
     name = "satyr"
     units = 10
     min_units = 10
+    max_squads = 2
     ln = 7
-    max_squads = 4
     type = "infantry"
     physical_traits = [beast_t]
     aligment = wild_t
@@ -13573,8 +13572,8 @@ class Slave(Human):
     name = "slave"
     units = 30
     min_units = 10
-    ln = 5
     max_squads = 60
+    ln = 5
     type = "civil"
     will_less = 1
     physical_traits = [human_t]
@@ -13670,8 +13669,8 @@ class SlaveWarrior(Human):
     name = "guerrero esclavo"
     units = 20
     min_units = 10
+    max_squads = 6
     ln = 8
-    max_squads = 8
     type = "infantry"
     will_less = 1
     physical_traits = [human_t]
@@ -13718,8 +13717,8 @@ class StormWalkers(Human):
     name = "Stormwalkers"
     units = 10
     min_units = 10
+    max_squads = 2
     ln = 10
-    max_squads = 4
     type = "infantry"
     physical_traits = [human_t]
     aligment = wild_t
@@ -13757,10 +13756,10 @@ class StormWalkers(Human):
 
 class Troglodyte(Unit):
     name = "troglodyte"
-    units = 6
-    min_units = 6
+    units = 5
+    min_units = 5
+    max_squads = 6
     ln = 8
-    max_squads = 10
     type = "beast"
     physical_traits = [human_t]
     aligment = wild_t
@@ -13806,8 +13805,8 @@ class Troll(Unit):
     name = "troll"
     units = 2
     min_units = 1
+    max_squads = 5
     ln = 4
-    max_squads = 8
     poisonres = 1
     type = "beast"
     physical_traits = [troll_t]
@@ -13853,8 +13852,8 @@ class Warg(Unit):
     name = "huargo"
     units = 10
     sts = 1
-    min_units = 5
-    ln = 6
+    min_units = 10
+    ln = 3
     max_squads = 12
     type = "beast"
     physical_traits = [wolf_t]
@@ -13905,8 +13904,8 @@ class WargRider(Unit):
     name = "warg rider"
     units = 5
     min_units = 5
+    max_squads = 5
     ln = 8
-    max_squads = 6
     mounted = 1
     type = "beast"
     physical_traits = [orc_t]
@@ -13960,8 +13959,8 @@ class Warrior(Human):
     units = 20
     sts = 2
     min_units = 10
+    max_squads = 4
     ln = 8
-    max_squads = 10
     type = "infantry"
     physical_traits = [human_t]
     aligment = order_t
@@ -14006,8 +14005,8 @@ class WetOne(Unit):
     name = "weet one"
     units = 20
     min_units = 10
+    max_squads = 4
     ln = 5
-    max_squads = 6
     type = "beast"
     physical_traits = [beast_t]
     aligment = order_t
@@ -14054,8 +14053,8 @@ class WoodlandSpirit(Unit):
     name = "woodland spirit"
     units = 1
     min_units = 1
-    ln = 5
     max_squads = 5
+    ln = 5
     ethereal = 1
     type = "beast"
     physical_traits = [spirit_t]
@@ -14098,8 +14097,8 @@ class Wolf(Unit):
     name = wolf_t
     units = 20
     min_units = 10
+    max_squads = 5
     ln = 10
-    max_squads = 6
     type = "beast"
     physical_traits = [wolf_t]
     aligment = nature_t
@@ -14148,8 +14147,8 @@ class WolfRider(Goblin):
     name = "wolf rider"
     units = 10
     min_units = 10
-    ln = 8
     max_squads = 6
+    ln = 8
     mounted = 1
     type = "infantry"
     physical_traits = [goblin_t]

@@ -226,6 +226,7 @@ class ColdResist(Skill):
             itm.can_hide = 1
             itm.stealth_mod += 2
 
+
 class ChaliceOfBlood(Skill):
     name = "ChaliceOfBlood"
     desc = "After attack round restores 1 hp if the unit has make damage on the enemy."
@@ -740,26 +741,27 @@ class Intoxicated(Skill):
     desc = "Las unidades sufren un n�mero aleatoreo de da�o por turno. durante x turnos."
     effect = "self"
     sound = ["diseased1"]
-    turns = randint(5, 10)
+    turns = 3
     type = "start turn"
 
     def run(self, itm):
         if itm.hp_total < 1: return
         sk = Weak(itm)
-        sk.turns = self.turns
+        sk.turns = randint(2, 4)
         if sk.name not in [s.name for s in itm.other_skills]:
             itm.other_skills += [sk]
-        deads = randint(10, 30)
-        if basics.roll_dice(1) >= 5: deads *= 2
-        if basics.roll_dice(1) >= 6: deads *= 3
-        deads = floor(deads / itm.hp)
-        if deads > itm.units: deads = itm.units
-        msg = f"{itm} loses {deads} by {self.name} in {itm.pos}. ({itm.pos.cords})"
-        itm.log[-1] += [msg]
-        itm.nation.log[-1] += [msg]
-        itm.hp_total -= itm.hp * deads
-        itm.update()
-        if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
+        if basics.roll_dice(1) >= 5:
+            deads = randint(10, 20)
+            if basics.roll_dice(1) >= 5: deads *= 2
+            if basics.roll_dice(1) >= 6: deads *= 2
+            if deads > 100: deads = 100
+            deads = deads*itm.hp_total/100
+            msg = f"{itm} loses {floor(deads/itm.hp_total)} by {self.name} in {itm.pos}. ({itm.pos.cords})"
+            itm.log[-1] += [msg]
+            itm.nation.log[-1] += [msg]
+            itm.hp_total -= deads
+            itm.update()
+            if itm.show_info: sleep(loadsound("spell34", channel=CHTE3) / 2)
 
 
 class Inspiration(Skill):
@@ -854,7 +856,6 @@ class LordOfBones(Skill):
             itm.strn_mod += 1
 
 
-
 class MassSpears(Skill):
     effect = "self"
     desc = "+1  off por cada 20 unidades hasta 3.. Anula la carga enemiga de caballer�a."
@@ -896,6 +897,7 @@ class MastersEye(Skill):
             itm.ln_mod += 4
             itm.resolve_mod += 1
 
+
 class MasterOfBones(Skill):
     name = "master of bones"
     desc = """
@@ -913,7 +915,6 @@ class MasterOfBones(Skill):
             itm.ln_mod += 2
             itm.off_mod += 1
             itm.strn_mod += 1
-
 
 
 class Miasma(Skill):
@@ -1536,13 +1537,13 @@ class ToxicArrows(Skill):
 
     def run(self, itm):
         if (itm.target and sum(itm.damage_done)
-            and all(i not in [death_t, spirit_t] for i in itm.target.physical_traits)
-            and itm.target.poisonres == 0
+                and all(i not in [death_t, spirit_t] for i in itm.target.physical_traits)
+                and itm.target.poisonres == 0
                 and itm.ethereal == 0):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 5:
                 sk = Intoxicated(itm.target)
-                sk.turns = sum(itm.damage_done)
+                sk.turns = randint(2, 5)
                 if Intoxicated.name not in [s.name for s in itm.target.skills]:
                     itm.target.other_skills += [sk]
                     msg = [f"{itm.target} {is_t} intoxicated by {itm}. {sk.turns}"]
@@ -1559,13 +1560,13 @@ class ToxicClaws(Skill):
 
     def run(self, itm):
         if (itm.target and sum(itm.damage_done) and itm.target.hp_total >= 1
-            and death_t not in itm.target.physical_traits
-            and itm.poisonres == 0
+                and death_t not in itm.target.physical_traits
+                and itm.poisonres == 0
                 and itm.ethereal == 0):
             logging.debug(f"{self.name} damage done {itm.damage_done}.")
             if basics.roll_dice(1) >= 3:
                 sk = Intoxicated(itm.target)
-                sk.turns = sum(itm.damage_done)
+                sk.turns = randint(2,5)
                 if Intoxicated.name not in [s.name for s in itm.target.skills]:
                     itm.target.other_skills += [sk]
                     msg = [f"{itm.target} {is_t} intoxicated by {itm}. {sk.turns}"]
